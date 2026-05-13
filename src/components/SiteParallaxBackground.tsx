@@ -1,11 +1,15 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import Image from "next/image"
 import { motion, useMotionValue, useSpring, useTransform } from "framer-motion"
 
-const PARALLAX_IMAGE =
-  "/seleccion-argentina-con-trofeo-copa-mundial-fifa_3840x2160_xtrafondos.com.jpg"
+/**
+ * Fondo full-bleed. Usamos copia con nombre simple en `public/argentina-mundial-hero.jpg`
+ * (evita el nombre largo con `.com` antes de `.jpg`, que a veces rompe el optimizador de Next/Image).
+ * Si actualizás la foto, reemplazá ese archivo o volvé a copiar desde
+ * `seleccion-argentina-con-trofeo-copa-mundial-fifa_3840x2160_xtrafondos.com.jpg`.
+ */
+const PARALLAX_IMAGE = "/argentina-mundial-hero.jpg"
 
 export default function SiteParallaxBackground() {
   const mx = useMotionValue(0.5)
@@ -48,12 +52,12 @@ export default function SiteParallaxBackground() {
     }
   }, [mx, my, reduceMotion])
 
-  const layerClass =
-    "absolute left-1/2 top-1/2 min-h-[115dvh] w-[132%] max-w-none -translate-x-1/2 -translate-y-1/2 [transform-style:preserve-3d]"
+  const backLayer = "-inset-[18%] absolute [transform-style:preserve-3d]"
+  const frontLayer = "-inset-[14%] absolute [transform-style:preserve-3d]"
 
   return (
     <div
-      className="pointer-events-none fixed inset-0 z-0 overflow-hidden"
+      className="pointer-events-none fixed inset-0 z-0"
       style={{ perspective: "1600px" }}
       aria-hidden
     >
@@ -62,45 +66,56 @@ export default function SiteParallaxBackground() {
 
       {reduceMotion ? (
         <>
-          <div className={`${layerClass} h-[125%]`}>
-            <Image
+          <div className={backLayer}>
+            <img
               src={PARALLAX_IMAGE}
               alt=""
-              fill
-              className="object-cover object-[center_34%] brightness-[0.5] saturate-[1.05] blur-[2px] scale-105"
-              sizes="100vw"
+              width={3840}
+              height={2160}
+              decoding="async"
+              fetchPriority="high"
+              className="h-full w-full object-cover object-[center_34%] brightness-[0.52] saturate-[1.05] blur-[2px] scale-105"
             />
           </div>
-          <div className={`${layerClass} h-[118%]`}>
-            <Image
+          <div className={frontLayer}>
+            <img
               src={PARALLAX_IMAGE}
               alt=""
-              fill
-              priority
-              className="object-cover object-[center_32%] brightness-[0.82] contrast-[1.02] scale-[1.03]"
-              sizes="100vw"
+              width={3840}
+              height={2160}
+              decoding="async"
+              fetchPriority="high"
+              className="h-full w-full object-cover object-[center_32%] brightness-[0.85] contrast-[1.02]"
             />
           </div>
         </>
       ) : (
         <>
-          <motion.div className={`${layerClass} h-[125%] will-change-transform`} style={{ rotateX: rotateXBack, rotateY: rotateYBack, translateZ: -48 }}>
-            <Image
+          <motion.div
+            className={`${backLayer} will-change-transform`}
+            style={{ rotateX: rotateXBack, rotateY: rotateYBack, translateZ: -48 }}
+          >
+            <img
               src={PARALLAX_IMAGE}
               alt=""
-              fill
-              className="object-cover object-[center_34%] brightness-[0.5] saturate-[1.05] blur-[2px] scale-105"
-              sizes="100vw"
+              width={3840}
+              height={2160}
+              decoding="async"
+              className="h-full w-full object-cover object-[center_34%] brightness-[0.52] saturate-[1.05] blur-[2px] scale-105"
             />
           </motion.div>
-          <motion.div className={`${layerClass} h-[118%] will-change-transform`} style={{ rotateX, rotateY, translateZ: layerZ }}>
-            <Image
+          <motion.div
+            className={`${frontLayer} will-change-transform`}
+            style={{ rotateX, rotateY, translateZ: layerZ }}
+          >
+            <img
               src={PARALLAX_IMAGE}
               alt=""
-              fill
-              priority
-              className="object-cover object-[center_32%] brightness-[0.82] contrast-[1.02] scale-[1.03]"
-              sizes="100vw"
+              width={3840}
+              height={2160}
+              decoding="async"
+              fetchPriority="high"
+              className="h-full w-full object-cover object-[center_32%] brightness-[0.85] contrast-[1.02] scale-[1.02]"
             />
           </motion.div>
         </>
