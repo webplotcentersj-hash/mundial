@@ -79,17 +79,17 @@ export default function Home() {
 
       <div className="w-full mx-auto px-3 min-[420px]:px-4 sm:px-6 md:px-8 lg:px-10 xl:px-14 2xl:px-20 relative z-10 py-10 sm:py-14 md:py-16 lg:py-20 flex flex-col items-stretch gap-10 md:gap-14 lg:gap-16">
         {/* Video solo detrás del panel hero — ahora ocupa todo el ancho útil */}
-        <div className="relative w-full isolate overflow-hidden rounded-2xl border border-white/20 bg-[#060d18]/90 shadow-[0_32px_100px_-28px_rgba(0,0,0,0.75),inset_0_1px_0_rgba(255,255,255,0.08)] sm:rounded-3xl">
+        <div className="relative w-full isolate overflow-hidden rounded-2xl border border-white/20 bg-[#060d18]/65 shadow-[0_32px_100px_-28px_rgba(0,0,0,0.75),inset_0_1px_0_rgba(255,255,255,0.08)] sm:rounded-3xl">
           <div
             className="pointer-events-none absolute inset-0 z-0 overflow-hidden rounded-[inherit]"
             aria-hidden
           >
             <div
-              className="absolute inset-0 bg-gradient-to-br from-[#0c1829] via-[#060d18] to-[#120805]"
+              className="absolute inset-0 bg-gradient-to-br from-[#0c1829]/80 via-[#060d18]/70 to-[#120805]/85"
               aria-hidden
             />
             <div
-              className="absolute inset-0 bg-[radial-gradient(ellipse_100%_70%_at_50%_0%,rgba(235,103,27,0.14),transparent_50%),radial-gradient(ellipse_80%_55%_at_80%_100%,rgba(245,158,11,0.1),transparent_50%)]"
+              className="absolute inset-0 bg-[radial-gradient(ellipse_100%_70%_at_50%_0%,rgba(235,103,27,0.18),transparent_52%),radial-gradient(ellipse_80%_55%_at_80%_100%,rgba(245,158,11,0.14),transparent_52%)]"
               aria-hidden
             />
 
@@ -104,27 +104,27 @@ export default function Home() {
               onCanPlay={onVideoLoaded}
               onError={() => setVideoReady(false)}
               className={`absolute top-1/2 left-1/2 min-w-full min-h-full w-auto h-auto object-cover -translate-x-1/2 -translate-y-1/2 mix-blend-screen scale-[1.08] transition-opacity duration-[1200ms] ease-out will-change-[opacity] ${
-                videoReady ? 'opacity-[0.48]' : 'opacity-0'
+                videoReady ? 'opacity-[0.68]' : 'opacity-0'
               }`}
             >
               <source src="/This is FIFA World Cup 26™.mp4" type="video/mp4" />
             </video>
 
             <div
-              className="absolute inset-0 bg-gradient-to-b from-[#030712]/55 via-[#030712]/18 to-[#030712]/60 pointer-events-none"
+              className="absolute inset-0 bg-gradient-to-b from-[#030712]/38 via-[#030712]/10 to-[#030712]/42 pointer-events-none"
               aria-hidden
             />
             <div
-              className="absolute inset-0 bg-gradient-to-r from-[#030712]/35 via-transparent to-[#030712]/35 pointer-events-none"
+              className="absolute inset-0 bg-gradient-to-r from-[#030712]/22 via-transparent to-[#030712]/22 pointer-events-none"
               aria-hidden
             />
 
             <div
-              className="absolute inset-0 backdrop-blur-[1px] bg-gradient-to-b from-white/[0.04] via-transparent to-black/20 pointer-events-none"
+              className="absolute inset-0 backdrop-blur-[0.5px] bg-gradient-to-b from-white/[0.02] via-transparent to-black/12 pointer-events-none"
               aria-hidden
             />
             <div
-              className="hero-noise-static absolute inset-0 opacity-[0.16] mix-blend-overlay pointer-events-none"
+              className="hero-noise-static absolute inset-0 opacity-[0.1] mix-blend-overlay pointer-events-none"
               aria-hidden
             />
             <div className="hero-shimmer-sweep" aria-hidden />
@@ -159,7 +159,7 @@ export default function Home() {
             variants={containerVariants}
             initial="hidden"
             animate="show"
-            className="relative z-10 flex flex-col items-center text-center w-full min-w-0 px-4 py-8 sm:px-6 sm:py-10 md:px-10 md:py-12 lg:px-14 lg:py-14 xl:px-20 xl:py-16 backdrop-blur-lg bg-gradient-to-b from-white/[0.12] via-white/[0.04] to-black/25 ring-1 ring-inset ring-white/10"
+            className="relative z-10 flex flex-col items-center text-center w-full min-w-0 px-4 py-8 sm:px-6 sm:py-10 md:px-10 md:py-12 lg:px-14 lg:py-14 xl:px-20 xl:py-16 backdrop-blur-md bg-gradient-to-b from-white/[0.07] via-white/[0.02] to-black/15 ring-1 ring-inset ring-white/10"
           >
           {/* Live Status Pill */}
           <motion.div variants={itemVariants} className="mb-8 flex items-center justify-center">
@@ -243,22 +243,23 @@ export default function Home() {
         </motion.div>
       </div>
 
-      {/* --- Live Ticker Marquee --- */}
-      <div className="absolute bottom-0 left-0 w-full bg-white/5 border-t border-white/10 backdrop-blur-md overflow-hidden z-20">
-        <div className="flex whitespace-nowrap py-3 items-center">
-          <motion.div 
-            className="flex gap-8 px-4 items-center"
-            animate={{ x: ["0%", "-50%"] }}
-            transition={{ ease: "linear", duration: 30, repeat: Infinity }}
-          >
-            {/* Duplicamos para efecto infinito */}
-            {[...tickerNews, ...tickerNews].map((news, index) => (
-              <div key={index} className="flex items-center gap-8">
-                <span className="text-white/70 font-bold text-sm tracking-wide">{news}</span>
-                <Circle className="w-1.5 h-1.5 text-primary/50 fill-primary/50" />
-              </div>
-            ))}
-          </motion.div>
+      {/* --- Live Ticker: mismo ancho y márgenes que el contenido --- */}
+      <div className="absolute bottom-0 left-0 right-0 z-20 w-full overflow-x-hidden">
+        <div className="border-t border-white/10 bg-white/5 backdrop-blur-md">
+          <div className="mx-auto w-full overflow-hidden px-3 min-[420px]:px-4 sm:px-6 md:px-8 lg:px-10 xl:px-14 2xl:px-20">
+            <motion.div
+              className="flex w-max gap-8 py-3 items-center will-change-transform"
+              animate={{ x: ['0%', '-50%'] }}
+              transition={{ ease: 'linear', duration: 32, repeat: Infinity }}
+            >
+              {[...tickerNews, ...tickerNews].map((news, index) => (
+                <div key={index} className="flex shrink-0 items-center gap-8">
+                  <span className="text-white/70 font-bold text-sm tracking-wide whitespace-nowrap">{news}</span>
+                  <Circle className="w-1.5 h-1.5 shrink-0 text-primary/50 fill-primary/50" />
+                </div>
+              ))}
+            </motion.div>
+          </div>
         </div>
       </div>
 
