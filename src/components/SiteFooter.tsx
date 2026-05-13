@@ -93,7 +93,7 @@ export default function SiteFooter() {
           />
 
           <div className="relative grid gap-10 p-6 sm:p-8 lg:grid-cols-12 lg:gap-12 lg:p-10 xl:gap-14 xl:p-12">
-            <div className="lg:col-span-5">
+            <div className="min-w-0 lg:col-span-5">
               <Link
                 href="/"
                 className="inline-flex rounded-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/60"
@@ -106,8 +106,8 @@ export default function SiteFooter() {
                   className="h-12 w-auto object-contain drop-shadow-[0_8px_28px_rgba(0,0,0,0.55)] sm:h-14"
                 />
               </Link>
-              <p className="mt-6 font-outfit text-2xl font-bold leading-tight tracking-tight text-white sm:text-3xl">
-                <span className="bg-gradient-to-r from-white via-white to-white/70 bg-clip-text text-transparent">
+              <p className="mt-6 font-outfit text-2xl font-bold tracking-tight text-white sm:text-3xl">
+                <span className="inline-block bg-gradient-to-r from-white via-white to-white/70 bg-clip-text pb-1 text-transparent">
                   Plot Mundial
                 </span>
                 <span className="mt-2 block text-base font-normal leading-relaxed text-white/55 sm:text-lg">

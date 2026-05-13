@@ -25,6 +25,7 @@ export default function DashboardPage() {
   const [newLeagueName, setNewLeagueName] = useState('')
   const [isJoining, setIsJoining] = useState(false)
   const [isCreating, setIsCreating] = useState(false)
+  const [lastSavedMatchId, setLastSavedMatchId] = useState<string | null>(null)
   
   // Medallas
   const [medals, setMedals] = useState<string[]>([])
@@ -114,9 +115,18 @@ export default function DashboardPage() {
     if (pred && pred.home !== '' && pred.away !== '') {
       setIsSaving(matchId)
       try {
-        const result = await savePredictionAction(matchId, parseInt(pred.home), parseInt(pred.away))
+        const result = await savePredictionAction(matchId, parseInt(pred.home, 10), parseInt(pred.away, 10))
         if (result?.error) {
           alert(result.error)
+        } else {
+          const userPreds = await getUserPredictions()
+          let totalPts = 0
+          userPreds.forEach((p: any) => {
+            totalPts += p.points_earned || 0
+          })
+          setBasePoints(totalPts)
+          setLastSavedMatchId(matchId)
+          window.setTimeout(() => setLastSavedMatchId((id) => (id === matchId ? null : id)), 2800)
         }
       } catch (err: any) {
         console.error(err)
@@ -128,34 +138,41 @@ export default function DashboardPage() {
   }
 
   const handleJoinLeague = async () => {
-    if (!joinCode) return
+    if (!joinCode.trim()) return
     setIsJoining(true)
     try {
-      await joinLeague(joinCode)
+      const { leagueId } = await joinLeague(joinCode)
       const myLeagues = await getUserLeagues()
       setLeagues(myLeagues)
       setJoinCode('')
+      setActiveLeagueId(leagueId)
+      const lb = await getLeagueLeaderboard(leagueId)
+      setLeagueLeaderboard(lb)
       alert('Te has unido a la liga exitosamente')
-      if (myLeagues.length > 0) loadLeaderboard(myLeagues[myLeagues.length - 1].id)
     } catch (err: any) {
-      alert(err.message)
+      alert(err?.message ?? 'No se pudo unir a la liga')
     } finally {
       setIsJoining(false)
     }
   }
 
   const handleCreateLeague = async () => {
-    if (!newLeagueName) return
+    if (!newLeagueName.trim()) return
     setIsCreating(true)
     try {
-      await createLeague(newLeagueName)
+      const created = await createLeague(newLeagueName.trim())
       const myLeagues = await getUserLeagues()
       setLeagues(myLeagues)
       setNewLeagueName('')
+      const id = (created as { id?: string })?.id
+      if (id) {
+        setActiveLeagueId(id)
+        const lb = await getLeagueLeaderboard(id)
+        setLeagueLeaderboard(lb)
+      }
       alert('Liga creada exitosamente')
-      if (myLeagues.length > 0) loadLeaderboard(myLeagues[myLeagues.length - 1].id)
     } catch (err: any) {
-      alert(err.message)
+      alert(err?.message ?? 'No se pudo crear la liga')
     } finally {
       setIsCreating(false)
     }
@@ -181,23 +198,25 @@ export default function DashboardPage() {
         <motion.div 
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="flex flex-col md:flex-row items-center justify-between gap-6 mb-12 border-b border-white/10 pb-8"
+          className="flex min-w-0 flex-col items-stretch justify-between gap-6 pb-8 mb-12 border-b border-white/10 md:flex-row md:items-center"
         >
-          <div className="flex items-center gap-6">
-            <div className="w-20 h-20 rounded-full bg-gradient-to-br from-primary to-amber-600 flex items-center justify-center font-black text-3xl text-white shadow-[0_0_30px_rgba(235,103,27,0.4)] border-2 border-white/10 uppercase">
+          <div className="flex min-w-0 items-center gap-4 sm:gap-6">
+            <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full border-2 border-white/10 bg-gradient-to-br from-primary to-amber-600 text-2xl font-black uppercase text-white shadow-[0_0_30px_rgba(235,103,27,0.4)] sm:h-20 sm:w-20 sm:text-3xl">
               {username.substring(0,2)}
             </div>
-            <div>
-              <h1 className="text-3xl md:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-white to-white/70 tracking-widest uppercase">HOLA, {username}</h1>
-              <p className="text-primary font-bold tracking-widest uppercase mt-1 text-sm">Tu Prode Personal</p>
+            <div className="min-w-0 flex-1">
+              <h1 className="break-words pb-1 font-black uppercase leading-[1.15] tracking-wide text-transparent [text-wrap:balance] bg-clip-text bg-gradient-to-r from-white to-white/75 text-2xl sm:text-4xl md:text-5xl md:tracking-widest">
+                HOLA, {username}
+              </h1>
+              <p className="mt-1 text-xs font-bold uppercase tracking-widest text-primary sm:text-sm">Tu Prode Personal</p>
             </div>
           </div>
           
-          <div className="glass-card px-8 py-4 rounded-2xl border border-white/10 flex items-center gap-4 bg-[#0a0f1c]/80 backdrop-blur-xl">
-            <Trophy className="w-8 h-8 text-primary drop-shadow-[0_0_10px_rgba(235,103,27,0.8)]" />
-            <div>
-              <div className="text-xs text-white/50 uppercase tracking-widest font-bold mb-1">Mis Puntos</div>
-              <div className="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-primary to-amber-400 leading-none">
+          <div className="glass-card flex shrink-0 items-center gap-4 rounded-2xl border border-white/10 bg-[#0a0f1c]/80 px-6 py-4 backdrop-blur-xl sm:px-8">
+            <Trophy className="h-7 w-7 shrink-0 text-primary drop-shadow-[0_0_10px_rgba(235,103,27,0.8)] sm:h-8 sm:w-8" />
+            <div className="min-w-0">
+              <div className="mb-1 text-[10px] font-bold uppercase tracking-widest text-white/50 sm:text-xs">Mis Puntos</div>
+              <div className="bg-gradient-to-r from-primary to-amber-400 bg-clip-text pb-0.5 text-2xl font-bold leading-none text-transparent tabular-nums sm:text-3xl">
                 {basePoints + bracketPoints}
               </div>
               {bracketPoints > 0 && (
@@ -210,29 +229,38 @@ export default function DashboardPage() {
         </motion.div>
 
         {/* TABS */}
-        <div className="flex flex-wrap gap-4 mb-8">
+        <div className="mb-8 flex flex-wrap gap-3 sm:gap-4" role="tablist" aria-label="Secciones del panel">
           <button 
+            type="button"
+            role="tab"
+            aria-selected={activeTab === 'matches'}
             onClick={() => setActiveTab('matches')}
-            className={`px-6 py-3 rounded-xl font-bold flex items-center gap-2 transition-all ${activeTab === 'matches' ? 'bg-primary text-white shadow-[0_0_20px_rgba(235,103,27,0.4)] border border-primary/50' : 'bg-white/5 text-white/50 hover:bg-white/10 border border-white/5'}`}
+            className={`flex items-center gap-2 rounded-xl px-5 py-3 text-sm font-bold transition-all sm:px-6 ${activeTab === 'matches' ? 'border border-primary/50 bg-primary text-white shadow-[0_0_20px_rgba(235,103,27,0.4)]' : 'border border-white/5 bg-white/5 text-white/70 hover:bg-white/10 hover:text-white'}`}
           >
-            <Sparkles className="w-5 h-5" /> Mis Pronósticos
+            <Sparkles className="h-5 w-5 shrink-0" /> Mis Pronósticos
           </button>
           <button 
+            type="button"
+            role="tab"
+            aria-selected={activeTab === 'leagues'}
             onClick={() => setActiveTab('leagues')}
-            className={`px-6 py-3 rounded-xl font-bold flex items-center gap-2 transition-all ${activeTab === 'leagues' ? 'bg-primary text-white shadow-[0_0_20px_rgba(235,103,27,0.4)] border border-primary/50' : 'bg-white/5 text-white/50 hover:bg-white/10 border border-white/5'}`}
+            className={`flex items-center gap-2 rounded-xl px-5 py-3 text-sm font-bold transition-all sm:px-6 ${activeTab === 'leagues' ? 'border border-primary/50 bg-primary text-white shadow-[0_0_20px_rgba(235,103,27,0.4)]' : 'border border-white/5 bg-white/5 text-white/70 hover:bg-white/10 hover:text-white'}`}
           >
-            <Users className="w-5 h-5" /> Ligas de Amigos
+            <Users className="h-5 w-5 shrink-0" /> Ligas de Amigos
           </button>
           <button 
+            type="button"
+            role="tab"
+            aria-selected={activeTab === 'medals'}
             onClick={() => setActiveTab('medals')}
-            className={`px-6 py-3 rounded-xl font-bold flex items-center gap-2 transition-all ${activeTab === 'medals' ? 'bg-primary text-white shadow-[0_0_20px_rgba(235,103,27,0.4)] border border-primary/50' : 'bg-white/5 text-white/50 hover:bg-white/10 border border-white/5'}`}
+            className={`flex items-center gap-2 rounded-xl px-5 py-3 text-sm font-bold transition-all sm:px-6 ${activeTab === 'medals' ? 'border border-primary/50 bg-primary text-white shadow-[0_0_20px_rgba(235,103,27,0.4)]' : 'border border-white/5 bg-white/5 text-white/70 hover:bg-white/10 hover:text-white'}`}
           >
-            <Medal className="w-5 h-5" /> Mis Trofeos
+            <Medal className="h-5 w-5 shrink-0" /> Mis Trofeos
           </button>
         </div>
 
         {/* CONTENT AREA */}
-        <AnimatePresence mode="wait">
+        <AnimatePresence>
           
           {/* TAB: MATCHES */}
           {activeTab === 'matches' && (
@@ -287,12 +315,13 @@ export default function DashboardPage() {
                       </div>
 
                       <button 
+                        type="button"
                         onClick={() => savePrediction(match.id)}
                         disabled={!predictions[match.id]?.home || !predictions[match.id]?.away || isSaving === match.id}
-                        className="w-full bg-primary/80 hover:bg-primary text-white font-bold py-3 rounded-xl transition-all flex items-center justify-center gap-2 text-sm disabled:opacity-30 disabled:hover:bg-primary/80 border border-primary/50 shadow-[0_0_15px_rgba(235,103,27,0.2)] disabled:shadow-none"
+                        className="flex w-full items-center justify-center gap-2 rounded-xl border border-primary/50 bg-primary/80 py-3 text-sm font-bold text-white shadow-[0_0_15px_rgba(235,103,27,0.2)] transition-all hover:bg-primary disabled:opacity-30 disabled:shadow-none disabled:hover:bg-primary/80"
                       >
-                        {isSaving === match.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />} 
-                        {isSaving === match.id ? 'Guardando...' : 'Guardar Predicción'}
+                        {isSaving === match.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />} 
+                        {isSaving === match.id ? 'Guardando...' : lastSavedMatchId === match.id ? 'Guardado ✓' : 'Guardar Predicción'}
                       </button>
                     </div>
                   ))}
@@ -304,9 +333,12 @@ export default function DashboardPage() {
 
           {/* TAB: LEAGUES */}
           {activeTab === 'leagues' && (
-            <motion.div key="leagues" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} className="space-y-8">
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <motion.div key="leagues" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} className="min-h-[240px] space-y-8">
+              <p className="text-sm text-white/55">
+                Creá una liga, compartí el código con amigos o unite con el que te pasaron. El ranking usa los mismos puntos que en Plot Mundial.
+              </p>
+
+              <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
                 <div className="glass-card p-8 rounded-2xl border border-white/10 bg-gradient-to-br from-white/5 to-transparent relative overflow-hidden group hover:border-primary/50 transition-colors">
                   <div className="absolute top-0 right-0 w-32 h-32 bg-primary/10 rounded-full blur-[40px] group-hover:bg-primary/20 transition-all" />
                   <Users className="w-10 h-10 text-primary mb-4" />
@@ -321,9 +353,10 @@ export default function DashboardPage() {
                       className="flex-1 bg-black/50 border border-white/10 rounded-xl px-4 text-white focus:outline-none focus:border-primary uppercase font-mono" 
                     />
                     <button 
+                      type="button"
                       onClick={handleJoinLeague}
-                      disabled={!joinCode || isJoining}
-                      className="bg-primary hover:bg-primary/90 disabled:opacity-50 text-white p-3 rounded-xl transition-colors"
+                      disabled={!joinCode.trim() || isJoining}
+                      className="rounded-xl bg-primary p-3 text-white transition-colors hover:bg-primary/90 disabled:opacity-50"
                     >
                       {isJoining ? <Loader2 className="w-5 h-5 animate-spin" /> : <Search className="w-5 h-5" />}
                     </button>
@@ -344,9 +377,10 @@ export default function DashboardPage() {
                       className="flex-1 bg-black/50 border border-white/10 rounded-xl px-4 text-white focus:outline-none focus:border-amber-500 font-outfit" 
                     />
                     <button 
+                      type="button"
                       onClick={handleCreateLeague}
-                      disabled={!newLeagueName || isCreating}
-                      className="bg-amber-500 hover:bg-amber-600 disabled:opacity-50 text-white p-3 rounded-xl transition-colors"
+                      disabled={!newLeagueName.trim() || isCreating}
+                      className="rounded-xl bg-amber-500 p-3 text-white transition-colors hover:bg-amber-600 disabled:opacity-50"
                     >
                       {isCreating ? <Loader2 className="w-5 h-5 animate-spin" /> : <Plus className="w-5 h-5" />}
                     </button>
@@ -359,6 +393,7 @@ export default function DashboardPage() {
                 <div className="flex gap-4 overflow-x-auto pb-2 scrollbar-hide mt-8">
                   {leagues.map(l => (
                     <button 
+                      type="button"
                       key={l.id}
                       onClick={() => loadLeaderboard(l.id)}
                       className={`whitespace-nowrap px-6 py-2 rounded-full border text-sm font-bold transition-all ${activeLeagueId === l.id ? 'bg-primary/20 border-primary text-white shadow-[0_0_15px_rgba(235,103,27,0.3)]' : 'bg-white/5 border-white/10 text-white/50 hover:bg-white/10'}`}

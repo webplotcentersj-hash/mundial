@@ -73,24 +73,49 @@ export async function savePrediction(matchId: string, homeScore: number, awaySco
     return { error: 'Debes iniciar sesión para guardar predicciones' }
   }
 
-  // Verificar que el partido no haya empezado (asumiendo que frontend ya lo valida, esto es doble seguridad)
-  const { data: match } = await supabase.from('matches').select('date').eq('id', matchId).single()
-  if (match && new Date(match.date) <= new Date()) {
-    return { error: 'El partido ya comenzó, no puedes predecir' }
+  const { data: match } = await supabase.from('matches').select('status').eq('id', matchId).maybeSingle()
+  if (match?.status === 'finished') {
+    return { error: 'Este partido ya finalizó. No podés cambiar el pronóstico.' }
   }
 
-  const { error } = await supabase
+  const { data: existing, error: findErr } = await supabase
     .from('predictions')
-    .upsert({
+    .select('id')
+    .eq('user_id', user.id)
+    .eq('match_id', matchId)
+    .maybeSingle()
+
+  if (findErr) {
+    console.error('Error finding prediction:', findErr)
+    return { error: 'No se pudo guardar la predicción' }
+  }
+
+  if (existing?.id) {
+    const { error } = await supabase
+      .from('predictions')
+      .update({
+        home_score: homeScore,
+        away_score: awayScore,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', existing.id)
+
+    if (error) {
+      console.error('Error updating prediction:', error)
+      return { error: 'No se pudo guardar la predicción' }
+    }
+  } else {
+    const { error } = await supabase.from('predictions').insert({
       user_id: user.id,
       match_id: matchId,
       home_score: homeScore,
       away_score: awayScore,
-    }, { onConflict: 'user_id,match_id' })
+    })
 
-  if (error) {
-    console.error('Error saving prediction:', error)
-    return { error: 'No se pudo guardar la predicción' }
+    if (error) {
+      console.error('Error inserting prediction:', error)
+      return { error: 'No se pudo guardar la predicción' }
+    }
   }
 
   revalidatePath('/dashboard')
@@ -263,7 +288,13 @@ export async function joinLeague(code: string) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) throw new Error('No autorizado')
 
-  const { data: league, error: leagueErr } = await supabase.from('leagues').select('id').eq('invite_code', code).single()
+  const normalized = code.trim().toUpperCase()
+  const { data: league, error: leagueErr } = await supabase
+    .from('leagues')
+    .select('id')
+    .eq('invite_code', normalized)
+    .single()
+
   if (leagueErr || !league) throw new Error('Código de liga inválido')
 
   const { error } = await supabase.from('league_members').insert({
@@ -275,7 +306,7 @@ export async function joinLeague(code: string) {
   if (error) throw new Error('Error al unirse a la liga')
 
   revalidatePath('/dashboard')
-  return { success: true }
+  return { success: true as const, leagueId: league.id as string }
 }
 
 export async function getUserLeagues() {
@@ -289,7 +320,7 @@ export async function getUserLeagues() {
     .eq('user_id', user.id)
 
   if (error) return []
-  return data.map((d: any) => d.leagues)
+  return (data ?? []).map((d: any) => d.leagues).filter(Boolean)
 }
 
 export async function getLeagueLeaderboard(leagueId: string) {
