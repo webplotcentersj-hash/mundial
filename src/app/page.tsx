@@ -75,86 +75,86 @@ export default function Home() {
 
   return (
     <div className="relative min-h-[calc(100vh-4rem)] flex flex-col justify-center overflow-hidden -mt-16 pt-16">
-      
-      {/* --- Hero video: capa base instantánea + video con fade-in (menos bytes iniciales) --- */}
-      <div className="absolute inset-0 -z-50 overflow-hidden bg-[#050a14]">
-        {/* Atmósfera inmediata sin esperar al MP4 */}
-        <div
-          className="absolute inset-0 bg-gradient-to-br from-[#0c1829] via-[#060d18] to-[#120805]"
-          aria-hidden
-        />
-        <div
-          className="absolute inset-0 bg-[radial-gradient(ellipse_120%_80%_at_50%_-20%,rgba(235,103,27,0.12),transparent_55%),radial-gradient(ellipse_80%_50%_at_80%_100%,rgba(245,158,11,0.08),transparent_50%)]"
-          aria-hidden
-        />
+      {/* Fondo ancho completo (sin video en los costados) */}
+      <div className="absolute inset-0 -z-[60] bg-[#030712]" aria-hidden />
 
-        <video
-          autoPlay
-          loop
-          muted
-          playsInline
-          preload="metadata"
-          disablePictureInPicture
-          onLoadedData={onVideoLoaded}
-          onCanPlay={onVideoLoaded}
-          onError={() => setVideoReady(false)}
-          className={`absolute top-1/2 left-1/2 min-w-full min-h-full w-auto h-auto object-cover -translate-x-1/2 -translate-y-1/2 mix-blend-screen scale-105 transition-opacity duration-[1200ms] ease-out will-change-[opacity] ${
-            videoReady ? 'opacity-[0.52]' : 'opacity-0'
-          }`}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 py-16 lg:py-24 w-full flex flex-col items-center isolate">
+        {/* Video + atmósfera solo dentro de la columna max-w-7xl */}
+        <div
+          className="pointer-events-none absolute inset-0 -z-10 overflow-hidden rounded-[1.75rem] sm:rounded-[2.25rem] border border-white/[0.08] bg-[#050a14] shadow-[inset_0_0_0_1px_rgba(255,255,255,0.04)]"
+          aria-hidden
         >
-          <source src="/This is FIFA World Cup 26™.mp4" type="video/mp4" />
-        </video>
-
-        {/* Overlay más claro: deja ver más el video y el texto respira */}
-        <div
-          className="absolute inset-0 bg-gradient-to-b from-[#030712]/62 via-[#030712]/22 to-[#030712]/68 pointer-events-none"
-          aria-hidden
-        />
-        <div
-          className="absolute inset-0 bg-gradient-to-r from-[#030712]/38 via-transparent to-[#030712]/38 pointer-events-none"
-          aria-hidden
-        />
-
-        {/* Esmerilado global suave */}
-        <div
-          className="absolute inset-0 backdrop-blur-[1.5px] sm:backdrop-blur-[2.5px] bg-gradient-to-b from-white/[0.03] via-transparent to-black/15 pointer-events-none"
-          aria-hidden
-        />
-        <div
-          className="hero-noise-static absolute inset-0 opacity-[0.18] mix-blend-overlay pointer-events-none"
-          aria-hidden
-        />
-        <div className="hero-shimmer-sweep" aria-hidden />
-      </div>
-
-      {/* --- Floating 3D Particles --- */}
-      <div className="absolute inset-0 pointer-events-none z-0 overflow-hidden">
-        {particles.map((p) => (
-          <motion.div
-            key={p.id}
-            className="absolute rounded-full bg-amber-500/30 blur-[2px]"
-            style={{
-              width: p.size,
-              height: p.size,
-              left: `${p.x}%`,
-              top: `${p.y}%`,
-            }}
-            animate={{
-              y: ["0vh", "-100vh"],
-              x: ["0vw", `${p.driftX}vw`],
-              opacity: [0, 0.5, 0],
-            }}
-            transition={{
-              duration: p.duration,
-              repeat: Infinity,
-              delay: p.delay,
-              ease: "linear",
-            }}
+          <div
+            className="absolute inset-0 bg-gradient-to-br from-[#0c1829] via-[#060d18] to-[#120805]"
+            aria-hidden
           />
-        ))}
-      </div>
+          <div
+            className="absolute inset-0 bg-[radial-gradient(ellipse_120%_80%_at_50%_-20%,rgba(235,103,27,0.12),transparent_55%),radial-gradient(ellipse_80%_50%_at_80%_100%,rgba(245,158,11,0.08),transparent_50%)]"
+            aria-hidden
+          />
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 py-16 lg:py-24 w-full flex flex-col items-center">
+          <video
+            autoPlay
+            loop
+            muted
+            playsInline
+            preload="metadata"
+            disablePictureInPicture
+            onLoadedData={onVideoLoaded}
+            onCanPlay={onVideoLoaded}
+            onError={() => setVideoReady(false)}
+            className={`absolute top-1/2 left-1/2 min-w-full min-h-full w-auto h-auto object-cover -translate-x-1/2 -translate-y-1/2 mix-blend-screen scale-105 transition-opacity duration-[1200ms] ease-out will-change-[opacity] ${
+              videoReady ? 'opacity-[0.52]' : 'opacity-0'
+            }`}
+          >
+            <source src="/This is FIFA World Cup 26™.mp4" type="video/mp4" />
+          </video>
+
+          <div
+            className="absolute inset-0 bg-gradient-to-b from-[#030712]/62 via-[#030712]/22 to-[#030712]/68 pointer-events-none"
+            aria-hidden
+          />
+          <div
+            className="absolute inset-0 bg-gradient-to-r from-[#030712]/38 via-transparent to-[#030712]/38 pointer-events-none"
+            aria-hidden
+          />
+
+          <div
+            className="absolute inset-0 backdrop-blur-[1.5px] sm:backdrop-blur-[2.5px] bg-gradient-to-b from-white/[0.03] via-transparent to-black/15 pointer-events-none"
+            aria-hidden
+          />
+          <div
+            className="hero-noise-static absolute inset-0 opacity-[0.18] mix-blend-overlay pointer-events-none"
+            aria-hidden
+          />
+          <div className="hero-shimmer-sweep" aria-hidden />
+
+          <div className="absolute inset-0 overflow-hidden">
+            {particles.map((p) => (
+              <motion.div
+                key={p.id}
+                className="absolute rounded-full bg-amber-500/30 blur-[2px]"
+                style={{
+                  width: p.size,
+                  height: p.size,
+                  left: `${p.x}%`,
+                  top: `${p.y}%`,
+                }}
+                animate={{
+                  y: ['0vh', '-100vh'],
+                  x: ['0vw', `${p.driftX}vw`],
+                  opacity: [0, 0.5, 0],
+                }}
+                transition={{
+                  duration: p.duration,
+                  repeat: Infinity,
+                  delay: p.delay,
+                  ease: 'linear',
+                }}
+              />
+            ))}
+          </div>
+        </div>
         
         <motion.div
           variants={containerVariants}
