@@ -185,10 +185,10 @@ export default function Home() {
           initial={{ opacity: 0, y: 50 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 1, delay: 0.8 }}
-          className="grid w-full min-w-0 grid-cols-1 md:grid-cols-3 gap-4 sm:gap-5 md:gap-6 lg:gap-8 rounded-2xl border border-white/10 bg-[#060913]/85 p-4 sm:p-6 md:p-7 lg:p-8 xl:p-10 backdrop-blur-md shadow-[0_20px_60px_-24px_rgba(0,0,0,0.55),inset_0_1px_0_rgba(255,255,255,0.05)] sm:rounded-3xl"
+          className="grid w-full min-w-0 grid-cols-1 md:grid-cols-3 gap-4 sm:gap-5 md:gap-6 lg:gap-8 rounded-2xl border border-white/8 bg-[#060913]/22 p-4 sm:p-6 md:p-7 lg:p-8 xl:p-10 backdrop-blur-[3px] shadow-[0_20px_60px_-24px_rgba(0,0,0,0.4),inset_0_1px_0_rgba(255,255,255,0.04)] sm:rounded-3xl ring-1 ring-inset ring-white/5"
         >
-          <div className="group glass-card p-6 sm:p-8 rounded-xl sm:rounded-[2rem] border border-white/10 hover:border-primary/50 transition-all hover:-translate-y-1 sm:hover:-translate-y-2 hover:shadow-[0_30px_60px_-15px_rgba(235,103,27,0.4)] bg-[#0a0f1c]/60 backdrop-blur-xl relative overflow-hidden min-w-0">
-             <div className="absolute top-0 right-0 w-40 h-40 bg-primary/20 rounded-full blur-[50px] pointer-events-none group-hover:bg-primary/40 transition-colors" />
+          <div className="group glass-card p-6 sm:p-8 rounded-xl sm:rounded-[2rem] border border-white/8 hover:border-primary/50 transition-all hover:-translate-y-1 sm:hover:-translate-y-2 hover:shadow-[0_30px_60px_-15px_rgba(235,103,27,0.35)] bg-[#0a0f1c]/28 backdrop-blur-[2px] relative overflow-hidden min-w-0 ring-1 ring-inset ring-white/[0.04]">
+             <div className="absolute top-0 right-0 w-40 h-40 bg-primary/12 rounded-full blur-[50px] pointer-events-none group-hover:bg-primary/28 transition-colors" />
             <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-primary/30 to-primary/5 flex items-center justify-center mb-6 border border-primary/30 group-hover:scale-110 transition-transform relative z-10">
               <Flame className="w-8 h-8 text-primary drop-shadow-[0_0_15px_rgba(235,103,27,1)]" />
             </div>
@@ -196,8 +196,8 @@ export default function Home() {
             <p className="text-white/60 leading-relaxed font-light relative z-10">Suma 3 puntos por predecir el resultado exacto y 1 punto por acertar la tendencia del ganador o el empate.</p>
           </div>
 
-          <div className="group glass-card p-6 sm:p-8 rounded-xl sm:rounded-[2rem] border border-white/10 hover:border-amber-500/50 transition-all hover:-translate-y-1 sm:hover:-translate-y-2 hover:shadow-[0_30px_60px_-15px_rgba(245,158,11,0.4)] bg-[#0a0f1c]/60 backdrop-blur-xl relative overflow-hidden min-w-0">
-            <div className="absolute top-0 right-0 w-40 h-40 bg-amber-500/20 rounded-full blur-[50px] pointer-events-none group-hover:bg-amber-500/40 transition-colors" />
+          <div className="group glass-card p-6 sm:p-8 rounded-xl sm:rounded-[2rem] border border-white/8 hover:border-amber-500/50 transition-all hover:-translate-y-1 sm:hover:-translate-y-2 hover:shadow-[0_30px_60px_-15px_rgba(245,158,11,0.35)] bg-[#0a0f1c]/28 backdrop-blur-[2px] relative overflow-hidden min-w-0 ring-1 ring-inset ring-white/[0.04]">
+            <div className="absolute top-0 right-0 w-40 h-40 bg-amber-500/12 rounded-full blur-[50px] pointer-events-none group-hover:bg-amber-500/28 transition-colors" />
             <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-amber-500/30 to-amber-500/5 flex items-center justify-center mb-6 border border-amber-500/30 group-hover:scale-110 transition-transform relative z-10">
               <Trophy className="w-8 h-8 text-amber-500 drop-shadow-[0_0_15px_rgba(245,158,11,1)]" />
             </div>
@@ -205,8 +205,8 @@ export default function Home() {
             <p className="text-white/60 leading-relaxed font-light relative z-10">Crea grupos privados con tus amigos de la oficina, compara llaves y demuestra quién sabe más de fútbol.</p>
           </div>
 
-          <div className="group glass-card p-6 sm:p-8 rounded-xl sm:rounded-[2rem] border border-white/10 hover:border-purple-500/50 transition-all hover:-translate-y-1 sm:hover:-translate-y-2 hover:shadow-[0_30px_60px_-15px_rgba(168,85,247,0.4)] bg-[#0a0f1c]/60 backdrop-blur-xl relative overflow-hidden min-w-0">
-             <div className="absolute top-0 right-0 w-40 h-40 bg-purple-500/20 rounded-full blur-[50px] pointer-events-none group-hover:bg-purple-500/40 transition-colors" />
+          <div className="group glass-card p-6 sm:p-8 rounded-xl sm:rounded-[2rem] border border-white/8 hover:border-purple-500/50 transition-all hover:-translate-y-1 sm:hover:-translate-y-2 hover:shadow-[0_30px_60px_-15px_rgba(168,85,247,0.35)] bg-[#0a0f1c]/28 backdrop-blur-[2px] relative overflow-hidden min-w-0 ring-1 ring-inset ring-white/[0.04]">
+             <div className="absolute top-0 right-0 w-40 h-40 bg-purple-500/12 rounded-full blur-[50px] pointer-events-none group-hover:bg-purple-500/28 transition-colors" />
             <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-purple-500/30 to-purple-500/5 flex items-center justify-center mb-6 border border-purple-500/30 group-hover:scale-110 transition-transform relative z-10">
               <Star className="w-8 h-8 text-purple-400 drop-shadow-[0_0_15px_rgba(168,85,247,1)]" />
             </div>
