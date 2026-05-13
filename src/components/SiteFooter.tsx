@@ -70,7 +70,7 @@ export default function SiteFooter() {
         aria-hidden
       />
 
-      <div className="relative mx-auto w-full max-w-7xl px-4 py-14 sm:px-6 sm:py-16 lg:px-8 lg:py-20 xl:px-10">
+      <div className="relative mx-auto w-full px-3 min-[420px]:px-4 sm:px-6 md:px-8 lg:px-10 xl:px-14 2xl:px-20 py-14 sm:py-16 lg:py-20">
         <div
           className={cn(
             "relative overflow-hidden rounded-3xl border border-white/[0.12]",

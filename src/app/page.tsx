@@ -69,7 +69,7 @@ export default function Home() {
   return (
     <div className="relative w-full min-h-[calc(100vh-4rem)] flex flex-col overflow-x-hidden overflow-y-visible -mt-16 pt-16 pb-28">
       <div className="w-full mx-auto px-3 min-[420px]:px-4 sm:px-6 md:px-8 lg:px-10 xl:px-14 2xl:px-20 relative z-10 py-10 sm:py-14 md:py-16 lg:py-20 flex flex-col items-stretch gap-10 md:gap-14 lg:gap-16">
-        <div className="relative w-full isolate overflow-hidden rounded-2xl border border-white/20 bg-[#060d18]/45 shadow-[0_32px_100px_-28px_rgba(0,0,0,0.75),inset_0_1px_0_rgba(255,255,255,0.08)] backdrop-blur-[2px] sm:rounded-3xl">
+        <div className="relative w-full isolate overflow-hidden rounded-2xl border border-white/20 bg-[#060d18]/28 shadow-[0_32px_100px_-28px_rgba(0,0,0,0.75),inset_0_1px_0_rgba(255,255,255,0.08)] backdrop-blur-sm sm:rounded-3xl">
           <div
             className="pointer-events-none absolute inset-0 z-0 overflow-hidden rounded-[inherit]"
             aria-hidden
@@ -132,7 +132,7 @@ export default function Home() {
             variants={containerVariants}
             initial="hidden"
             animate="show"
-            className="relative z-10 flex flex-col items-center text-center w-full min-w-0 px-4 py-8 sm:px-6 sm:py-10 md:px-10 md:py-12 lg:px-14 lg:py-14 xl:px-20 xl:py-16 backdrop-blur-md bg-gradient-to-b from-white/[0.07] via-white/[0.02] to-black/15 ring-1 ring-inset ring-white/10"
+            className="relative z-10 flex flex-col items-center text-center w-full min-w-0 px-4 py-8 sm:px-6 sm:py-10 md:px-10 md:py-12 lg:px-14 lg:py-14 xl:px-20 xl:py-16 backdrop-blur-sm bg-gradient-to-b from-white/[0.03] via-white/[0.008] to-black/8 ring-1 ring-inset ring-white/6"
           >
           {/* Live Status Pill */}
           <motion.div variants={itemVariants} className="mb-8 flex items-center justify-center">
@@ -216,10 +216,11 @@ export default function Home() {
         </motion.div>
       </div>
 
-      {/* --- Live Ticker: mismo ancho y márgenes que el contenido --- */}
-      <div className="absolute bottom-0 left-0 right-0 z-20 w-full overflow-x-hidden">
-        <div className="border-t border-white/10 bg-white/5 backdrop-blur-md">
-          <div className="mx-auto w-full overflow-hidden px-3 min-[420px]:px-4 sm:px-6 md:px-8 lg:px-10 xl:px-14 2xl:px-20">
+      {/* Ticker: mismo gutter horizontal que hero / cards */}
+      <div className="absolute bottom-0 left-0 right-0 z-20 w-full">
+        <div className="mx-auto w-full px-3 min-[420px]:px-4 sm:px-6 md:px-8 lg:px-10 xl:px-14 2xl:px-20">
+          <div className="overflow-hidden rounded-t-2xl border border-white/10 border-b-0 bg-white/[0.06] backdrop-blur-md shadow-[0_-8px_40px_-20px_rgba(0,0,0,0.45)]">
+            <div className="overflow-hidden">
             <motion.div
               className="flex w-max gap-8 py-3 items-center will-change-transform"
               animate={{ x: ['0%', '-50%'] }}
@@ -232,6 +233,7 @@ export default function Home() {
                 </div>
               ))}
             </motion.div>
+            </div>
           </div>
         </div>
       </div>
