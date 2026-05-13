@@ -18,6 +18,7 @@ import {
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { createClient } from '@/lib/supabase/client'
+import { SITE_CONTENT_OUTER } from '@/lib/siteContentLayout'
 import { signout } from '@/app/login/actions'
 import type { User as SupabaseUser } from '@supabase/supabase-js'
 
@@ -93,7 +94,7 @@ export default function Navbar() {
 
   return (
     <nav className="fixed w-full z-50 border-b border-white/[0.07] bg-[#060913]/75 backdrop-blur-xl shadow-[0_8px_32px_rgba(0,0,0,0.35)]">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className={SITE_CONTENT_OUTER}>
         <div className="flex items-center justify-between h-16">
           <div className="flex items-center min-w-0">
             <Link href="/" className="flex items-center relative group py-2 shrink-0">

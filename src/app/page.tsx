@@ -5,6 +5,8 @@ import { motion } from 'framer-motion'
 import Link from 'next/link'
 import { Trophy, Star, ArrowRight, Globe, Flame, Circle } from 'lucide-react'
 import { getLiveTickerNews } from '@/lib/actions'
+import { SITE_CONTENT_OUTER } from '@/lib/siteContentLayout'
+import { cn } from '@/lib/utils'
 
 export default function Home() {
   const [tickerNews, setTickerNews] = useState<string[]>([
@@ -68,7 +70,12 @@ export default function Home() {
 
   return (
     <div className="relative w-full min-h-[calc(100vh-4rem)] flex flex-col overflow-x-hidden overflow-y-visible -mt-16 pt-16 pb-12 sm:pb-16">
-      <div className="w-full mx-auto px-3 min-[420px]:px-4 sm:px-6 md:px-8 lg:px-10 xl:px-14 2xl:px-20 relative z-10 py-10 sm:py-14 md:py-16 lg:py-20 flex flex-col items-stretch gap-10 md:gap-14 lg:gap-16">
+      <div
+        className={cn(
+          SITE_CONTENT_OUTER,
+          'relative z-10 flex flex-col items-stretch gap-10 py-10 sm:py-14 md:gap-14 md:py-16 lg:gap-16 lg:py-20'
+        )}
+      >
         <div className="relative w-full isolate overflow-hidden rounded-2xl border border-white/12 bg-[#060d18]/14 shadow-[0_32px_100px_-28px_rgba(0,0,0,0.55),inset_0_1px_0_rgba(255,255,255,0.06)] backdrop-blur-[3px] sm:rounded-3xl">
           <div
             className="pointer-events-none absolute inset-0 z-0 overflow-hidden rounded-[inherit]"

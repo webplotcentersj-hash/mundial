@@ -3,6 +3,7 @@ import Link from "next/link"
 import Image from "next/image"
 import { Mail, Phone, FileText, Shield, MapPin, ExternalLink } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { SITE_CONTENT_OUTER } from "@/lib/siteContentLayout"
 
 function InstagramIcon({ className }: { className?: string }) {
   return (
@@ -70,7 +71,7 @@ export default function SiteFooter() {
         aria-hidden
       />
 
-      <div className="relative mx-auto w-full px-3 min-[420px]:px-4 sm:px-6 md:px-8 lg:px-10 xl:px-14 2xl:px-20 py-14 sm:py-16 lg:py-20">
+      <div className={cn("relative py-14 sm:py-16 lg:py-20", SITE_CONTENT_OUTER)}>
         <div
           className={cn(
             "relative overflow-hidden rounded-3xl border border-white/[0.12]",
