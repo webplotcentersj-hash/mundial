@@ -1,0 +1,28 @@
+Plot Mundial — parches aggiornati
+=================================
+
+1) Código (Git)
+   Archivo: plot-mundial-codigo-aggiornato.patch
+   Contiene: diff desde el commit inicial (9271622) hasta HEAD — footer, home,
+   dashboard (pronósticos/ligas), middleware, Vercel, etc.
+
+   Aplicar en un clon limpio del mismo repo:
+     git checkout 9271622
+     git apply patches/plot-mundial-codigo-aggiornato.patch
+
+   O integrar sobre main existente (puede fallar si ya tenés los mismos cambios):
+     git apply --3way patches/plot-mundial-codigo-aggiornato.patch
+
+2) Base de datos (Supabase SQL Editor)
+   a) Ejecutar: supabase/PLOT_MUNDIAL_RESET.sql
+      (borra tablas y funciones de la app en public; no borra auth.users)
+
+   b) Ejecutar: supabase/plot-mundial-schema-aggiornato.sql
+      (recrea schema, RLS, triggers, equipos, partidos, llaves, ligas, medallas;
+       es copia unificada de supabase_setup.sql + supabase_migration_1.sql)
+
+      Alternativa equivalente: ejecutar supabase_setup.sql y después
+      supabase_migration_1.sql por separado.
+
+   Si los usuarios ya existían en Auth sin fila en profiles, al volver a
+   registrarse o con un script manual habría que alinear perfiles.
