@@ -340,11 +340,16 @@ export async function getLiveTickerNews() {
   let finalUserCount = 0
 
   try {
-    // 1. Total de usuarios registrados
-    const { count } = await supabase.from('profiles').select('*', { count: 'exact', head: true })
-    if (count && count > 0) {
-      finalUserCount = count
-      news.push(`🌍 ${count} jugadores ya están compitiendo por la gloria`)
+    // 1. Total de usuarios registrados (RLS: select público en profiles)
+    const { count, error: countError } = await supabase
+      .from('profiles')
+      .select('*', { count: 'exact', head: true })
+    if (countError) {
+      console.error('Error counting profiles:', countError)
+    }
+    finalUserCount = typeof count === 'number' ? count : 0
+    if (finalUserCount > 0) {
+      news.push(`🌍 ${finalUserCount} jugadores ya están compitiendo por la gloria`)
     }
 
     // 2. Últimas medallas (max 2)

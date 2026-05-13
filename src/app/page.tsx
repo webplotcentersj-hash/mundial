@@ -11,18 +11,23 @@ export default function Home() {
     "⚽ Cargando novedades en vivo...",
     "🏆 Conectando con los servidores..."
   ])
-  const [userCount, setUserCount] = useState(15000)
+  /** null = aún cargando el conteo real desde Supabase */
+  const [userCount, setUserCount] = useState<number | null>(null)
 
   useEffect(() => {
     async function loadNews() {
-      const data = await getLiveTickerNews()
-      if (data) {
-        if (data.news && data.news.length > 0) {
-          setTickerNews(data.news)
+      try {
+        const data = await getLiveTickerNews()
+        if (data) {
+          if (data.news && data.news.length > 0) {
+            setTickerNews(data.news)
+          }
+          setUserCount(typeof data.userCount === 'number' ? data.userCount : 0)
+        } else {
+          setUserCount(0)
         }
-        if (data.userCount > 0) {
-          setUserCount(data.userCount)
-        }
+      } catch {
+        setUserCount(0)
       }
     }
     loadNews()
@@ -117,7 +122,10 @@ export default function Home() {
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
                   <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500"></span>
                 </div>
-                <span className="text-red-400 font-bold text-xs uppercase tracking-widest">Live: {userCount.toLocaleString()} jugadores</span>
+                <span className="text-red-400 font-bold text-xs uppercase tracking-widest">
+                  Live:{' '}
+                  {userCount === null ? '…' : `${userCount.toLocaleString('es-AR')} jugadores`}
+                </span>
              </div>
           </motion.div>
 
