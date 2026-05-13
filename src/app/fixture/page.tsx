@@ -2,10 +2,11 @@
 
 import { useState, useEffect, useMemo } from 'react'
 import { groupColors } from '@/lib/mockData'
-import { Calendar as CalendarIcon, MapPin, X, ChevronRight, Loader2 } from 'lucide-react'
+import { MapPin, X, Loader2 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import Image from 'next/image'
 import { getMatches } from '@/lib/actions'
+import { parseToLocalDateKey, toLocalDateKey } from '@/lib/localDateKey'
 
 const generateCalendarDays = (year: number, month: number) => {
   const date = new Date(year, month, 1)
@@ -52,7 +53,7 @@ export default function FixtureCalendarPage() {
 
   const matchesByDate = useMemo(() => {
     return matches.reduce((acc, match) => {
-      const dateStr = match.date.split('T')[0]
+      const dateStr = parseToLocalDateKey(match.date)
       if (!acc[dateStr]) acc[dateStr] = []
       acc[dateStr].push(match)
       return acc
@@ -77,7 +78,7 @@ export default function FixtureCalendarPage() {
         {days.map((date, i) => {
           if (!date) return <div key={`empty-${i}`} className="aspect-square" />
           
-          const dateStr = date.toISOString().split('T')[0]
+          const dateStr = toLocalDateKey(date)
           const dayMatches = matchesByDate[dateStr] || []
           const hasMatches = dayMatches.length > 0
           const isSelected = selectedDate === dateStr
@@ -166,6 +167,8 @@ export default function FixtureCalendarPage() {
               <div className="flex-1 overflow-y-auto p-6 space-y-4 relative z-10">
                 {selectedMatches.map((match: any) => {
                   const groupColorClass = groupColors[match.homeTeam.group] || 'from-gray-500 to-gray-700'
+                  const kickoff = new Date(match.date)
+                  const timeStr = kickoff.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', hour12: false })
                   return (
                     <div key={match.id} className="relative bg-black/40 hover:bg-black/60 p-4 rounded-2xl border border-white/10 transition-colors group">
                       <div className={`absolute left-0 top-4 bottom-4 w-1 rounded-r-full bg-gradient-to-b ${groupColorClass}`} />
@@ -174,7 +177,7 @@ export default function FixtureCalendarPage() {
                         <span className={`text-[10px] font-black px-2 py-0.5 rounded uppercase tracking-widest bg-gradient-to-r ${groupColorClass} bg-opacity-20 text-white shadow-lg`}>
                           {match.homeTeam.group === 'KO' ? match.stage : `GRUPO ${match.homeTeam.group}`}
                         </span>
-                        <span className="text-xs font-mono text-white/40">{match.date.split('T')[1].substring(0,5)} hs</span>
+                        <span className="text-xs font-mono text-white/40">{timeStr} hs</span>
                       </div>
 
                       <div className="flex items-center justify-between px-2 gap-4">
