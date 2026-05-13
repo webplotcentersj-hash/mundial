@@ -62,7 +62,7 @@ export default function SiteParallaxBackground() {
       aria-hidden
     >
       <div className="absolute inset-0 bg-[#030712]" />
-      <div className="absolute inset-0 bg-gradient-to-br from-[#0c1829]/65 via-[#050a12]/45 to-[#120805]/70" />
+      <div className="absolute inset-0 bg-gradient-to-br from-[#0c1829]/72 via-[#050a12]/52 to-[#120805]/78" />
 
       {reduceMotion ? (
         <>
@@ -121,9 +121,12 @@ export default function SiteParallaxBackground() {
         </>
       )}
 
-      <div className="absolute inset-0 bg-gradient-to-b from-[#030712]/50 via-[#030712]/12 to-[#030712]/58" />
-      <div className="absolute inset-0 bg-gradient-to-r from-[#030712]/38 via-transparent to-[#030712]/38" />
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_90%_55%_at_50%_-10%,rgba(235,103,27,0.12),transparent_50%),radial-gradient(ellipse_70%_50%_at_100%_80%,rgba(245,158,11,0.08),transparent_45%)]" />
+      {/* Overlay sobre la foto: velo + viñetas + acento brand */}
+      <div className="absolute inset-0 bg-[#030712]/28" />
+      <div className="absolute inset-0 bg-gradient-to-b from-[#030712]/62 via-[#030712]/22 to-[#030712]/68" />
+      <div className="absolute inset-0 bg-gradient-to-r from-[#030712]/48 via-transparent to-[#030712]/48" />
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_95%_58%_at_50%_-8%,rgba(235,103,27,0.16),transparent_52%),radial-gradient(ellipse_72%_52%_at_100%_78%,rgba(245,158,11,0.11),transparent_48%)]" />
+      <div className="absolute inset-0 bg-gradient-to-t from-black/25 via-transparent to-[#030712]/20" />
     </div>
   )
 }
