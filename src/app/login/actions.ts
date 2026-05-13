@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
+import { ensureUserProfile } from '@/lib/ensureUserProfile'
 
 export async function login(formData: FormData) {
   const supabase = await createClient()
@@ -16,6 +17,12 @@ export async function login(formData: FormData) {
 
   if (error) {
     redirect('/login?message=No se pudo autenticar usuario')
+  }
+
+  const { data: { user } } = await supabase.auth.getUser()
+  if (user) {
+    const pr = await ensureUserProfile(supabase, user)
+    if (pr.error) console.error('ensureUserProfile after login:', pr.error)
   }
 
   revalidatePath('/', 'layout')

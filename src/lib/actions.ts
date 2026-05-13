@@ -1,6 +1,7 @@
 'use server'
 
 import { createClient } from './supabase/server'
+import { ensureUserProfile } from './ensureUserProfile'
 import { revalidatePath } from 'next/cache'
 
 // --- OBTENER DATOS PÚBLICOS ---
@@ -71,6 +72,11 @@ export async function savePrediction(matchId: string, homeScore: number, awaySco
 
   if (authError || !user) {
     return { error: 'Debes iniciar sesión para guardar predicciones' }
+  }
+
+  const profileCheck = await ensureUserProfile(supabase, user)
+  if (profileCheck.error) {
+    return { error: profileCheck.error }
   }
 
   const { data: match } = await supabase.from('matches').select('status').eq('id', matchId).maybeSingle()

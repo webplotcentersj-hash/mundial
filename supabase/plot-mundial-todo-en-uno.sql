@@ -42,6 +42,7 @@ create table public.profiles (
 alter table public.profiles enable row level security;
 create policy "Cualquiera puede ver los perfiles" on profiles for select using (true);
 create policy "Los usuarios pueden actualizar su propio perfil" on profiles for update using (auth.uid() = id);
+create policy "Los usuarios pueden insertar su propio perfil" on profiles for insert with check (auth.uid() = id);
 
 -- Trigger para crear automáticamente un perfil cuando un usuario se registra
 create or replace function public.handle_new_user()
