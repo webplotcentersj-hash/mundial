@@ -74,7 +74,7 @@ export default function AdminPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#030712] relative font-outfit p-4 lg:p-8 pt-24 -mt-16 w-full">
+    <div className="min-h-screen bg-transparent relative font-outfit p-4 lg:p-8 pt-24 -mt-16 w-full">
       <div className="fixed inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 mix-blend-overlay pointer-events-none" />
       <div className="fixed top-0 left-0 w-full h-[500px] bg-red-900/10 rounded-b-[100%] blur-[100px] -z-10 pointer-events-none" />
 

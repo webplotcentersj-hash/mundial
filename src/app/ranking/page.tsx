@@ -20,7 +20,7 @@ export default function RankingPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#030712] flex items-center justify-center pt-24">
+      <div className="min-h-screen bg-transparent flex items-center justify-center pt-24">
         <Loader2 className="w-10 h-10 text-primary animate-spin" />
       </div>
     )
@@ -28,14 +28,14 @@ export default function RankingPage() {
 
   if (sortedUsers.length === 0) {
     return (
-      <div className="min-h-screen bg-[#030712] flex items-center justify-center pt-24 text-white">
+      <div className="min-h-screen bg-transparent flex items-center justify-center pt-24 text-white">
         No hay perfiles registrados aún.
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-[#030712] relative font-outfit p-4 lg:p-8 pt-24 -mt-16 w-full">
+    <div className="min-h-screen bg-transparent relative font-outfit p-4 lg:p-8 pt-24 -mt-16 w-full">
       <div className="fixed inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 mix-blend-overlay pointer-events-none" />
       <div className="fixed top-0 left-0 w-full h-[500px] bg-amber-900/10 rounded-b-[100%] blur-[100px] -z-10 pointer-events-none" />
 

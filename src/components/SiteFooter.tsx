@@ -49,7 +49,7 @@ function SocialButton({
 
 export default function SiteFooter() {
   return (
-    <footer className="relative mt-auto w-full overflow-hidden border-t border-white/[0.08] bg-[#030712] text-white/80">
+    <footer className="relative z-10 mt-auto w-full overflow-hidden border-t border-white/[0.08] bg-transparent text-white/80">
       {/* Línea superior tipo Plot Center */}
       <div
         className="absolute inset-x-0 top-0 h-[2px] bg-gradient-to-r from-transparent via-primary to-amber-500/90 opacity-90"

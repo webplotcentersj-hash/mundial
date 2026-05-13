@@ -120,7 +120,7 @@ export default function FixtureCalendarPage() {
   const selectedMatches = selectedDate ? matchesByDate[selectedDate] : []
 
   return (
-    <div className="min-h-screen w-full bg-[#030712] relative font-outfit p-4 lg:p-8 pt-24 -mt-16">
+    <div className="min-h-screen w-full bg-transparent relative font-outfit p-4 lg:p-8 pt-24 -mt-16">
       <div className="fixed inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 mix-blend-overlay pointer-events-none" />
       <div className="fixed top-0 left-0 w-full h-[400px] bg-gradient-to-b from-primary/10 to-transparent blur-[50px] -z-10 pointer-events-none" />
 

@@ -323,7 +323,7 @@ export default function BracketPage() {
   }
 
   return (
-    <div className="min-h-[calc(100vh-4rem)] w-full overflow-x-auto bg-[#030712] relative font-outfit p-4 lg:p-6 flex flex-col">
+    <div className="min-h-[calc(100vh-4rem)] w-full overflow-x-auto bg-transparent relative font-outfit p-4 lg:p-6 flex flex-col">
       <div className="fixed inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 mix-blend-overlay pointer-events-none" />
       
       {/* Epic Background Lighting */}

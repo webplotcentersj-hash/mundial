@@ -3,6 +3,7 @@ import { Inter, Outfit } from "next/font/google";
 import "./globals.css";
 import Navbar from "@/components/Navbar";
 import SiteFooter from "@/components/SiteFooter";
+import SiteParallaxBackground from "@/components/SiteParallaxBackground";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
 const outfit = Outfit({ subsets: ["latin"], variable: "--font-outfit" });
@@ -22,12 +23,10 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="es" className={`${inter.variable} ${outfit.variable}`}>
-      <body className="antialiased min-h-screen flex flex-col font-sans">
+      <body className="relative antialiased min-h-screen flex flex-col font-sans">
+        <SiteParallaxBackground />
         <Navbar />
-        <main className="flex-grow pt-16 relative">
-          {/* Background decorations */}
-          <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] rounded-full bg-primary/20 blur-[120px] -z-10 pointer-events-none" />
-          <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] rounded-full bg-accent/20 blur-[120px] -z-10 pointer-events-none" />
+        <main className="relative z-10 flex-grow pt-16">
           {children}
         </main>
         <SiteFooter />

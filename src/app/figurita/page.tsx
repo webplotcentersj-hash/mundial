@@ -58,7 +58,7 @@ export default function FiguritaPage() {
   }, [name])
 
   return (
-    <div className="min-h-screen bg-neutral-950 p-4 md:p-8 pt-24 text-white">
+    <div className="min-h-screen bg-transparent p-4 md:p-8 pt-24 text-white">
       <div className="max-w-5xl mx-auto">
         
         <div className="text-center mb-10">
