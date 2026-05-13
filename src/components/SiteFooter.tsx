@@ -73,7 +73,7 @@ export default function SiteFooter() {
       <div className="relative mx-auto max-w-7xl px-4 py-14 sm:px-6 sm:py-16 lg:px-10 lg:py-20">
         <div className="grid gap-12 lg:grid-cols-12 lg:gap-10 xl:gap-14">
           {/* Marca + Mundial */}
-          <div className="lg:col-span-5">
+          <div className="lg:col-span-7">
             <Link
               href="/"
               className="inline-flex rounded-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/60"
@@ -97,37 +97,8 @@ export default function SiteFooter() {
             </p>
           </div>
 
-          {/* CTA Plot Center — estilo tarjeta */}
-          <div className="lg:col-span-4">
-            <p className="text-[11px] font-bold uppercase tracking-[0.28em] text-white/35">Experiencia Plot</p>
-            <a
-              href={PLOT_CENTER_WEB}
-              target="_blank"
-              rel="noopener noreferrer"
-              className={cn(
-                "group mt-4 flex flex-col gap-3 rounded-2xl border border-white/10 p-5 sm:p-6",
-                "bg-gradient-to-br from-white/[0.07] via-white/[0.02] to-transparent",
-                "shadow-[0_24px_60px_-24px_rgba(0,0,0,0.65),inset_0_1px_0_rgba(255,255,255,0.08)]",
-                "backdrop-blur-md transition-all duration-300",
-                "hover:border-primary/40 hover:shadow-[0_28px_70px_-20px_rgba(235,103,27,0.25)]"
-              )}
-            >
-              <span className="font-outfit text-xl font-bold tracking-tight text-white">
-                plotcenter.com.ar
-              </span>
-              <span className="text-sm leading-relaxed text-white/55">
-                Desarrollo web, gráfica integral, comunicación visual y soluciones digitales — como en{" "}
-                <span className="text-white/75">Plot Center</span>.
-              </span>
-              <span className="inline-flex items-center gap-2 text-sm font-semibold text-primary">
-                Visitar sitio corporativo
-                <ExternalLink className="h-4 w-4 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
-              </span>
-            </a>
-          </div>
-
           {/* Contacto + legal */}
-          <div className="flex flex-col gap-10 sm:flex-row lg:col-span-3 lg:flex-col lg:gap-8">
+          <div className="flex flex-col gap-10 sm:flex-row lg:col-span-5 lg:flex-col lg:gap-8">
             <div>
               <h3 className="text-[11px] font-bold uppercase tracking-[0.28em] text-primary/70">Contacto</h3>
               <ul className="mt-4 space-y-3.5 text-sm">
@@ -225,7 +196,7 @@ export default function SiteFooter() {
           </div>
         </div>
 
-        <div className="mt-10 flex flex-col items-center justify-between gap-4 border-t border-white/10 pt-8 text-center text-[11px] text-white/40 sm:flex-row sm:text-left">
+        <div className="mt-10 border-t border-white/10 pt-8 text-center text-[11px] text-white/40 sm:text-left">
           <p>
             © {new Date().getFullYear()}{" "}
             <a
@@ -238,7 +209,6 @@ export default function SiteFooter() {
             </a>
             {" · "}Plot Mundial. Todos los derechos reservados.
           </p>
-          <p className="text-white/35">Desarrollado por Plot Center</p>
         </div>
       </div>
     </footer>
