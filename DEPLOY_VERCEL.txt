@@ -1,0 +1,26 @@
+Checklist Plot Mundial en Vercel
+================================
+
+1) Variables de entorno (Vercel → Project → Settings → Environment Variables)
+   - NEXT_PUBLIC_SUPABASE_URL
+   - NEXT_PUBLIC_SUPABASE_ANON_KEY
+   Marcar Production y Preview según necesites.
+
+2) Supabase → Authentication → URL configuration
+   - Site URL: https://TU-DOMINIO-PRODUCCION.vercel.app
+   - Redirect URLs: incluir esa misma URL y https://TU-DOMINIO-PRODUccion.vercel.app/**
+     y http://localhost:3000/** para desarrollo.
+
+3) Abrir el sitio sin error 401 (Vercel Authentication en previews)
+   - Vercel → Team o Project → Settings → Deployment Protection
+   - Opciones típicas: proteger solo Production, o permitir acceso público a
+     Preview Deployments (según tu plan).
+   Documentación: https://vercel.com/docs/deployment-protection
+
+4) URL pública
+   - Usar el dominio Production que aparece en Settings → Domains
+     (ej. mundial-chi.vercel.app), o el enlace "Visit" del último deploy Ready.
+
+5) Archivos estáticos opcionales (no están en el repo; súbelos a /public si los tienes)
+   - plot center mundial.png   (logo)
+   - This is FIFA World Cup 26™.mp4   (video de fondo en la home)

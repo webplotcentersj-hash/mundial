@@ -5,9 +5,11 @@ import { fileURLToPath } from "url";
 const projectRoot = path.dirname(fileURLToPath(import.meta.url));
 
 const nextConfig: NextConfig = {
-  turbopack: {
-    root: projectRoot,
-  },
+  // Solo en local: evita que Turbopack tome un package-lock de una carpeta padre.
+  // En Vercel (VERCEL=1) no hace falta y deja el root por defecto del builder.
+  ...(process.env.VERCEL !== "1"
+    ? { turbopack: { root: projectRoot } }
+    : {}),
   images: {
     remotePatterns: [
       {
