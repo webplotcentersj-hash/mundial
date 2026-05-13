@@ -57,14 +57,13 @@ export default function Home() {
 
   const particles = useMemo(
     () =>
-      Array.from({ length: 15 }).map((_, i) => ({
+      Array.from({ length: 12 }).map((_, i) => ({
         id: i,
-        size: Math.random() * 6 + 2,
+        size: Math.random() * 5 + 1.5,
         x: Math.random() * 100,
         y: Math.random() * 100,
         duration: Math.random() * 20 + 10,
         delay: Math.random() * 5,
-        driftX: Math.random() * 20 - 10,
       })),
     []
   )
@@ -78,90 +77,90 @@ export default function Home() {
       {/* Fondo ancho completo (sin video en los costados) */}
       <div className="absolute inset-0 -z-[60] bg-[#030712]" aria-hidden />
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 py-16 lg:py-24 w-full flex flex-col items-center isolate">
-        {/* Video + atmósfera solo dentro de la columna max-w-7xl */}
-        <div
-          className="pointer-events-none absolute inset-0 -z-10 overflow-hidden rounded-[1.75rem] sm:rounded-[2.25rem] border border-white/[0.08] bg-[#050a14] shadow-[inset_0_0_0_1px_rgba(255,255,255,0.04)]"
-          aria-hidden
-        >
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 py-16 lg:py-24 w-full flex flex-col items-center gap-14 md:gap-16">
+        {/* Bloque único: video solo detrás del cristal max-w-5xl (no cards ni scroll lateral) */}
+        <div className="relative w-full max-w-5xl isolate overflow-hidden rounded-[1.75rem] sm:rounded-[2.25rem] border border-white/20 bg-[#060d18]/90 shadow-[0_32px_100px_-28px_rgba(0,0,0,0.75),inset_0_1px_0_rgba(255,255,255,0.08)]">
           <div
-            className="absolute inset-0 bg-gradient-to-br from-[#0c1829] via-[#060d18] to-[#120805]"
+            className="pointer-events-none absolute inset-0 z-0 overflow-hidden rounded-[inherit]"
             aria-hidden
-          />
-          <div
-            className="absolute inset-0 bg-[radial-gradient(ellipse_120%_80%_at_50%_-20%,rgba(235,103,27,0.12),transparent_55%),radial-gradient(ellipse_80%_50%_at_80%_100%,rgba(245,158,11,0.08),transparent_50%)]"
-            aria-hidden
-          />
-
-          <video
-            autoPlay
-            loop
-            muted
-            playsInline
-            preload="metadata"
-            disablePictureInPicture
-            onLoadedData={onVideoLoaded}
-            onCanPlay={onVideoLoaded}
-            onError={() => setVideoReady(false)}
-            className={`absolute top-1/2 left-1/2 min-w-full min-h-full w-auto h-auto object-cover -translate-x-1/2 -translate-y-1/2 mix-blend-screen scale-105 transition-opacity duration-[1200ms] ease-out will-change-[opacity] ${
-              videoReady ? 'opacity-[0.52]' : 'opacity-0'
-            }`}
           >
-            <source src="/This is FIFA World Cup 26™.mp4" type="video/mp4" />
-          </video>
+            <div
+              className="absolute inset-0 bg-gradient-to-br from-[#0c1829] via-[#060d18] to-[#120805]"
+              aria-hidden
+            />
+            <div
+              className="absolute inset-0 bg-[radial-gradient(ellipse_100%_70%_at_50%_0%,rgba(235,103,27,0.14),transparent_50%),radial-gradient(ellipse_80%_55%_at_80%_100%,rgba(245,158,11,0.1),transparent_50%)]"
+              aria-hidden
+            />
 
-          <div
-            className="absolute inset-0 bg-gradient-to-b from-[#030712]/62 via-[#030712]/22 to-[#030712]/68 pointer-events-none"
-            aria-hidden
-          />
-          <div
-            className="absolute inset-0 bg-gradient-to-r from-[#030712]/38 via-transparent to-[#030712]/38 pointer-events-none"
-            aria-hidden
-          />
+            <video
+              autoPlay
+              loop
+              muted
+              playsInline
+              preload="metadata"
+              disablePictureInPicture
+              onLoadedData={onVideoLoaded}
+              onCanPlay={onVideoLoaded}
+              onError={() => setVideoReady(false)}
+              className={`absolute top-1/2 left-1/2 min-w-full min-h-full w-auto h-auto object-cover -translate-x-1/2 -translate-y-1/2 mix-blend-screen scale-[1.08] transition-opacity duration-[1200ms] ease-out will-change-[opacity] ${
+                videoReady ? 'opacity-[0.48]' : 'opacity-0'
+              }`}
+            >
+              <source src="/This is FIFA World Cup 26™.mp4" type="video/mp4" />
+            </video>
 
-          <div
-            className="absolute inset-0 backdrop-blur-[1.5px] sm:backdrop-blur-[2.5px] bg-gradient-to-b from-white/[0.03] via-transparent to-black/15 pointer-events-none"
-            aria-hidden
-          />
-          <div
-            className="hero-noise-static absolute inset-0 opacity-[0.18] mix-blend-overlay pointer-events-none"
-            aria-hidden
-          />
-          <div className="hero-shimmer-sweep" aria-hidden />
+            <div
+              className="absolute inset-0 bg-gradient-to-b from-[#030712]/55 via-[#030712]/18 to-[#030712]/60 pointer-events-none"
+              aria-hidden
+            />
+            <div
+              className="absolute inset-0 bg-gradient-to-r from-[#030712]/35 via-transparent to-[#030712]/35 pointer-events-none"
+              aria-hidden
+            />
 
-          <div className="absolute inset-0 overflow-hidden">
-            {particles.map((p) => (
-              <motion.div
-                key={p.id}
-                className="absolute rounded-full bg-amber-500/30 blur-[2px]"
-                style={{
-                  width: p.size,
-                  height: p.size,
-                  left: `${p.x}%`,
-                  top: `${p.y}%`,
-                }}
-                animate={{
-                  y: ['0vh', '-100vh'],
-                  x: ['0vw', `${p.driftX}vw`],
-                  opacity: [0, 0.5, 0],
-                }}
-                transition={{
-                  duration: p.duration,
-                  repeat: Infinity,
-                  delay: p.delay,
-                  ease: 'linear',
-                }}
-              />
-            ))}
+            <div
+              className="absolute inset-0 backdrop-blur-[1px] bg-gradient-to-b from-white/[0.04] via-transparent to-black/20 pointer-events-none"
+              aria-hidden
+            />
+            <div
+              className="hero-noise-static absolute inset-0 opacity-[0.16] mix-blend-overlay pointer-events-none"
+              aria-hidden
+            />
+            <div className="hero-shimmer-sweep" aria-hidden />
+
+            <div className="absolute inset-0 overflow-hidden">
+              {particles.map((p) => (
+                <motion.div
+                  key={p.id}
+                  className="absolute rounded-full bg-amber-400/25 blur-[1.5px]"
+                  style={{
+                    width: p.size,
+                    height: p.size,
+                    left: `${p.x}%`,
+                    top: `${p.y}%`,
+                  }}
+                  animate={{
+                    opacity: [0.15, 0.5, 0.15],
+                    scale: [1, 1.25, 1],
+                  }}
+                  transition={{
+                    duration: p.duration * 0.35,
+                    repeat: Infinity,
+                    delay: p.delay,
+                    ease: 'easeInOut',
+                  }}
+                />
+              ))}
+            </div>
           </div>
-        </div>
-        
-        <motion.div
-          variants={containerVariants}
-          initial="hidden"
-          animate="show"
-          className="flex flex-col items-center text-center w-full max-w-5xl rounded-[1.75rem] sm:rounded-[2.25rem] border border-white/20 bg-gradient-to-b from-white/[0.1] via-white/[0.045] to-black/20 px-5 py-10 sm:px-10 sm:py-12 md:px-14 md:py-14 backdrop-blur-md shadow-[0_28px_90px_-24px_rgba(0,0,0,0.55),inset_0_1px_0_rgba(255,255,255,0.12)] ring-1 ring-white/10"
-        >
+
+          <motion.div
+            variants={containerVariants}
+            initial="hidden"
+            animate="show"
+            className="relative z-10 flex flex-col items-center text-center w-full px-5 py-10 sm:px-10 sm:py-12 md:px-14 md:py-14 backdrop-blur-lg bg-gradient-to-b from-white/[0.12] via-white/[0.04] to-black/25 ring-1 ring-inset ring-white/10"
+          >
           {/* Live Status Pill */}
           <motion.div variants={itemVariants} className="mb-8 flex items-center justify-center">
              <div className="bg-red-500/10 border border-red-500/30 px-4 py-1.5 rounded-full flex items-center gap-2 backdrop-blur-md shadow-[0_0_20px_rgba(239,68,68,0.2)]">
@@ -205,14 +204,15 @@ export default function Home() {
               <span className="text-xl font-bold text-white/80 group-hover:text-white uppercase tracking-wider">Ver Fixture</span>
             </Link>
           </motion.div>
-        </motion.div>
+          </motion.div>
+        </div>
 
         {/* --- Premium Feature Cards --- */}
         <motion.div 
           initial={{ opacity: 0, y: 50 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 1, delay: 0.8 }}
-          className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-24 relative z-10 w-full"
+          className="grid grid-cols-1 md:grid-cols-3 gap-5 md:gap-6 w-full max-w-7xl rounded-[1.75rem] sm:rounded-[2.25rem] border border-white/10 bg-[#060913]/85 p-5 sm:p-7 md:p-8 backdrop-blur-md shadow-[0_20px_60px_-24px_rgba(0,0,0,0.55),inset_0_1px_0_rgba(255,255,255,0.05)]"
         >
           <div className="group glass-card p-8 rounded-[2rem] border border-white/10 hover:border-primary/50 transition-all hover:-translate-y-3 hover:shadow-[0_30px_60px_-15px_rgba(235,103,27,0.4)] bg-[#0a0f1c]/60 backdrop-blur-xl relative overflow-hidden">
              <div className="absolute top-0 right-0 w-40 h-40 bg-primary/20 rounded-full blur-[50px] pointer-events-none group-hover:bg-primary/40 transition-colors" />
