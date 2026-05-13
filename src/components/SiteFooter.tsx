@@ -70,10 +70,16 @@ export default function SiteFooter() {
         aria-hidden
       />
 
-      <div className="relative mx-auto max-w-7xl px-4 py-14 sm:px-6 sm:py-16 lg:px-10 lg:py-20">
-        <div className="grid gap-12 lg:grid-cols-12 lg:gap-10 xl:gap-14">
-          {/* Marca + Mundial */}
-          <div className="lg:col-span-7">
+      <div className="relative mx-auto max-w-3xl px-4 py-14 sm:px-6 sm:py-16 lg:px-8 lg:py-20">
+        <div
+          className={cn(
+            "rounded-2xl border border-white/10 p-6 sm:p-8 lg:p-10",
+            "bg-gradient-to-b from-white/[0.07] via-white/[0.02] to-transparent",
+            "shadow-[0_24px_60px_-24px_rgba(0,0,0,0.65),inset_0_1px_0_rgba(255,255,255,0.06)]",
+            "backdrop-blur-md"
+          )}
+        >
+          <div className="text-center sm:text-left">
             <Link
               href="/"
               className="inline-flex rounded-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/60"
@@ -86,26 +92,27 @@ export default function SiteFooter() {
                 className="h-12 w-auto object-contain drop-shadow-[0_4px_20px_rgba(0,0,0,0.5)]"
               />
             </Link>
-            <p className="mt-5 max-w-md font-outfit text-lg font-semibold leading-snug tracking-tight text-white/90">
+            <p className="mt-5 font-outfit text-lg font-semibold leading-snug tracking-tight text-white/90">
               Plot Mundial
-              <span className="block mt-1 text-sm font-normal font-sans text-white/50">
+              <span className="mt-1 block text-sm font-normal font-sans text-white/50">
                 Pronósticos, ranking y comunidad para la Copa Mundial 2026.
               </span>
             </p>
-            <p className="mt-5 font-outfit text-sm italic text-white/45 leading-relaxed border-l-2 border-primary/40 pl-4">
+            <p className="mt-5 border-l-2 border-primary/40 pl-4 text-left font-outfit text-sm italic leading-relaxed text-white/45">
               &ldquo;Ecosistema de Comunicación de Alto Impacto&rdquo;
             </p>
           </div>
 
-          {/* Contacto + legal */}
-          <div className="flex flex-col gap-10 sm:flex-row lg:col-span-5 lg:flex-col lg:gap-8">
+          <div className="my-8 h-px bg-white/10" aria-hidden />
+
+          <div className="grid gap-8 sm:grid-cols-2 sm:gap-10">
             <div>
               <h3 className="text-[11px] font-bold uppercase tracking-[0.28em] text-primary/70">Contacto</h3>
               <ul className="mt-4 space-y-3.5 text-sm">
                 <li>
                   <a
                     href={PHONE_HREF}
-                    className="group flex items-start gap-3 rounded-lg text-white/80 transition-colors hover:text-white"
+                    className="flex items-start gap-3 rounded-lg text-white/80 transition-colors hover:text-white"
                   >
                     <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/15 text-primary ring-1 ring-primary/25">
                       <Phone className="h-3.5 w-3.5" aria-hidden />
@@ -119,7 +126,7 @@ export default function SiteFooter() {
                 <li>
                   <a
                     href={`mailto:${EMAIL}`}
-                    className="group flex items-start gap-3 rounded-lg text-white/80 transition-colors hover:text-white"
+                    className="flex items-start gap-3 rounded-lg text-white/80 transition-colors hover:text-white"
                   >
                     <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/15 text-primary ring-1 ring-primary/25">
                       <Mail className="h-3.5 w-3.5" aria-hidden />
@@ -166,14 +173,13 @@ export default function SiteFooter() {
               </ul>
             </div>
           </div>
-        </div>
 
-        {/* Redes — misma línea visual que plotcenter.com.ar */}
-        <div className="mt-14 border-t border-white/10 pt-10">
-          <div className="flex flex-col items-center justify-between gap-8 lg:flex-row lg:items-end">
-            <div className="text-center lg:text-left">
+          <div className="my-8 h-px bg-white/10" aria-hidden />
+
+          <div className="flex flex-col items-center gap-5 text-center sm:flex-row sm:justify-between sm:text-left">
+            <div>
               <p className="text-[11px] font-bold uppercase tracking-[0.28em] text-white/35">Seguinos</p>
-              <p className="mt-2 max-w-md text-sm text-white/45">
+              <p className="mt-2 max-w-sm text-sm text-white/45">
                 Novedades y trabajo del estudio en{" "}
                 <a
                   href={PLOT_CENTER_WEB}
@@ -185,7 +191,7 @@ export default function SiteFooter() {
                 </a>
               </p>
             </div>
-            <div className="flex items-center gap-3 sm:gap-4">
+            <div className="flex shrink-0 items-center gap-3 sm:gap-4">
               <SocialButton href={PLOT_CENTER_WEB} label="Sitio web Plot Center">
                 <ExternalLink className="h-5 w-5" />
               </SocialButton>
@@ -194,10 +200,8 @@ export default function SiteFooter() {
               </SocialButton>
             </div>
           </div>
-        </div>
 
-        <div className="mt-10 border-t border-white/10 pt-8 text-center text-[11px] text-white/40 sm:text-left">
-          <p>
+          <p className="mt-8 border-t border-white/10 pt-6 text-center text-[11px] text-white/40">
             © {new Date().getFullYear()}{" "}
             <a
               href={PLOT_CENTER_WEB}
