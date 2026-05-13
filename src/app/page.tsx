@@ -1,10 +1,14 @@
 'use client'
 
-import { useState, useEffect, useMemo, useCallback } from 'react'
-import { motion } from 'framer-motion'
+import { useState, useEffect, useMemo, useRef, useCallback } from 'react'
+import { motion, useMotionValue, useSpring, useTransform } from 'framer-motion'
 import Link from 'next/link'
+import Image from 'next/image'
 import { Trophy, Star, ArrowRight, Globe, Flame, Circle } from 'lucide-react'
 import { getLiveTickerNews } from '@/lib/actions'
+
+const HERO_PARALLAX_IMAGE =
+  '/seleccion-argentina-con-trofeo-copa-mundial-fifa_3840x2160_xtrafondos.com.jpg'
 
 export default function Home() {
   const [tickerNews, setTickerNews] = useState<string[]>([
@@ -53,7 +57,44 @@ export default function Home() {
     show: { opacity: 1, y: 0, transition: { type: "spring" as const, stiffness: 40, damping: 15 } }
   }
 
-  const [videoReady, setVideoReady] = useState(false)
+  const heroPanelRef = useRef<HTMLDivElement>(null)
+  const parallaxMx = useMotionValue(0.5)
+  const parallaxMy = useMotionValue(0.5)
+  const springCfg = { stiffness: 80, damping: 22, mass: 0.8 }
+  const rotateX = useSpring(useTransform(parallaxMy, [0, 1], [11, -11]), springCfg)
+  const rotateY = useSpring(useTransform(parallaxMx, [0, 1], [-12, 12]), springCfg)
+  const layerZ = useSpring(useTransform(parallaxMx, [0, 0.5, 1], [-18, 0, 18]), { stiffness: 60, damping: 24 })
+  const backSpring = { stiffness: 48, damping: 26, mass: 0.85 }
+  const rotateXBack = useSpring(useTransform(parallaxMy, [0, 1], [6, -6]), backSpring)
+  const rotateYBack = useSpring(useTransform(parallaxMx, [0, 1], [-6, 6]), backSpring)
+  const [reduceParallax, setReduceParallax] = useState(false)
+
+  useEffect(() => {
+    const mq = window.matchMedia('(prefers-reduced-motion: reduce)')
+    const sync = () => setReduceParallax(mq.matches)
+    sync()
+    mq.addEventListener('change', sync)
+    return () => mq.removeEventListener('change', sync)
+  }, [])
+
+  const onHeroPointerMove = useCallback(
+    (e: React.PointerEvent) => {
+      if (reduceParallax) return
+      const el = heroPanelRef.current
+      if (!el) return
+      const r = el.getBoundingClientRect()
+      const x = (e.clientX - r.left) / Math.max(r.width, 1)
+      const y = (e.clientY - r.top) / Math.max(r.height, 1)
+      parallaxMx.set(Math.min(1, Math.max(0, x)))
+      parallaxMy.set(Math.min(1, Math.max(0, y)))
+    },
+    [parallaxMx, parallaxMy, reduceParallax]
+  )
+
+  const onHeroPointerLeave = useCallback(() => {
+    parallaxMx.set(0.5)
+    parallaxMy.set(0.5)
+  }, [parallaxMx, parallaxMy])
 
   const particles = useMemo(
     () =>
@@ -68,18 +109,20 @@ export default function Home() {
     []
   )
 
-  const onVideoLoaded = useCallback(() => {
-    setVideoReady(true)
-  }, [])
-
   return (
     <div className="relative w-full min-h-[calc(100vh-4rem)] flex flex-col overflow-x-hidden overflow-y-visible -mt-16 pt-16 pb-28">
       {/* Fondo ancho completo */}
       <div className="absolute inset-0 -z-[60] bg-[#030712]" aria-hidden />
 
       <div className="w-full mx-auto px-3 min-[420px]:px-4 sm:px-6 md:px-8 lg:px-10 xl:px-14 2xl:px-20 relative z-10 py-10 sm:py-14 md:py-16 lg:py-20 flex flex-col items-stretch gap-10 md:gap-14 lg:gap-16">
-        {/* Video solo detrás del panel hero — ahora ocupa todo el ancho útil */}
-        <div className="relative w-full isolate overflow-hidden rounded-2xl border border-white/20 bg-[#060d18]/65 shadow-[0_32px_100px_-28px_rgba(0,0,0,0.75),inset_0_1px_0_rgba(255,255,255,0.08)] sm:rounded-3xl">
+        {/* Hero: imagen Argentina + trofeo con parallax 3D (tilt según puntero) */}
+        <div
+          ref={heroPanelRef}
+          onPointerMove={onHeroPointerMove}
+          onPointerLeave={onHeroPointerLeave}
+          className="relative w-full isolate overflow-hidden rounded-2xl border border-white/20 bg-[#060d18]/65 shadow-[0_32px_100px_-28px_rgba(0,0,0,0.75),inset_0_1px_0_rgba(255,255,255,0.08)] sm:rounded-3xl"
+          style={{ perspective: '1400px' }}
+        >
           <div
             className="pointer-events-none absolute inset-0 z-0 overflow-hidden rounded-[inherit]"
             aria-hidden
@@ -93,34 +136,75 @@ export default function Home() {
               aria-hidden
             />
 
-            <video
-              autoPlay
-              loop
-              muted
-              playsInline
-              preload="metadata"
-              disablePictureInPicture
-              onLoadedData={onVideoLoaded}
-              onCanPlay={onVideoLoaded}
-              onError={() => setVideoReady(false)}
-              className={`absolute top-1/2 left-1/2 min-w-full min-h-full w-auto h-auto object-cover -translate-x-1/2 -translate-y-1/2 mix-blend-screen scale-[1.08] transition-opacity duration-[1200ms] ease-out will-change-[opacity] ${
-                videoReady ? 'opacity-[0.68]' : 'opacity-0'
-              }`}
-            >
-              <source src="/This is FIFA World Cup 26™.mp4" type="video/mp4" />
-            </video>
+            {/* Capa lejana — profundidad */}
+            {reduceParallax ? (
+              <div
+                className="absolute left-1/2 top-1/2 h-[125%] w-[125%] -translate-x-1/2 -translate-y-1/2"
+              >
+                <Image
+                  src={HERO_PARALLAX_IMAGE}
+                  alt=""
+                  fill
+                  className="object-cover object-[center_35%] brightness-[0.55] saturate-[1.05] blur-[1.5px] scale-105"
+                  sizes="(max-width: 1536px) 100vw, 1600px"
+                  aria-hidden
+                />
+              </div>
+            ) : (
+              <motion.div
+                className="absolute left-1/2 top-1/2 h-[125%] w-[125%] -translate-x-1/2 -translate-y-1/2 will-change-transform [transform-style:preserve-3d]"
+                style={{ rotateX: rotateXBack, rotateY: rotateYBack, translateZ: -40 }}
+              >
+                <Image
+                  src={HERO_PARALLAX_IMAGE}
+                  alt=""
+                  fill
+                  className="object-cover object-[center_35%] brightness-[0.55] saturate-[1.05] blur-[1.5px] scale-105"
+                  sizes="(max-width: 1536px) 100vw, 1600px"
+                  aria-hidden
+                />
+              </motion.div>
+            )}
+
+            {/* Capa principal — nitidez y tilt 3D */}
+            {reduceParallax ? (
+              <div className="absolute left-1/2 top-1/2 h-[118%] w-[118%] -translate-x-1/2 -translate-y-1/2">
+                <Image
+                  src={HERO_PARALLAX_IMAGE}
+                  alt="Selección Argentina con la Copa del Mundo FIFA"
+                  fill
+                  priority
+                  className="object-cover object-[center_32%] brightness-[0.88] contrast-[1.02] scale-[1.02]"
+                  sizes="(max-width: 1536px) 100vw, 1600px"
+                />
+              </div>
+            ) : (
+              <motion.div
+                className="absolute left-1/2 top-1/2 h-[118%] w-[118%] -translate-x-1/2 -translate-y-1/2 will-change-transform [transform-style:preserve-3d]"
+                style={{ rotateX, rotateY, translateZ: layerZ }}
+              >
+                <Image
+                  src={HERO_PARALLAX_IMAGE}
+                  alt="Selección Argentina con la Copa del Mundo FIFA"
+                  fill
+                  priority
+                  className="object-cover object-[center_32%] brightness-[0.88] contrast-[1.02] scale-[1.02]"
+                  sizes="(max-width: 1536px) 100vw, 1600px"
+                />
+              </motion.div>
+            )}
 
             <div
-              className="absolute inset-0 bg-gradient-to-b from-[#030712]/38 via-[#030712]/10 to-[#030712]/42 pointer-events-none"
+              className="absolute inset-0 bg-gradient-to-b from-[#030712]/45 via-[#030712]/15 to-[#030712]/55 pointer-events-none"
               aria-hidden
             />
             <div
-              className="absolute inset-0 bg-gradient-to-r from-[#030712]/22 via-transparent to-[#030712]/22 pointer-events-none"
+              className="absolute inset-0 bg-gradient-to-r from-[#030712]/35 via-transparent to-[#030712]/35 pointer-events-none"
               aria-hidden
             />
 
             <div
-              className="absolute inset-0 backdrop-blur-[0.5px] bg-gradient-to-b from-white/[0.02] via-transparent to-black/12 pointer-events-none"
+              className="absolute inset-0 backdrop-blur-[0.5px] bg-gradient-to-b from-white/[0.03] via-transparent to-black/20 pointer-events-none"
               aria-hidden
             />
             <div
