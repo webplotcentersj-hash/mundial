@@ -67,7 +67,7 @@ export default function Home() {
   )
 
   return (
-    <div className="relative w-full min-h-[calc(100vh-4rem)] flex flex-col overflow-x-hidden overflow-y-visible -mt-16 pt-16 pb-28">
+    <div className="relative w-full min-h-[calc(100vh-4rem)] flex flex-col overflow-x-hidden overflow-y-visible -mt-16 pt-16 pb-12 sm:pb-16">
       <div className="w-full mx-auto px-3 min-[420px]:px-4 sm:px-6 md:px-8 lg:px-10 xl:px-14 2xl:px-20 relative z-10 py-10 sm:py-14 md:py-16 lg:py-20 flex flex-col items-stretch gap-10 md:gap-14 lg:gap-16">
         <div className="relative w-full isolate overflow-hidden rounded-2xl border border-white/12 bg-[#060d18]/14 shadow-[0_32px_100px_-28px_rgba(0,0,0,0.55),inset_0_1px_0_rgba(255,255,255,0.06)] backdrop-blur-[3px] sm:rounded-3xl">
           <div
@@ -214,25 +214,23 @@ export default function Home() {
             <p className="text-white/60 leading-relaxed font-light relative z-10">Desbloquea medallas como 'Cazagigantes' o 'Nostradamus' a medida que completas hazañas estadísticas.</p>
           </div>
         </motion.div>
-      </div>
 
-      {/* Ticker: mismo gutter horizontal que hero / cards */}
-      <div className="absolute bottom-0 left-0 right-0 z-20 w-full">
-        <div className="mx-auto w-full px-3 min-[420px]:px-4 sm:px-6 md:px-8 lg:px-10 xl:px-14 2xl:px-20">
-          <div className="overflow-hidden rounded-t-2xl border border-white/10 border-b-0 bg-white/[0.06] backdrop-blur-md shadow-[0_-8px_40px_-20px_rgba(0,0,0,0.45)]">
+        {/* Ticker: mismo ancho útil que hero y cards (comparte padding del contenedor) */}
+        <div className="w-full min-w-0">
+          <div className="overflow-hidden rounded-2xl border border-white/8 bg-white/[0.05] backdrop-blur-[3px] shadow-[0_8px_40px_-20px_rgba(0,0,0,0.4),inset_0_1px_0_rgba(255,255,255,0.05)] sm:rounded-3xl ring-1 ring-inset ring-white/5">
             <div className="overflow-hidden">
-            <motion.div
-              className="flex w-max gap-8 py-3 items-center will-change-transform"
-              animate={{ x: ['0%', '-50%'] }}
-              transition={{ ease: 'linear', duration: 32, repeat: Infinity }}
-            >
-              {[...tickerNews, ...tickerNews].map((news, index) => (
-                <div key={index} className="flex shrink-0 items-center gap-8">
-                  <span className="text-white/70 font-bold text-sm tracking-wide whitespace-nowrap">{news}</span>
-                  <Circle className="w-1.5 h-1.5 shrink-0 text-primary/50 fill-primary/50" />
-                </div>
-              ))}
-            </motion.div>
+              <motion.div
+                className="flex w-max gap-8 py-3 items-center will-change-transform"
+                animate={{ x: ['0%', '-50%'] }}
+                transition={{ ease: 'linear', duration: 32, repeat: Infinity }}
+              >
+                {[...tickerNews, ...tickerNews].map((news, index) => (
+                  <div key={index} className="flex shrink-0 items-center gap-8">
+                    <span className="text-white/70 font-bold text-sm tracking-wide whitespace-nowrap">{news}</span>
+                    <Circle className="w-1.5 h-1.5 shrink-0 text-primary/50 fill-primary/50" />
+                  </div>
+                ))}
+              </motion.div>
             </div>
           </div>
         </div>
