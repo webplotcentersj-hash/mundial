@@ -73,13 +73,13 @@ export default function Home() {
   }, [])
 
   return (
-    <div className="relative min-h-[calc(100vh-4rem)] flex flex-col justify-center overflow-hidden -mt-16 pt-16">
-      {/* Fondo ancho completo (sin video en los costados) */}
+    <div className="relative w-full min-h-[calc(100vh-4rem)] flex flex-col overflow-x-hidden overflow-y-visible -mt-16 pt-16 pb-28">
+      {/* Fondo ancho completo */}
       <div className="absolute inset-0 -z-[60] bg-[#030712]" aria-hidden />
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 py-16 lg:py-24 w-full flex flex-col items-center gap-14 md:gap-16">
-        {/* Bloque único: video solo detrás del cristal max-w-5xl (no cards ni scroll lateral) */}
-        <div className="relative w-full max-w-5xl isolate overflow-hidden rounded-[1.75rem] sm:rounded-[2.25rem] border border-white/20 bg-[#060d18]/90 shadow-[0_32px_100px_-28px_rgba(0,0,0,0.75),inset_0_1px_0_rgba(255,255,255,0.08)]">
+      <div className="w-full mx-auto px-3 min-[420px]:px-4 sm:px-6 md:px-8 lg:px-10 xl:px-14 2xl:px-20 relative z-10 py-10 sm:py-14 md:py-16 lg:py-20 flex flex-col items-stretch gap-10 md:gap-14 lg:gap-16">
+        {/* Video solo detrás del panel hero — ahora ocupa todo el ancho útil */}
+        <div className="relative w-full isolate overflow-hidden rounded-2xl border border-white/20 bg-[#060d18]/90 shadow-[0_32px_100px_-28px_rgba(0,0,0,0.75),inset_0_1px_0_rgba(255,255,255,0.08)] sm:rounded-3xl">
           <div
             className="pointer-events-none absolute inset-0 z-0 overflow-hidden rounded-[inherit]"
             aria-hidden
@@ -159,7 +159,7 @@ export default function Home() {
             variants={containerVariants}
             initial="hidden"
             animate="show"
-            className="relative z-10 flex flex-col items-center text-center w-full px-5 py-10 sm:px-10 sm:py-12 md:px-14 md:py-14 backdrop-blur-lg bg-gradient-to-b from-white/[0.12] via-white/[0.04] to-black/25 ring-1 ring-inset ring-white/10"
+            className="relative z-10 flex flex-col items-center text-center w-full min-w-0 px-4 py-8 sm:px-6 sm:py-10 md:px-10 md:py-12 lg:px-14 lg:py-14 xl:px-20 xl:py-16 backdrop-blur-lg bg-gradient-to-b from-white/[0.12] via-white/[0.04] to-black/25 ring-1 ring-inset ring-white/10"
           >
           {/* Live Status Pill */}
           <motion.div variants={itemVariants} className="mb-8 flex items-center justify-center">
@@ -174,7 +174,7 @@ export default function Home() {
              </div>
           </motion.div>
 
-          <motion.h1 variants={itemVariants} className="text-5xl sm:text-6xl md:text-8xl lg:text-9xl font-bold font-outfit tracking-tighter leading-[1] mb-6 drop-shadow-2xl relative">
+          <motion.h1 variants={itemVariants} className="text-4xl min-[400px]:text-5xl sm:text-6xl md:text-7xl lg:text-8xl xl:text-9xl font-bold font-outfit tracking-tighter leading-[1.05] mb-5 sm:mb-6 drop-shadow-2xl relative w-full max-w-full px-1 sm:px-0">
             <span className="absolute -inset-10 bg-gradient-to-r from-primary/0 via-amber-500/10 to-primary/0 blur-3xl rounded-full pointer-events-none" />
             <span className="text-white drop-shadow-[0_0_20px_rgba(255,255,255,0.3)] relative z-10">PLOT</span><br/>
             <span className="relative inline-block mt-2 z-10">
@@ -185,23 +185,23 @@ export default function Home() {
             </span>
           </motion.h1>
           
-          <motion.p variants={itemVariants} className="text-xl md:text-3xl text-white/80 mb-14 max-w-3xl mx-auto font-light leading-relaxed drop-shadow-lg">
+          <motion.p variants={itemVariants} className="text-base min-[400px]:text-lg sm:text-xl md:text-2xl lg:text-3xl text-white/80 mb-10 sm:mb-12 md:mb-14 w-full max-w-4xl lg:max-w-5xl xl:max-w-6xl mx-auto font-light leading-relaxed drop-shadow-lg text-balance px-1">
             Predice los <strong className="text-white font-bold">104 partidos</strong> oficiales de FIFA. Suma puntos por resultados exactos, compite en el ranking global y gana gloria eterna.
           </motion.p>
           
-          <motion.div variants={itemVariants} className="flex flex-col sm:flex-row items-center justify-center gap-6 w-full sm:w-auto relative z-20">
-            <Link href="/login" className="relative group w-full sm:w-auto">
+          <motion.div variants={itemVariants} className="flex w-full max-w-4xl lg:max-w-5xl mx-auto flex-col sm:flex-row items-stretch sm:items-center justify-center gap-4 sm:gap-5 relative z-20 min-w-0">
+            <Link href="/login" className="relative group w-full sm:flex-1 sm:min-w-0">
               <div className="absolute -inset-1.5 bg-gradient-to-r from-primary via-amber-500 to-primary rounded-2xl blur-lg opacity-80 group-hover:opacity-100 transition duration-500 animate-pulse" />
-              <div className="relative bg-[#0a0f1c] border border-primary/50 group-hover:border-primary px-10 py-6 rounded-xl flex items-center justify-center gap-4 transition-all overflow-hidden shadow-2xl">
+              <div className="relative bg-[#0a0f1c] border border-primary/50 group-hover:border-primary px-6 py-5 sm:px-8 sm:py-6 rounded-xl flex items-center justify-center gap-3 sm:gap-4 transition-all overflow-hidden shadow-2xl">
                 <div className="absolute inset-0 bg-gradient-to-r from-primary/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-                <span className="text-xl font-black text-transparent bg-clip-text bg-gradient-to-r from-white to-amber-100 uppercase tracking-wider">Jugar Ahora</span>
-                <ArrowRight className="w-6 h-6 text-primary group-hover:translate-x-2 transition-transform drop-shadow-[0_0_8px_rgba(235,103,27,0.8)]" />
+                <span className="text-lg sm:text-xl font-black text-transparent bg-clip-text bg-gradient-to-r from-white to-amber-100 uppercase tracking-wider">Jugar Ahora</span>
+                <ArrowRight className="w-5 h-5 sm:w-6 sm:h-6 text-primary shrink-0 group-hover:translate-x-2 transition-transform drop-shadow-[0_0_8px_rgba(235,103,27,0.8)]" />
               </div>
             </Link>
             
-            <Link href="/fixture" className="group w-full sm:w-auto px-10 py-6 rounded-xl border border-white/20 bg-black/40 hover:bg-white/10 backdrop-blur-xl flex items-center justify-center gap-4 transition-all shadow-2xl hover:shadow-[0_0_30px_rgba(255,255,255,0.1)]">
-              <Globe className="w-6 h-6 text-white/50 group-hover:text-white transition-colors" />
-              <span className="text-xl font-bold text-white/80 group-hover:text-white uppercase tracking-wider">Ver Fixture</span>
+            <Link href="/fixture" className="group w-full sm:flex-1 sm:min-w-0 px-6 py-5 sm:px-8 sm:py-6 rounded-xl border border-white/20 bg-black/40 hover:bg-white/10 backdrop-blur-xl flex items-center justify-center gap-3 sm:gap-4 transition-all shadow-2xl hover:shadow-[0_0_30px_rgba(255,255,255,0.1)]">
+              <Globe className="w-5 h-5 sm:w-6 sm:h-6 text-white/50 group-hover:text-white transition-colors shrink-0" />
+              <span className="text-lg sm:text-xl font-bold text-white/80 group-hover:text-white uppercase tracking-wider">Ver Fixture</span>
             </Link>
           </motion.div>
           </motion.div>
@@ -212,9 +212,9 @@ export default function Home() {
           initial={{ opacity: 0, y: 50 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 1, delay: 0.8 }}
-          className="grid grid-cols-1 md:grid-cols-3 gap-5 md:gap-6 w-full max-w-7xl rounded-[1.75rem] sm:rounded-[2.25rem] border border-white/10 bg-[#060913]/85 p-5 sm:p-7 md:p-8 backdrop-blur-md shadow-[0_20px_60px_-24px_rgba(0,0,0,0.55),inset_0_1px_0_rgba(255,255,255,0.05)]"
+          className="grid w-full min-w-0 grid-cols-1 md:grid-cols-3 gap-4 sm:gap-5 md:gap-6 lg:gap-8 rounded-2xl border border-white/10 bg-[#060913]/85 p-4 sm:p-6 md:p-7 lg:p-8 xl:p-10 backdrop-blur-md shadow-[0_20px_60px_-24px_rgba(0,0,0,0.55),inset_0_1px_0_rgba(255,255,255,0.05)] sm:rounded-3xl"
         >
-          <div className="group glass-card p-8 rounded-[2rem] border border-white/10 hover:border-primary/50 transition-all hover:-translate-y-3 hover:shadow-[0_30px_60px_-15px_rgba(235,103,27,0.4)] bg-[#0a0f1c]/60 backdrop-blur-xl relative overflow-hidden">
+          <div className="group glass-card p-6 sm:p-8 rounded-xl sm:rounded-[2rem] border border-white/10 hover:border-primary/50 transition-all hover:-translate-y-1 sm:hover:-translate-y-2 hover:shadow-[0_30px_60px_-15px_rgba(235,103,27,0.4)] bg-[#0a0f1c]/60 backdrop-blur-xl relative overflow-hidden min-w-0">
              <div className="absolute top-0 right-0 w-40 h-40 bg-primary/20 rounded-full blur-[50px] pointer-events-none group-hover:bg-primary/40 transition-colors" />
             <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-primary/30 to-primary/5 flex items-center justify-center mb-6 border border-primary/30 group-hover:scale-110 transition-transform relative z-10">
               <Flame className="w-8 h-8 text-primary drop-shadow-[0_0_15px_rgba(235,103,27,1)]" />
@@ -223,7 +223,7 @@ export default function Home() {
             <p className="text-white/60 leading-relaxed font-light relative z-10">Suma 3 puntos por predecir el resultado exacto y 1 punto por acertar la tendencia del ganador o el empate.</p>
           </div>
 
-          <div className="group glass-card p-8 rounded-[2rem] border border-white/10 hover:border-amber-500/50 transition-all hover:-translate-y-3 hover:shadow-[0_30px_60px_-15px_rgba(245,158,11,0.4)] bg-[#0a0f1c]/60 backdrop-blur-xl relative overflow-hidden">
+          <div className="group glass-card p-6 sm:p-8 rounded-xl sm:rounded-[2rem] border border-white/10 hover:border-amber-500/50 transition-all hover:-translate-y-1 sm:hover:-translate-y-2 hover:shadow-[0_30px_60px_-15px_rgba(245,158,11,0.4)] bg-[#0a0f1c]/60 backdrop-blur-xl relative overflow-hidden min-w-0">
             <div className="absolute top-0 right-0 w-40 h-40 bg-amber-500/20 rounded-full blur-[50px] pointer-events-none group-hover:bg-amber-500/40 transition-colors" />
             <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-amber-500/30 to-amber-500/5 flex items-center justify-center mb-6 border border-amber-500/30 group-hover:scale-110 transition-transform relative z-10">
               <Trophy className="w-8 h-8 text-amber-500 drop-shadow-[0_0_15px_rgba(245,158,11,1)]" />
@@ -232,7 +232,7 @@ export default function Home() {
             <p className="text-white/60 leading-relaxed font-light relative z-10">Crea grupos privados con tus amigos de la oficina, compara llaves y demuestra quién sabe más de fútbol.</p>
           </div>
 
-          <div className="group glass-card p-8 rounded-[2rem] border border-white/10 hover:border-purple-500/50 transition-all hover:-translate-y-3 hover:shadow-[0_30px_60px_-15px_rgba(168,85,247,0.4)] bg-[#0a0f1c]/60 backdrop-blur-xl relative overflow-hidden">
+          <div className="group glass-card p-6 sm:p-8 rounded-xl sm:rounded-[2rem] border border-white/10 hover:border-purple-500/50 transition-all hover:-translate-y-1 sm:hover:-translate-y-2 hover:shadow-[0_30px_60px_-15px_rgba(168,85,247,0.4)] bg-[#0a0f1c]/60 backdrop-blur-xl relative overflow-hidden min-w-0">
              <div className="absolute top-0 right-0 w-40 h-40 bg-purple-500/20 rounded-full blur-[50px] pointer-events-none group-hover:bg-purple-500/40 transition-colors" />
             <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-purple-500/30 to-purple-500/5 flex items-center justify-center mb-6 border border-purple-500/30 group-hover:scale-110 transition-transform relative z-10">
               <Star className="w-8 h-8 text-purple-400 drop-shadow-[0_0_15px_rgba(168,85,247,1)]" />
