@@ -11,23 +11,28 @@ export default function Home() {
     "⚽ Cargando novedades en vivo...",
     "🏆 Conectando con los servidores..."
   ])
-  /** null = aún cargando el conteo real desde Supabase */
-  const [userCount, setUserCount] = useState<number | null>(null)
+
+  /** Contador LIVE decorativo (oscila al azar para sensación de actividad) */
+  const [liveFakeCount, setLiveFakeCount] = useState(() => 9000 + Math.floor(Math.random() * 6000))
+
+  useEffect(() => {
+    const tick = () => {
+      setLiveFakeCount((prev) => {
+        const jitter = Math.floor(Math.random() * 2400) - 1200
+        return Math.min(24000, Math.max(7200, prev + jitter))
+      })
+    }
+    const id = setInterval(tick, 650 + Math.floor(Math.random() * 400))
+    return () => clearInterval(id)
+  }, [])
 
   useEffect(() => {
     async function loadNews() {
       try {
         const data = await getLiveTickerNews()
-        if (data) {
-          if (data.news && data.news.length > 0) {
-            setTickerNews(data.news)
-          }
-          setUserCount(typeof data.userCount === 'number' ? data.userCount : 0)
-        } else {
-          setUserCount(0)
-        }
+        if (data?.news?.length) setTickerNews(data.news)
       } catch {
-        setUserCount(0)
+        /* ticker fallback ya está en estado inicial */
       }
     }
     loadNews()
@@ -94,7 +99,7 @@ export default function Home() {
           onCanPlay={onVideoLoaded}
           onError={() => setVideoReady(false)}
           className={`absolute top-1/2 left-1/2 min-w-full min-h-full w-auto h-auto object-cover -translate-x-1/2 -translate-y-1/2 mix-blend-screen scale-105 transition-opacity duration-[1200ms] ease-out will-change-[opacity] ${
-            videoReady ? 'opacity-[0.42]' : 'opacity-0'
+            videoReady ? 'opacity-[0.52]' : 'opacity-0'
           }`}
         >
           <source src="/This is FIFA World Cup 26™.mp4" type="video/mp4" />
@@ -102,21 +107,21 @@ export default function Home() {
 
         {/* Overlay más claro: deja ver más el video y el texto respira */}
         <div
-          className="absolute inset-0 bg-gradient-to-b from-[#030712]/78 via-[#030712]/32 to-[#030712]/82 pointer-events-none"
+          className="absolute inset-0 bg-gradient-to-b from-[#030712]/62 via-[#030712]/22 to-[#030712]/68 pointer-events-none"
           aria-hidden
         />
         <div
-          className="absolute inset-0 bg-gradient-to-r from-[#030712]/55 via-transparent to-[#030712]/55 pointer-events-none"
+          className="absolute inset-0 bg-gradient-to-r from-[#030712]/38 via-transparent to-[#030712]/38 pointer-events-none"
           aria-hidden
         />
 
-        {/* Esmerilado: blur suave + grano local + brillo animado */}
+        {/* Esmerilado global suave */}
         <div
-          className="absolute inset-0 backdrop-blur-[2px] sm:backdrop-blur-[3px] bg-gradient-to-b from-white/[0.04] via-transparent to-black/20 pointer-events-none"
+          className="absolute inset-0 backdrop-blur-[1.5px] sm:backdrop-blur-[2.5px] bg-gradient-to-b from-white/[0.03] via-transparent to-black/15 pointer-events-none"
           aria-hidden
         />
         <div
-          className="hero-noise-static absolute inset-0 opacity-[0.22] mix-blend-overlay pointer-events-none"
+          className="hero-noise-static absolute inset-0 opacity-[0.18] mix-blend-overlay pointer-events-none"
           aria-hidden
         />
         <div className="hero-shimmer-sweep" aria-hidden />
@@ -155,7 +160,7 @@ export default function Home() {
           variants={containerVariants}
           initial="hidden"
           animate="show"
-          className="flex flex-col items-center text-center w-full max-w-5xl"
+          className="flex flex-col items-center text-center w-full max-w-5xl rounded-[1.75rem] sm:rounded-[2.25rem] border border-white/20 bg-gradient-to-b from-white/[0.1] via-white/[0.045] to-black/20 px-5 py-10 sm:px-10 sm:py-12 md:px-14 md:py-14 backdrop-blur-md shadow-[0_28px_90px_-24px_rgba(0,0,0,0.55),inset_0_1px_0_rgba(255,255,255,0.12)] ring-1 ring-white/10"
         >
           {/* Live Status Pill */}
           <motion.div variants={itemVariants} className="mb-8 flex items-center justify-center">
@@ -164,9 +169,8 @@ export default function Home() {
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
                   <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500"></span>
                 </div>
-                <span className="text-red-400 font-bold text-xs uppercase tracking-widest">
-                  Live:{' '}
-                  {userCount === null ? '…' : `${userCount.toLocaleString('es-AR')} jugadores`}
+                <span className="text-red-400 font-bold text-xs uppercase tracking-widest tabular-nums">
+                  Live: {liveFakeCount.toLocaleString('es-AR')} jugadores
                 </span>
              </div>
           </motion.div>

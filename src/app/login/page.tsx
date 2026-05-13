@@ -47,7 +47,7 @@ function LoginContent() {
                 type="text" 
                 placeholder="Ej. JuanPerez99"
                 required={!isLogin}
-                className="w-full bg-background/50 border border-border rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all"
+                className="w-full rounded-xl border border-white/15 bg-white/[0.06] px-4 py-3 text-white placeholder:text-white/35 shadow-inner shadow-black/20 backdrop-blur-sm transition-all focus:border-primary/55 focus:outline-none focus:ring-2 focus:ring-primary/35"
               />
             </div>
           )}
@@ -60,7 +60,7 @@ function LoginContent() {
               type="email" 
               placeholder="tu@email.com"
               required
-              className="w-full bg-background/50 border border-border rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all"
+              className="w-full rounded-xl border border-white/15 bg-white/[0.06] px-4 py-3 text-white placeholder:text-white/35 shadow-inner shadow-black/20 backdrop-blur-sm transition-all focus:border-primary/55 focus:outline-none focus:ring-2 focus:ring-primary/35"
             />
           </div>
 
@@ -72,7 +72,7 @@ function LoginContent() {
               type="password" 
               placeholder="••••••••"
               required
-              className="w-full bg-background/50 border border-border rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all"
+              className="w-full rounded-xl border border-white/15 bg-white/[0.06] px-4 py-3 text-white placeholder:text-white/35 shadow-inner shadow-black/20 backdrop-blur-sm transition-all focus:border-primary/55 focus:outline-none focus:ring-2 focus:ring-primary/35"
             />
           </div>
 
