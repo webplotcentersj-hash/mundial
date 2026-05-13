@@ -1,9 +1,9 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo, useCallback } from 'react'
 import { motion } from 'framer-motion'
 import Link from 'next/link'
-import { Trophy, Star, ArrowRight, Globe, Flame, Zap, Circle } from 'lucide-react'
+import { Trophy, Star, ArrowRight, Globe, Flame, Circle } from 'lucide-react'
 import { getLiveTickerNews } from '@/lib/actions'
 
 export default function Home() {
@@ -48,36 +48,78 @@ export default function Home() {
     show: { opacity: 1, y: 0, transition: { type: "spring" as const, stiffness: 40, damping: 15 } }
   }
 
-  // Generamos partículas de luz aleatorias
-  const particles = Array.from({ length: 15 }).map((_, i) => ({
-    id: i,
-    size: Math.random() * 6 + 2,
-    x: Math.random() * 100,
-    y: Math.random() * 100,
-    duration: Math.random() * 20 + 10,
-    delay: Math.random() * 5
-  }))
+  const [videoReady, setVideoReady] = useState(false)
+
+  const particles = useMemo(
+    () =>
+      Array.from({ length: 15 }).map((_, i) => ({
+        id: i,
+        size: Math.random() * 6 + 2,
+        x: Math.random() * 100,
+        y: Math.random() * 100,
+        duration: Math.random() * 20 + 10,
+        delay: Math.random() * 5,
+        driftX: Math.random() * 20 - 10,
+      })),
+    []
+  )
+
+  const onVideoLoaded = useCallback(() => {
+    setVideoReady(true)
+  }, [])
 
   return (
     <div className="relative min-h-[calc(100vh-4rem)] flex flex-col justify-center overflow-hidden -mt-16 pt-16">
       
-      {/* --- Exclusive Home Video Background --- */}
-      <div className="absolute inset-0 -z-50 overflow-hidden bg-black">
-        <video 
-          autoPlay 
-          loop 
-          muted 
+      {/* --- Hero video: capa base instantánea + video con fade-in (menos bytes iniciales) --- */}
+      <div className="absolute inset-0 -z-50 overflow-hidden bg-[#050a14]">
+        {/* Atmósfera inmediata sin esperar al MP4 */}
+        <div
+          className="absolute inset-0 bg-gradient-to-br from-[#0c1829] via-[#060d18] to-[#120805]"
+          aria-hidden
+        />
+        <div
+          className="absolute inset-0 bg-[radial-gradient(ellipse_120%_80%_at_50%_-20%,rgba(235,103,27,0.12),transparent_55%),radial-gradient(ellipse_80%_50%_at_80%_100%,rgba(245,158,11,0.08),transparent_50%)]"
+          aria-hidden
+        />
+
+        <video
+          autoPlay
+          loop
+          muted
           playsInline
-          preload="auto"
-          className="absolute top-1/2 left-1/2 min-w-full min-h-full w-auto h-auto object-cover -translate-x-1/2 -translate-y-1/2 opacity-30 mix-blend-screen scale-105"
+          preload="metadata"
+          disablePictureInPicture
+          onLoadedData={onVideoLoaded}
+          onCanPlay={onVideoLoaded}
+          onError={() => setVideoReady(false)}
+          className={`absolute top-1/2 left-1/2 min-w-full min-h-full w-auto h-auto object-cover -translate-x-1/2 -translate-y-1/2 mix-blend-screen scale-105 transition-opacity duration-[1200ms] ease-out will-change-[opacity] ${
+            videoReady ? 'opacity-[0.42]' : 'opacity-0'
+          }`}
         >
           <source src="/This is FIFA World Cup 26™.mp4" type="video/mp4" />
         </video>
-        
-        {/* Dynamic Overlays for readability and style */}
-        <div className="absolute inset-0 bg-gradient-to-b from-[#030712]/95 via-[#030712]/40 to-[#030712] pointer-events-none" />
-        <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-30 mix-blend-overlay pointer-events-none" />
-        <div className="absolute inset-0 bg-gradient-to-r from-[#030712] via-transparent to-[#030712] pointer-events-none opacity-80" />
+
+        {/* Overlay más claro: deja ver más el video y el texto respira */}
+        <div
+          className="absolute inset-0 bg-gradient-to-b from-[#030712]/78 via-[#030712]/32 to-[#030712]/82 pointer-events-none"
+          aria-hidden
+        />
+        <div
+          className="absolute inset-0 bg-gradient-to-r from-[#030712]/55 via-transparent to-[#030712]/55 pointer-events-none"
+          aria-hidden
+        />
+
+        {/* Esmerilado: blur suave + grano local + brillo animado */}
+        <div
+          className="absolute inset-0 backdrop-blur-[2px] sm:backdrop-blur-[3px] bg-gradient-to-b from-white/[0.04] via-transparent to-black/20 pointer-events-none"
+          aria-hidden
+        />
+        <div
+          className="hero-noise-static absolute inset-0 opacity-[0.22] mix-blend-overlay pointer-events-none"
+          aria-hidden
+        />
+        <div className="hero-shimmer-sweep" aria-hidden />
       </div>
 
       {/* --- Floating 3D Particles --- */}
@@ -94,7 +136,7 @@ export default function Home() {
             }}
             animate={{
               y: ["0vh", "-100vh"],
-              x: ["0vw", `${Math.random() * 20 - 10}vw`],
+              x: ["0vw", `${p.driftX}vw`],
               opacity: [0, 0.5, 0],
             }}
             transition={{
