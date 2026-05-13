@@ -69,31 +69,31 @@ export default function Home() {
   return (
     <div className="relative w-full min-h-[calc(100vh-4rem)] flex flex-col overflow-x-hidden overflow-y-visible -mt-16 pt-16 pb-28">
       <div className="w-full mx-auto px-3 min-[420px]:px-4 sm:px-6 md:px-8 lg:px-10 xl:px-14 2xl:px-20 relative z-10 py-10 sm:py-14 md:py-16 lg:py-20 flex flex-col items-stretch gap-10 md:gap-14 lg:gap-16">
-        <div className="relative w-full isolate overflow-hidden rounded-2xl border border-white/20 bg-[#060d18]/28 shadow-[0_32px_100px_-28px_rgba(0,0,0,0.75),inset_0_1px_0_rgba(255,255,255,0.08)] backdrop-blur-sm sm:rounded-3xl">
+        <div className="relative w-full isolate overflow-hidden rounded-2xl border border-white/12 bg-[#060d18]/14 shadow-[0_32px_100px_-28px_rgba(0,0,0,0.55),inset_0_1px_0_rgba(255,255,255,0.06)] backdrop-blur-[3px] sm:rounded-3xl">
           <div
             className="pointer-events-none absolute inset-0 z-0 overflow-hidden rounded-[inherit]"
             aria-hidden
           >
             <div
-              className="absolute inset-0 bg-gradient-to-br from-[#0c1829]/55 via-[#060d18]/40 to-[#120805]/55"
+              className="absolute inset-0 bg-gradient-to-br from-[#0c1829]/28 via-[#060d18]/18 to-[#120805]/28"
               aria-hidden
             />
             <div
-              className="absolute inset-0 bg-[radial-gradient(ellipse_100%_70%_at_50%_0%,rgba(235,103,27,0.16),transparent_52%),radial-gradient(ellipse_80%_55%_at_80%_100%,rgba(245,158,11,0.12),transparent_52%)]"
-              aria-hidden
-            />
-
-            <div
-              className="absolute inset-0 bg-gradient-to-b from-[#030712]/35 via-transparent to-[#030712]/40 pointer-events-none"
-              aria-hidden
-            />
-            <div
-              className="absolute inset-0 bg-gradient-to-r from-[#030712]/20 via-transparent to-[#030712]/20 pointer-events-none"
+              className="absolute inset-0 bg-[radial-gradient(ellipse_100%_70%_at_50%_0%,rgba(235,103,27,0.1),transparent_52%),radial-gradient(ellipse_80%_55%_at_80%_100%,rgba(245,158,11,0.08),transparent_52%)]"
               aria-hidden
             />
 
             <div
-              className="absolute inset-0 backdrop-blur-[0.5px] bg-gradient-to-b from-white/[0.03] via-transparent to-black/15 pointer-events-none"
+              className="absolute inset-0 bg-gradient-to-b from-[#030712]/18 via-transparent to-[#030712]/22 pointer-events-none"
+              aria-hidden
+            />
+            <div
+              className="absolute inset-0 bg-gradient-to-r from-[#030712]/10 via-transparent to-[#030712]/10 pointer-events-none"
+              aria-hidden
+            />
+
+            <div
+              className="absolute inset-0 bg-gradient-to-b from-white/[0.02] via-transparent to-black/8 pointer-events-none"
               aria-hidden
             />
             <div
@@ -132,11 +132,11 @@ export default function Home() {
             variants={containerVariants}
             initial="hidden"
             animate="show"
-            className="relative z-10 flex flex-col items-center text-center w-full min-w-0 px-4 py-8 sm:px-6 sm:py-10 md:px-10 md:py-12 lg:px-14 lg:py-14 xl:px-20 xl:py-16 backdrop-blur-sm bg-gradient-to-b from-white/[0.03] via-white/[0.008] to-black/8 ring-1 ring-inset ring-white/6"
+            className="relative z-10 flex flex-col items-center text-center w-full min-w-0 px-4 py-8 sm:px-6 sm:py-10 md:px-10 md:py-12 lg:px-14 lg:py-14 xl:px-20 xl:py-16 backdrop-blur-[2px] bg-gradient-to-b from-white/[0.02] via-white/[0.004] to-black/5 ring-1 ring-inset ring-white/5"
           >
           {/* Live Status Pill */}
           <motion.div variants={itemVariants} className="mb-8 flex items-center justify-center">
-             <div className="bg-red-500/10 border border-red-500/30 px-4 py-1.5 rounded-full flex items-center gap-2 backdrop-blur-md shadow-[0_0_20px_rgba(239,68,68,0.2)]">
+             <div className="bg-red-500/8 border border-red-500/22 px-4 py-1.5 rounded-full flex items-center gap-2 backdrop-blur-sm shadow-[0_0_16px_rgba(239,68,68,0.14)]">
                 <div className="relative flex h-3 w-3">
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
                   <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500"></span>
