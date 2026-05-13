@@ -35,11 +35,11 @@ function SocialButton({
       rel="noopener noreferrer"
       aria-label={label}
       className={cn(
-        "group flex h-12 w-12 items-center justify-center rounded-full",
-        "border border-white/12 bg-gradient-to-b from-white/[0.08] to-white/[0.02]",
-        "shadow-[0_8px_24px_-8px_rgba(0,0,0,0.5),inset_0_1px_0_rgba(255,255,255,0.1)]",
-        "text-white/70 transition-all duration-300",
-        "hover:border-primary/50 hover:text-primary hover:shadow-[0_0_24px_-4px_rgba(235,103,27,0.45)] hover:-translate-y-0.5"
+        "group flex h-12 w-12 items-center justify-center rounded-xl sm:h-14 sm:w-14",
+        "border border-white/12 bg-gradient-to-b from-white/[0.12] to-white/[0.03]",
+        "shadow-[0_12px_32px_-12px_rgba(0,0,0,0.55),inset_0_1px_0_rgba(255,255,255,0.12)]",
+        "text-white/75 transition-all duration-300",
+        "hover:border-primary/45 hover:text-primary hover:shadow-[0_0_32px_-4px_rgba(235,103,27,0.5)] hover:-translate-y-0.5"
       )}
     >
       {children}
@@ -56,7 +56,7 @@ export default function SiteFooter() {
         aria-hidden
       />
       <div
-        className="pointer-events-none absolute left-1/2 top-0 h-40 w-[min(90%,56rem)] -translate-x-1/2 bg-[radial-gradient(ellipse_at_top,rgba(235,103,27,0.18),transparent_65%)]"
+        className="pointer-events-none absolute left-1/2 top-0 h-48 w-[min(100%,80rem)] -translate-x-1/2 bg-[radial-gradient(ellipse_at_top,rgba(235,103,27,0.22),transparent_60%)]"
         aria-hidden
       />
       {/* Grilla sutil */}
@@ -70,144 +70,189 @@ export default function SiteFooter() {
         aria-hidden
       />
 
-      <div className="relative mx-auto max-w-3xl px-4 py-14 sm:px-6 sm:py-16 lg:px-8 lg:py-20">
+      <div className="relative mx-auto w-full max-w-7xl px-4 py-14 sm:px-6 sm:py-16 lg:px-8 lg:py-20 xl:px-10">
         <div
           className={cn(
-            "rounded-2xl border border-white/10 p-6 sm:p-8 lg:p-10",
-            "bg-gradient-to-b from-white/[0.07] via-white/[0.02] to-transparent",
-            "shadow-[0_24px_60px_-24px_rgba(0,0,0,0.65),inset_0_1px_0_rgba(255,255,255,0.06)]",
-            "backdrop-blur-md"
+            "relative overflow-hidden rounded-3xl border border-white/[0.12]",
+            "bg-gradient-to-br from-white/[0.1] via-[#0b1428]/90 to-[#050a16]",
+            "shadow-[0_32px_80px_-28px_rgba(0,0,0,0.85),inset_0_1px_0_rgba(255,255,255,0.08)]",
+            "ring-1 ring-white/[0.06] backdrop-blur-xl"
           )}
         >
-          <div className="text-center sm:text-left">
-            <Link
-              href="/"
-              className="inline-flex rounded-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/60"
-            >
-              <Image
-                src="/plot%20center%20mundial.png"
-                alt="Plot Center · Plot Mundial"
-                width={200}
-                height={56}
-                className="h-12 w-auto object-contain drop-shadow-[0_4px_20px_rgba(0,0,0,0.5)]"
-              />
-            </Link>
-            <p className="mt-5 font-outfit text-lg font-semibold leading-snug tracking-tight text-white/90">
-              Plot Mundial
-              <span className="mt-1 block text-sm font-normal font-sans text-white/50">
-                Pronósticos, ranking y comunidad para la Copa Mundial 2026.
-              </span>
-            </p>
-            <p className="mt-5 border-l-2 border-primary/40 pl-4 text-left font-outfit text-sm italic leading-relaxed text-white/45">
-              &ldquo;Ecosistema de Comunicación de Alto Impacto&rdquo;
-            </p>
-          </div>
+          <div
+            className="pointer-events-none absolute -right-24 -top-28 h-[22rem] w-[22rem] rounded-full bg-primary/20 blur-3xl"
+            aria-hidden
+          />
+          <div
+            className="pointer-events-none absolute -bottom-20 -left-16 h-72 w-72 rounded-full bg-amber-500/12 blur-3xl"
+            aria-hidden
+          />
+          <div
+            className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/25 to-transparent"
+            aria-hidden
+          />
 
-          <div className="my-8 h-px bg-white/10" aria-hidden />
+          <div className="relative grid gap-10 p-6 sm:p-8 lg:grid-cols-12 lg:gap-12 lg:p-10 xl:gap-14 xl:p-12">
+            <div className="lg:col-span-5">
+              <Link
+                href="/"
+                className="inline-flex rounded-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/60"
+              >
+                <Image
+                  src="/plot%20center%20mundial.png"
+                  alt="Plot Center · Plot Mundial"
+                  width={220}
+                  height={62}
+                  className="h-12 w-auto object-contain drop-shadow-[0_8px_28px_rgba(0,0,0,0.55)] sm:h-14"
+                />
+              </Link>
+              <p className="mt-6 font-outfit text-2xl font-bold leading-tight tracking-tight text-white sm:text-3xl">
+                <span className="bg-gradient-to-r from-white via-white to-white/70 bg-clip-text text-transparent">
+                  Plot Mundial
+                </span>
+                <span className="mt-2 block text-base font-normal leading-relaxed text-white/55 sm:text-lg">
+                  Pronósticos, ranking y comunidad para la Copa Mundial 2026.
+                </span>
+              </p>
+              <p
+                className={cn(
+                  "mt-6 rounded-2xl border border-primary/25 bg-primary/[0.08] px-4 py-3.5",
+                  "font-outfit text-sm italic leading-relaxed text-white/70 sm:px-5 sm:text-[0.95rem]"
+                )}
+              >
+                &ldquo;Ecosistema de Comunicación de Alto Impacto&rdquo;
+              </p>
+            </div>
 
-          <div className="grid gap-8 sm:grid-cols-2 sm:gap-10">
-            <div>
-              <h3 className="text-[11px] font-bold uppercase tracking-[0.28em] text-primary/70">Contacto</h3>
-              <ul className="mt-4 space-y-3.5 text-sm">
+            <div className="lg:col-span-4">
+              <h3 className="text-[11px] font-bold uppercase tracking-[0.28em] text-primary/80">Contacto</h3>
+              <ul className="mt-4 grid gap-3 sm:grid-cols-2 sm:gap-3 lg:grid-cols-1">
                 <li>
                   <a
                     href={PHONE_HREF}
-                    className="flex items-start gap-3 rounded-lg text-white/80 transition-colors hover:text-white"
+                    className={cn(
+                      "flex items-start gap-3 rounded-2xl border border-white/[0.08] bg-white/[0.04] p-4",
+                      "text-white/85 transition-all duration-300",
+                      "hover:border-primary/35 hover:bg-white/[0.07] hover:text-white hover:shadow-[0_0_0_1px_rgba(235,103,27,0.15)]"
+                    )}
                   >
-                    <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/15 text-primary ring-1 ring-primary/25">
-                      <Phone className="h-3.5 w-3.5" aria-hidden />
+                    <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/20 text-primary ring-1 ring-primary/30">
+                      <Phone className="h-4 w-4" aria-hidden />
                     </span>
-                    <span>
-                      <span className="block text-[10px] uppercase tracking-wider text-white/35">Teléfono</span>
-                      {PHONE_DISPLAY}
+                    <span className="min-w-0">
+                      <span className="block text-[10px] font-semibold uppercase tracking-wider text-white/40">
+                        Teléfono
+                      </span>
+                      <span className="mt-0.5 block text-sm font-medium tabular-nums">{PHONE_DISPLAY}</span>
                     </span>
                   </a>
                 </li>
-                <li>
+                <li className="sm:col-span-2 lg:col-span-1">
                   <a
                     href={`mailto:${EMAIL}`}
-                    className="flex items-start gap-3 rounded-lg text-white/80 transition-colors hover:text-white"
+                    className={cn(
+                      "flex items-start gap-3 rounded-2xl border border-white/[0.08] bg-white/[0.04] p-4",
+                      "text-white/85 transition-all duration-300",
+                      "hover:border-primary/35 hover:bg-white/[0.07] hover:text-white hover:shadow-[0_0_0_1px_rgba(235,103,27,0.15)]"
+                    )}
                   >
-                    <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/15 text-primary ring-1 ring-primary/25">
-                      <Mail className="h-3.5 w-3.5" aria-hidden />
+                    <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/20 text-primary ring-1 ring-primary/30">
+                      <Mail className="h-4 w-4" aria-hidden />
                     </span>
                     <span className="min-w-0 break-all">
-                      <span className="block text-[10px] uppercase tracking-wider text-white/35">Email</span>
-                      {EMAIL}
+                      <span className="block text-[10px] font-semibold uppercase tracking-wider text-white/40">
+                        Email
+                      </span>
+                      <span className="mt-0.5 block text-sm font-medium">{EMAIL}</span>
                     </span>
                   </a>
                 </li>
-                <li className="flex items-start gap-3 text-white/80">
-                  <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-white/[0.06] text-white/50 ring-1 ring-white/10">
-                    <MapPin className="h-3.5 w-3.5" aria-hidden />
-                  </span>
-                  <span>
-                    <span className="block text-[10px] uppercase tracking-wider text-white/35">Dirección</span>
-                    {ADDRESS}
-                  </span>
+                <li className="sm:col-span-2 lg:col-span-1">
+                  <div
+                    className={cn(
+                      "flex items-start gap-3 rounded-2xl border border-white/[0.08] bg-white/[0.03] p-4",
+                      "text-white/80"
+                    )}
+                  >
+                    <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white/[0.08] text-white/55 ring-1 ring-white/12">
+                      <MapPin className="h-4 w-4" aria-hidden />
+                    </span>
+                    <span>
+                      <span className="block text-[10px] font-semibold uppercase tracking-wider text-white/40">
+                        Dirección
+                      </span>
+                      <span className="mt-0.5 block text-sm font-medium leading-snug">{ADDRESS}</span>
+                    </span>
+                  </div>
                 </li>
               </ul>
             </div>
 
-            <div>
-              <h3 className="text-[11px] font-bold uppercase tracking-[0.28em] text-primary/70">Legal</h3>
-              <ul className="mt-4 space-y-2">
-                <li>
-                  <Link
-                    href="/terminos"
-                    className="inline-flex items-center gap-2 rounded-lg py-1 text-sm text-white/75 transition-colors hover:text-primary"
+            <div className="flex flex-col gap-8 lg:col-span-3">
+              <div>
+                <h3 className="text-[11px] font-bold uppercase tracking-[0.28em] text-primary/80">Legal</h3>
+                <ul className="mt-4 space-y-2">
+                  <li>
+                    <Link
+                      href="/terminos"
+                      className={cn(
+                        "flex items-center gap-3 rounded-2xl border border-white/[0.08] bg-white/[0.04] px-4 py-3 text-sm",
+                        "text-white/80 transition-all duration-300",
+                        "hover:border-primary/35 hover:bg-white/[0.07] hover:text-primary"
+                      )}
+                    >
+                      <FileText className="h-4 w-4 shrink-0 text-primary/70" aria-hidden />
+                      Términos y condiciones
+                    </Link>
+                  </li>
+                  <li>
+                    <Link
+                      href="/privacidad"
+                      className={cn(
+                        "flex items-center gap-3 rounded-2xl border border-white/[0.08] bg-white/[0.04] px-4 py-3 text-sm",
+                        "text-white/80 transition-all duration-300",
+                        "hover:border-primary/35 hover:bg-white/[0.07] hover:text-primary"
+                      )}
+                    >
+                      <Shield className="h-4 w-4 shrink-0 text-primary/70" aria-hidden />
+                      Política de privacidad
+                    </Link>
+                  </li>
+                </ul>
+              </div>
+
+              <div className="rounded-2xl border border-white/[0.08] bg-white/[0.03] p-4 sm:p-5">
+                <p className="text-[11px] font-bold uppercase tracking-[0.28em] text-white/40">Seguinos</p>
+                <p className="mt-2 text-sm leading-relaxed text-white/50">
+                  Novedades del estudio en{" "}
+                  <a
+                    href={PLOT_CENTER_WEB}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="font-medium text-white/75 underline decoration-white/15 underline-offset-4 transition-colors hover:text-primary hover:decoration-primary/50"
                   >
-                    <FileText className="h-4 w-4 text-primary/60" aria-hidden />
-                    Términos y condiciones
-                  </Link>
-                </li>
-                <li>
-                  <Link
-                    href="/privacidad"
-                    className="inline-flex items-center gap-2 rounded-lg py-1 text-sm text-white/75 transition-colors hover:text-primary"
-                  >
-                    <Shield className="h-4 w-4 text-primary/60" aria-hidden />
-                    Política de privacidad
-                  </Link>
-                </li>
-              </ul>
+                    plotcenter.com.ar
+                  </a>
+                </p>
+                <div className="mt-4 flex flex-wrap items-center gap-3">
+                  <SocialButton href={PLOT_CENTER_WEB} label="Sitio web Plot Center">
+                    <ExternalLink className="h-5 w-5 sm:h-[1.35rem] sm:w-[1.35rem]" />
+                  </SocialButton>
+                  <SocialButton href={INSTAGRAM} label="Instagram @plotcentersj">
+                    <InstagramIcon className="h-5 w-5 sm:h-[1.35rem] sm:w-[1.35rem]" />
+                  </SocialButton>
+                </div>
+              </div>
             </div>
           </div>
 
-          <div className="my-8 h-px bg-white/10" aria-hidden />
-
-          <div className="flex flex-col items-center gap-5 text-center sm:flex-row sm:justify-between sm:text-left">
-            <div>
-              <p className="text-[11px] font-bold uppercase tracking-[0.28em] text-white/35">Seguinos</p>
-              <p className="mt-2 max-w-sm text-sm text-white/45">
-                Novedades y trabajo del estudio en{" "}
-                <a
-                  href={PLOT_CENTER_WEB}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-white/70 underline decoration-white/20 underline-offset-4 transition-colors hover:text-primary hover:decoration-primary/50"
-                >
-                  plotcenter.com.ar
-                </a>
-              </p>
-            </div>
-            <div className="flex shrink-0 items-center gap-3 sm:gap-4">
-              <SocialButton href={PLOT_CENTER_WEB} label="Sitio web Plot Center">
-                <ExternalLink className="h-5 w-5" />
-              </SocialButton>
-              <SocialButton href={INSTAGRAM} label="Instagram @plotcentersj">
-                <InstagramIcon className="h-5 w-5" />
-              </SocialButton>
-            </div>
-          </div>
-
-          <p className="mt-8 border-t border-white/10 pt-6 text-center text-[11px] text-white/40">
+          <p className="relative border-t border-white/10 px-6 py-5 text-center text-[11px] text-white/40 sm:px-8 sm:py-6 lg:px-10">
             © {new Date().getFullYear()}{" "}
             <a
               href={PLOT_CENTER_WEB}
               target="_blank"
               rel="noopener noreferrer"
-              className="text-white/55 transition-colors hover:text-primary"
+              className="text-white/60 transition-colors hover:text-primary"
             >
               Plot Center
             </a>
