@@ -289,6 +289,96 @@ export async function createPrintOrder(input: {
   return { success: true }
 }
 
+export async function createPrintOrdersFromCart(input: {
+  lines: {
+    product_type: PrintProductType
+    quantity: number
+    notes?: string
+    customer_image_url?: string | null
+  }[]
+  contact_name: string
+  contact_email: string
+  contact_phone?: string
+}): Promise<{ success: true; count: number } | { error: string }> {
+  if (!input.lines?.length) {
+    return { error: 'El carrito está vacío' }
+  }
+  if (input.lines.length > 25) {
+    return { error: 'Máximo 25 ítems por envío' }
+  }
+
+  const supabase = await createClient()
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser()
+  if (authError || !user) {
+    return { error: 'Tenés que iniciar sesión para pedir en el Store' }
+  }
+
+  const profileCheck = await ensureUserProfile(supabase, user)
+  if (profileCheck.error) {
+    return { error: profileCheck.error }
+  }
+
+  const name = input.contact_name.trim()
+  const email = input.contact_email.trim()
+  if (name.length < 2) return { error: 'Indicá un nombre de contacto válido' }
+  if (email.length < 5 || !email.includes('@')) return { error: 'Indicá un email de contacto válido' }
+
+  const baseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL?.replace(/\/$/, '')
+  const prefix = baseUrl ? `${baseUrl}/storage/v1/object/public/store-prints/` : null
+  const allowed: PrintProductType[] = ['figurita', 'sticker', 'poster']
+
+  const rows: {
+    user_id: string
+    product_type: PrintProductType
+    quantity: number
+    notes: string | null
+    contact_name: string
+    contact_email: string
+    contact_phone: string | null
+    status: 'pending'
+    customer_image_url: string | null
+  }[] = []
+
+  for (const line of input.lines) {
+    if (!allowed.includes(line.product_type)) {
+      return { error: 'Tipo de producto inválido en el carrito' }
+    }
+    const qty = Math.min(99, Math.max(1, Math.floor(Number(line.quantity)) || 1))
+    let customerImageUrl: string | null = null
+    if (line.customer_image_url?.trim()) {
+      const u = line.customer_image_url.trim()
+      if (!prefix || !u.startsWith(prefix) || u.length > 2048) {
+        return { error: 'Hay una imagen adjunta inválida. Volvé a cargar desde Mi Figurita.' }
+      }
+      customerImageUrl = u
+    }
+    rows.push({
+      user_id: user.id,
+      product_type: line.product_type,
+      quantity: qty,
+      notes: line.notes?.trim() || null,
+      contact_name: name,
+      contact_email: email,
+      contact_phone: input.contact_phone?.trim() || null,
+      status: 'pending',
+      customer_image_url: customerImageUrl,
+    })
+  }
+
+  const { error } = await supabase.from('print_orders').insert(rows)
+  if (error) {
+    console.error('Error batch insert print_orders:', error)
+    return { error: 'No se pudieron registrar los pedidos.' }
+  }
+
+  revalidatePath('/store')
+  revalidatePath('/admin')
+  return { success: true, count: rows.length }
+}
+
 export async function updatePrintOrderAdmin(
   orderId: string,
   patch: { status?: PrintOrderStatus; admin_notes?: string | null; admin_file_url?: string | null }
