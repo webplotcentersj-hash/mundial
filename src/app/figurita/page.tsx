@@ -7,7 +7,7 @@ import { mockTeams } from '@/lib/mockData'
 import Image from 'next/image'
 import type { FiguritaAiTheme } from '@/lib/figuritaTheme'
 import { jerseyShirtBackground } from '@/lib/figuritaJerseyCss'
-import { getFiguritaNickname } from '@/lib/figuritaNicknames'
+import { getPlayerApodo } from '@/lib/figuritaPlayerApodo'
 import { generateFiguritaTheme } from '@/app/figurita/actions'
 
 // Filtramos equipos placeholder (como 'Ganador 74') y ordenamos alfabéticamente
@@ -325,16 +325,11 @@ export default function FiguritaPage() {
 
                 <div className="flex justify-between items-end gap-2 text-xs text-neutral-300 font-medium">
                   <span className="min-w-0 truncate uppercase tracking-wider">{selectedTeam.name}</span>
-                  <div className="min-w-0 max-w-[58%] text-right leading-tight">
-                    <div className="text-[10px] font-bold uppercase tracking-wider text-emerald-300/95">
-                      {getFiguritaNickname(selectedTeamCode, selectedTeam.name)}
-                    </div>
-                    <div
-                      className="mt-0.5 text-[11px] font-black uppercase tracking-tight text-white/95 truncate"
-                      title={(name || 'Tu Nombre').trim()}
-                    >
-                      {(name || 'Tu Nombre').trim()}
-                    </div>
+                  <div
+                    className="min-w-0 max-w-[58%] text-right text-[11px] font-black uppercase tracking-tight text-emerald-300/95 truncate"
+                    title={getPlayerApodo(name || 'Tu Nombre')}
+                  >
+                    {getPlayerApodo(name || 'Tu Nombre')}
                   </div>
                 </div>
 
