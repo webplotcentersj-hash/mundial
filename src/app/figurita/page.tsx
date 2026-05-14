@@ -122,7 +122,7 @@ export default function FiguritaPage() {
       })
       
       const link = document.createElement('a')
-      link.download = `figurita-${name.replace(/\\s+/g, '-').toLowerCase()}.png`
+      link.download = `figurita-${name.replace(/\s+/g, '-').toLowerCase()}.png`
       link.href = dataUrl
       link.click()
     } catch (err) {
@@ -330,10 +330,10 @@ export default function FiguritaPage() {
                 <img
                   src={displayPhoto}
                   alt="Foto del jugador"
-                  className="absolute inset-0 z-[1] h-full w-full object-cover object-top"
+                  className="absolute inset-0 z-0 h-full w-full object-cover object-top"
                 />
               ) : (
-                <div className="absolute inset-0 z-[1] flex flex-col items-center justify-center gap-2 bg-neutral-800 px-4 text-center">
+                <div className="absolute inset-0 z-0 flex flex-col items-center justify-center gap-2 bg-neutral-800 px-4 text-center">
                   <ImageIcon className="mb-0 h-20 w-20 text-neutral-600" />
                   <span className="text-sm font-bold uppercase tracking-widest text-neutral-500">Sin Foto</span>
                   {mode === 'classic' ? (
@@ -356,12 +356,12 @@ export default function FiguritaPage() {
               )}
 
               {/* Degradado inferior para legibilidad del texto */}
-              <div className="absolute bottom-0 left-0 right-0 h-1/2 bg-gradient-to-t from-black via-black/70 to-transparent"></div>
-              
+              <div className="pointer-events-none absolute bottom-0 left-0 right-0 z-[1] h-1/2 bg-gradient-to-t from-black via-black/70 to-transparent" />
+
               {/* Elementos de la UI de la figurita (Marcos, Textos, Bandera) */}
-              
+
               {/* Logo de la app arriba a la derecha */}
-              <div className="pointer-events-none absolute top-3 right-3 z-10 h-10 w-[104px] rounded-md bg-neutral-800 p-1 shadow-md ring-1 ring-white/15">
+              <div className="pointer-events-none absolute top-3 right-3 z-20 h-10 w-[104px] rounded-md bg-neutral-800 p-1 shadow-md ring-1 ring-white/15">
                 <Image
                   src="/plot%20center%20mundial.png"
                   alt="Plot Mundial"
@@ -373,7 +373,7 @@ export default function FiguritaPage() {
               </div>
 
               {/* Bandera del país seleccionado arriba a la izquierda */}
-              <div className="absolute top-4 left-4 w-12 h-8 rounded-sm overflow-hidden border border-white/20 shadow-lg relative">
+              <div className="absolute top-4 left-4 z-20 w-12 h-8 overflow-hidden rounded-sm border border-white/20 shadow-lg">
                   <Image unoptimized 
                     src={`https://flagcdn.com/w80/${selectedTeamCode === 'gb-eng' ? 'gb' : selectedTeamCode === 'gb-sct' ? 'gb-sct' : selectedTeamCode}.png`}
                   alt={selectedTeam.name}
@@ -382,14 +382,14 @@ export default function FiguritaPage() {
                 />
               </div>
 
-              {/* Contenedor inferior de datos */}
-              <div className="absolute bottom-0 left-0 right-0 p-5 flex flex-col">
+              {/* Contenedor inferior: nombre, posición, país, apodo (siempre encima de la foto) */}
+              <div className="absolute bottom-0 left-0 right-0 z-30 flex flex-col p-5">
                 
                 <div className="flex items-end justify-between border-b-2 border-white/20 pb-2 mb-2">
                   <div className="flex flex-col">
                     <span className="text-emerald-400 font-bold text-xs uppercase tracking-widest mb-1">{position}</span>
                     <h3 className="text-white font-black text-2xl uppercase tracking-tighter leading-none">
-                      {name || 'Tu Nombre'}
+                      {(name || '').trim() || 'Tu Nombre'}
                     </h3>
                   </div>
                   {/* Escudo secundario redondo (reusando la bandera por ahora) */}
@@ -407,16 +407,16 @@ export default function FiguritaPage() {
                   <span className="min-w-0 truncate uppercase tracking-wider">{selectedTeam.name}</span>
                   <div
                     className="min-w-0 max-w-[58%] text-right text-[11px] font-black uppercase tracking-tight text-emerald-300/95 truncate"
-                    title={getPlayerApodo(name || 'Tu Nombre')}
+                    title={getPlayerApodo((name || '').trim() || 'Tu Nombre')}
                   >
-                    {getPlayerApodo(name || 'Tu Nombre')}
+                    {getPlayerApodo((name || '').trim() || 'Tu Nombre')}
                   </div>
                 </div>
 
               </div>
 
               {/* Efecto Brilloso Superior (Glossy Overlay) */}
-              <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/5 to-white/20 pointer-events-none"></div>
+              <div className="pointer-events-none absolute inset-0 z-[24] bg-gradient-to-tr from-transparent via-white/5 to-white/20" />
 
             </div>
 

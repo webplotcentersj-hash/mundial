@@ -266,6 +266,38 @@ function extractGeneratedImageDataUrl(response: GenerateContentResponse): string
   return null
 }
 
+/** Instrucciones visuales para la IA según la posición elegida en el formulario (español). */
+function positionVisualBrief(position: string): string {
+  const p = position.trim().toLowerCase()
+  if (p === 'arquero')
+    return [
+      'The person must be depicted as a GOALKEEPER, not an outfield player.',
+      'Use a distinct goalkeeper kit (often different accent color from outfield, long sleeves common), padded jersey optional, and professional goalkeeper GLOVES clearly visible.',
+      'Shorts and socks in matching GK style; optional subtle goal net in deep background blur.',
+    ].join(' ')
+  if (p === 'defensa')
+    return [
+      'The person must be depicted as a DEFENDER / center-back or full-back, not a goalkeeper.',
+      'Standard outfield football kit (short sleeves typical) in the national palette; no goalkeeper gloves, no padded GK jersey.',
+    ].join(' ')
+  if (p === 'mediocampista')
+    return [
+      'The person must be depicted as a MIDFIELDER, not a goalkeeper or pure striker cliché.',
+      'Standard outfield kit in the national palette; athletic build, no GK gloves.',
+    ].join(' ')
+  if (p === 'delantero')
+    return [
+      'The person must be depicted as a FORWARD / STRIKER / attacker, not a goalkeeper.',
+      'Standard outfield kit in the national palette; no goalkeeper gloves.',
+    ].join(' ')
+  if (p === 'dt' || p.includes('director') || p.includes('técnico'))
+    return [
+      'The person must be depicted as a TEAM MANAGER / HEAD COACH on the sideline, NOT as an active player.',
+      'Dress in a smart tracksuit, coach jacket, or formal sideline attire in colors that echo the national team (no playing jersey, no shorts kit). Headset or tactics board optional and subtle.',
+    ].join(' ')
+  return `Depict the person in a role consistent with the football position "${position.trim()}" on the card (outfield kit unless it is clearly goalkeeper or coach).`
+}
+
 /**
  * Genera un retrato estilo figurita (misma persona, camiseta genérica a colores de la selección, estadio Mundial 2026).
  * Modelos con salida de imagen: GEMINI_IMAGE_MODEL opcional; si no, cadena flash-image → previews.
@@ -312,7 +344,9 @@ Generate a single new image: keep the same person (facial identity, apparent age
 
 Premium collectible football card portrait for a World Cup tournament in 2026 (Panini / sticker style lighting).
 
-• Kit: generic football jersey whose colors and simple patterns evoke "${params.countryName}" (typical flag/kit code: ${params.countryCode}). Only flat color fields or stripes. NO national federation crest, NO FIFA logo or wordmark, NO sponsor logos, NO official club or team badges.
+• Position on card (MUST follow — user selected "${safePos}" in Spanish): ${positionVisualBrief(params.position)}
+
+• Kit: generic football jersey whose colors and simple patterns evoke "${params.countryName}" (typical flag/kit code: ${params.countryCode}). Only flat color fields or stripes. NO national federation crest, NO FIFA logo or wordmark, NO sponsor logos, NO official club or team badges. Adapt the kit type to the position above (e.g. goalkeeper kit vs outfield kit vs coach attire).
 
 • Background: outdoor stadium at night, crowd bokeh, stadium lights, subtle confetti or haze — big-final atmosphere. No readable trademark text or logos.
 
