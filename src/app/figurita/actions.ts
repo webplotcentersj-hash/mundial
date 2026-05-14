@@ -1,6 +1,6 @@
 'use server'
 
-import { GoogleGenAI, type GenerateContentResponse } from '@google/genai'
+import { GoogleGenAI, Modality, type GenerateContentResponse } from '@google/genai'
 import type { FiguritaAiTheme, FiguritaStripeStyle } from '@/lib/figuritaTheme'
 
 const STRIPES: FiguritaStripeStyle[] = ['vertical', 'horizontal', 'sash', 'none', 'hoops']
@@ -236,6 +236,151 @@ Ejemplo de forma (no copies valores): {"backgroundCss":"linear-gradient(160deg,#
     return { ok: true, theme }
   } catch (e) {
     console.error('generateFiguritaTheme', e)
+    return { ok: false, error: formatGenaiError(e) }
+  }
+}
+
+export type GenerateFiguritaPortraitResult =
+  | { ok: true; imageDataUrl: string }
+  | { ok: false; error: string }
+
+function parseDataUrl(dataUrl: string): { mimeType: string; base64: string } | null {
+  const t = dataUrl.trim()
+  const m = /^data:([^;,]+);base64,([\s\S]+)$/.exec(t)
+  if (!m) return null
+  const mimeType = m[1].toLowerCase()
+  const base64 = m[2].replace(/\s/g, '')
+  if (!base64) return null
+  return { mimeType, base64 }
+}
+
+function extractGeneratedImageDataUrl(response: GenerateContentResponse): string | null {
+  const parts = response.candidates?.[0]?.content?.parts
+  if (!parts?.length) return null
+  for (let i = parts.length - 1; i >= 0; i--) {
+    const id = parts[i]?.inlineData
+    if (id?.data && id.mimeType && /^image\//i.test(id.mimeType)) {
+      return `data:${id.mimeType};base64,${id.data}`
+    }
+  }
+  return null
+}
+
+/**
+ * Genera un retrato estilo figurita (misma persona, camiseta genérica a colores de la selección, estadio Mundial 2026).
+ * Modelos con salida de imagen: GEMINI_IMAGE_MODEL opcional; si no, cadena flash-image → previews.
+ */
+export async function generateFiguritaPortrait(params: {
+  photoDataUrl: string
+  countryName: string
+  countryCode: string
+  playerName: string
+  position: string
+}): Promise<GenerateFiguritaPortraitResult> {
+  const apiKey = resolveGenaiApiKey()
+  if (!apiKey) {
+    return {
+      ok: false,
+      error:
+        'Falta clave de API. En .env.local o Vercel definí GEMINI_API_KEY (sin NEXT_PUBLIC). Reiniciá el servidor tras guardar.',
+    }
+  }
+
+  const parsed = parseDataUrl(params.photoDataUrl)
+  if (!parsed) {
+    return { ok: false, error: 'La foto no llegó en formato base64 válido (data URL).' }
+  }
+  if (!/^image\/(jpeg|jpg|png|webp)$/i.test(parsed.mimeType)) {
+    return { ok: false, error: 'Usá una imagen JPG, PNG o WebP.' }
+  }
+  if (parsed.base64.length > 14_000_000) {
+    return { ok: false, error: 'La imagen es demasiado grande. Probá otra más chica.' }
+  }
+
+  const envImg = process.env.GEMINI_IMAGE_MODEL?.trim()
+  const strippedImg = envImg ? stripModelId(envImg) : null
+  const modelChain = strippedImg
+    ? [strippedImg, 'gemini-2.5-flash-image', 'gemini-3.1-flash-image-preview', 'gemini-3-pro-image-preview']
+    : ['gemini-2.5-flash-image', 'gemini-3.1-flash-image-preview', 'gemini-3-pro-image-preview']
+
+  const safeName = params.playerName.replace(/"/g, "'").slice(0, 40)
+  const safePos = params.position.replace(/"/g, "'").slice(0, 32)
+
+  const prompt = `IMAGE-TO-IMAGE. The first attachment is one real person.
+
+Generate a single new image: keep the same person (facial identity, apparent age, skin tone, hair; no face swap).
+
+Premium collectible football card portrait for a World Cup tournament in 2026 (Panini / sticker style lighting).
+
+• Kit: generic football jersey whose colors and simple patterns evoke "${params.countryName}" (typical flag/kit code: ${params.countryCode}). Only flat color fields or stripes. NO national federation crest, NO FIFA logo or wordmark, NO sponsor logos, NO official club or team badges.
+
+• Background: outdoor stadium at night, crowd bokeh, stadium lights, subtle confetti or haze — big-final atmosphere. No readable trademark text or logos.
+
+• Framing: chest / three-quarter portrait, broadcast sports photography, photorealistic, shallow depth of field.
+
+• Do NOT paint the player's name ("${safeName}"), position ("${safePos}"), nicknames, or any other readable text on the image. Keep the lower ~25% calmer (darker or softer) for a UI overlay later.
+
+Avoid nudity or violence.`
+
+  try {
+    const ai = new GoogleGenAI({ apiKey })
+    let response: GenerateContentResponse | undefined
+    let lastError: unknown
+
+    for (let mi = 0; mi < modelChain.length; mi++) {
+      const model = modelChain[mi]!
+      try {
+        response = await ai.models.generateContent({
+          model,
+          contents: [
+            {
+              role: 'user',
+              parts: [
+                { inlineData: { mimeType: parsed.mimeType, data: parsed.base64 } },
+                { text: prompt },
+              ],
+            },
+          ],
+          config: {
+            responseModalities: [Modality.IMAGE, Modality.TEXT],
+            imageConfig: {
+              aspectRatio: '3:4',
+              personGeneration: 'ALLOW_ALL',
+            },
+            temperature: 0.35,
+          },
+        })
+        break
+      } catch (e) {
+        lastError = e
+        if (isInvalidApiKeyError(e)) {
+          return { ok: false, error: formatGenaiError(e) }
+        }
+        if (mi < modelChain.length - 1 && isLikelyWrongModelError(e)) {
+          continue
+        }
+        return { ok: false, error: formatGenaiError(e) }
+      }
+    }
+
+    if (!response) {
+      return { ok: false, error: formatGenaiError(lastError) }
+    }
+
+    const out = extractGeneratedImageDataUrl(response)
+    if (!out) {
+      const hint = response.text?.trim().slice(0, 220)
+      return {
+        ok: false,
+        error: [
+          'El modelo no devolvió imagen.',
+          hint || 'Probá otra foto, o definí GEMINI_IMAGE_MODEL=gemini-2.5-flash-image en el entorno.',
+        ].join(' '),
+      }
+    }
+    return { ok: true, imageDataUrl: out }
+  } catch (e) {
+    console.error('generateFiguritaPortrait', e)
     return { ok: false, error: formatGenaiError(e) }
   }
 }

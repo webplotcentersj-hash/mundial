@@ -1,14 +1,12 @@
 'use client'
 
-import { useState, useRef, useCallback, useEffect } from 'react'
+import { useState, useRef, useCallback } from 'react'
 import { toPng } from 'html-to-image'
 import { Download, Upload, ImageIcon, RefreshCw, Sparkles } from 'lucide-react'
 import { mockTeams } from '@/lib/mockData'
 import Image from 'next/image'
-import type { FiguritaAiTheme } from '@/lib/figuritaTheme'
-import { jerseyShirtBackground } from '@/lib/figuritaJerseyCss'
 import { getPlayerApodo } from '@/lib/figuritaPlayerApodo'
-import { generateFiguritaTheme } from '@/app/figurita/actions'
+import { generateFiguritaPortrait } from '@/app/figurita/actions'
 
 // Filtramos equipos placeholder (como 'Ganador 74') y ordenamos alfabéticamente
 const countries = mockTeams.filter(t => t.group !== 'KO').sort((a, b) => a.name.localeCompare(b.name))
@@ -22,7 +20,7 @@ export default function FiguritaPage() {
   const [position, setPosition] = useState<string>('Mediocampista')
   const [selectedTeamCode, setSelectedTeamCode] = useState<string>('ar') // Argentina por defecto
   const [isGenerating, setIsGenerating] = useState(false)
-  const [aiTheme, setAiTheme] = useState<FiguritaAiTheme | null>(null)
+  const [aiPortrait, setAiPortrait] = useState<string | null>(null)
   const [aiLoading, setAiLoading] = useState(false)
   const [aiError, setAiError] = useState<string | null>(null)
   
@@ -31,24 +29,57 @@ export default function FiguritaPage() {
 
   const selectedTeam = countries.find(t => t.code === selectedTeamCode) || countries[0]
 
-  useEffect(() => {
-    setAiTheme(null)
-    setAiError(null)
-  }, [selectedTeamCode])
+  const displayPhoto = aiPortrait ?? photo
+
+  async function resizePhotoForAi(dataUrl: string): Promise<string> {
+    const maxSide = 960
+    const quality = 0.82
+    return new Promise((resolve, reject) => {
+      const img = new window.Image()
+      img.onload = () => {
+        const scale = Math.min(1, maxSide / Math.max(img.naturalWidth, img.naturalHeight))
+        const w = Math.max(1, Math.round(img.naturalWidth * scale))
+        const h = Math.max(1, Math.round(img.naturalHeight * scale))
+        const canvas = document.createElement('canvas')
+        canvas.width = w
+        canvas.height = h
+        const ctx = canvas.getContext('2d')
+        if (!ctx) {
+          reject(new Error('canvas'))
+          return
+        }
+        ctx.drawImage(img, 0, 0, w, h)
+        resolve(canvas.toDataURL('image/jpeg', quality))
+      }
+      img.onerror = () => reject(new Error('No se pudo leer la imagen.'))
+      img.src = dataUrl
+    })
+  }
 
   const handleGeminiLook = async () => {
+    if (!photo) {
+      setAiError('Subí una foto primero: la IA arma el retrato con tu cara, la camiseta a colores de la selección y un estadio Mundial 2026.')
+      return
+    }
     setAiLoading(true)
     setAiError(null)
     try {
-      const res = await generateFiguritaTheme(selectedTeam.name, selectedTeam.code)
+      const resized = await resizePhotoForAi(photo)
+      const res = await generateFiguritaPortrait({
+        photoDataUrl: resized,
+        countryName: selectedTeam.name,
+        countryCode: selectedTeam.code,
+        playerName: (name || 'Jugador').trim(),
+        position: position.trim(),
+      })
       if (!res.ok) {
         setAiError(res.error)
         return
       }
-      setAiTheme(res.theme)
+      setAiPortrait(res.imageDataUrl)
     } catch (e) {
-      console.error('generateFiguritaTheme', e)
-      setAiError('No se pudo generar el diseño. Revisá la consola o probá otra vez.')
+      console.error('generateFiguritaPortrait', e)
+      setAiError('No se pudo generar el retrato. Revisá la consola o probá otra foto.')
     } finally {
       setAiLoading(false)
     }
@@ -60,6 +91,7 @@ export default function FiguritaPage() {
       const reader = new FileReader()
       reader.onload = (event) => {
         setPhoto(event.target?.result as string)
+        setAiPortrait(null)
       }
       reader.readAsDataURL(file)
     }
@@ -110,6 +142,10 @@ export default function FiguritaPage() {
             {/* Foto */}
             <div className="space-y-2">
               <label className="text-sm font-medium text-neutral-300 block">Sube tu foto (Cara/Busto)</label>
+              <p className="text-xs text-neutral-500 leading-snug">
+                Crear con IA genera un retrato con tu cara, una camiseta genérica a colores de la selección (sin escudos
+                oficiales) y un estadio nocturno estilo Mundial 2026.
+              </p>
               <div 
                 onClick={() => fileInputRef.current?.click()}
                 className="border-2 border-dashed border-white/20 rounded-xl p-8 text-center cursor-pointer hover:bg-white/5 transition-colors flex flex-col items-center justify-center gap-3"
@@ -167,7 +203,11 @@ export default function FiguritaPage() {
                 <label className="text-sm font-medium text-neutral-300 block mb-1">Selección Nacional</label>
                 <select 
                   value={selectedTeamCode}
-                  onChange={(e) => setSelectedTeamCode(e.target.value)}
+                  onChange={(e) => {
+                    setSelectedTeamCode(e.target.value)
+                    setAiPortrait(null)
+                    setAiError(null)
+                  }}
                   className="w-full bg-black/50 border border-white/10 rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all appearance-none"
                 >
                   {countries.map(country => (
@@ -202,7 +242,7 @@ export default function FiguritaPage() {
             <div className="pt-4 border-t border-white/10">
               <button
                 onClick={handleDownload}
-                disabled={isGenerating || !photo}
+                disabled={isGenerating || !displayPhoto}
                 className="w-full py-4 bg-gradient-to-r from-emerald-500 to-cyan-600 hover:from-emerald-400 hover:to-cyan-500 text-white font-bold rounded-xl transition-all shadow-[0_0_20px_rgba(16,185,129,0.3)] disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
                 {isGenerating ? (
@@ -212,7 +252,7 @@ export default function FiguritaPage() {
                 )}
                 {isGenerating ? 'Generando Alta Calidad...' : 'Descargar Figurita'}
               </button>
-              {!photo && (
+              {!displayPhoto && (
                 <p className="text-xs text-center text-red-400 mt-2">Sube una foto para poder descargar.</p>
               )}
             </div>
@@ -232,76 +272,27 @@ export default function FiguritaPage() {
               }}
             >
               
-              {/* Fondo: Gemini o default */}
-              <div
-                className="absolute inset-0"
-                style={{ background: aiTheme?.backgroundCss ?? DEFAULT_CARD_BACKGROUND }}
-              />
+              {/* Fondo base figurita */}
+              <div className="absolute inset-0" style={{ background: DEFAULT_CARD_BACKGROUND }} />
               <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_80%_55%_at_50%_-10%,rgba(255,255,255,0.14),transparent_55%)] opacity-40 mix-blend-overlay" />
-              {aiTheme && (
-                <>
-                  <div
-                    className="pointer-events-none absolute inset-x-0 bottom-0 top-[36%]"
-                    style={{
-                      background: jerseyShirtBackground(aiTheme),
-                      maskImage:
-                        'linear-gradient(180deg, transparent 0%, rgba(0,0,0,0.35) 14%, black 22%, black 100%)',
-                      WebkitMaskImage:
-                        'linear-gradient(180deg, transparent 0%, rgba(0,0,0,0.35) 14%, black 22%, black 100%)',
-                    }}
-                  />
-                  <div
-                    className="pointer-events-none absolute left-1/2 top-[32%] h-[16%] w-[58%] -translate-x-1/2 opacity-[0.85]"
-                    style={{
-                      background: `linear-gradient(180deg, ${aiTheme.jerseyAccent}55 0%, transparent 85%)`,
-                      clipPath: 'polygon(12% 100%, 50% 0%, 88% 100%)',
-                    }}
-                  />
-                  <div
-                    className="pointer-events-none absolute bottom-0 left-0 right-0 h-[22%]"
-                    style={{
-                      background: `linear-gradient(0deg, ${aiTheme.jerseyAccent}22 0%, transparent 100%)`,
-                    }}
-                  />
-                </>
-              )}
-              {!aiTheme && (
-                <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-white/25 via-neutral-900/80 to-black opacity-25" />
-              )}
-              
-              {/* Capa de la Foto del Usuario */}
-              {photo ? (
+              <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-white/25 via-neutral-900/80 to-black opacity-25" />
+
+              {/* Foto: original o retrato generado por IA */}
+              {displayPhoto ? (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img 
-                  src={photo} 
-                  alt="Foto del jugador" 
-                  className="absolute inset-0 w-full h-full object-cover object-top"
+                <img
+                  src={displayPhoto}
+                  alt="Foto del jugador"
+                  className="absolute inset-0 z-[1] h-full w-full object-cover object-top"
                 />
               ) : (
-                <div
-                  className={
-                    aiTheme
-                      ? 'pointer-events-none absolute inset-x-0 top-0 z-[1] flex h-[max(34%,150px)] max-h-[40%] flex-col items-center justify-center gap-1 border-b border-white/15 bg-gradient-to-b from-neutral-950/85 via-neutral-900/45 to-transparent px-4 text-center backdrop-blur-[2px]'
-                      : 'absolute inset-0 z-[1] flex flex-col items-center justify-center bg-neutral-800'
-                  }
-                >
-                  <ImageIcon
-                    className={aiTheme ? 'mb-0 h-12 w-12 text-neutral-500' : 'mb-2 h-20 w-20 text-neutral-600'}
-                  />
-                  <span
-                    className={
-                      aiTheme
-                        ? 'text-[10px] font-bold uppercase tracking-widest text-neutral-400'
-                        : 'text-sm font-bold uppercase tracking-widest text-neutral-500'
-                    }
-                  >
-                    Sin Foto
+                <div className="absolute inset-0 z-[1] flex flex-col items-center justify-center gap-2 bg-neutral-800 px-4 text-center">
+                  <ImageIcon className="mb-0 h-20 w-20 text-neutral-600" />
+                  <span className="text-sm font-bold uppercase tracking-widest text-neutral-500">Sin Foto</span>
+                  <span className="max-w-[240px] text-[10px] leading-tight text-neutral-500">
+                    Subí tu cara y tocá Crear con IA para armar camiseta a colores de la selección y fondo de estadio
+                    Mundial 2026.
                   </span>
-                  {aiTheme && (
-                    <span className="max-w-[200px] text-[9px] leading-tight text-neutral-500">
-                      Fondo y camiseta IA visibles abajo · subí foto para tapar esta zona
-                    </span>
-                  )}
                 </div>
               )}
 
@@ -370,11 +361,22 @@ export default function FiguritaPage() {
 
             </div>
 
-            <p className="text-neutral-500 text-sm mt-6 flex items-center gap-2">
-              <span className="inline-block w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-              Vista previa en tiempo real
-              {aiTheme && <span className="text-emerald-400/80">· Look IA</span>}
+            <p className="text-neutral-500 text-sm mt-6 flex flex-wrap items-center justify-center gap-x-2 gap-y-1 text-center">
+              <span className="inline-flex items-center gap-2">
+                <span className="inline-block w-2 h-2 shrink-0 rounded-full bg-emerald-500 animate-pulse" />
+                Vista previa en tiempo real
+              </span>
+              {aiPortrait && <span className="text-emerald-400/80">· Retrato IA</span>}
             </p>
+            {aiPortrait && (
+              <button
+                type="button"
+                onClick={() => setAiPortrait(null)}
+                className="mt-3 text-xs font-medium text-neutral-400 underline decoration-white/20 underline-offset-2 hover:text-white"
+              >
+                Volver a la foto subida
+              </button>
+            )}
 
           </div>
         </div>
