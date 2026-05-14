@@ -1,10 +1,34 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Settings, CheckCircle2, Save, ShieldAlert, Users, Trophy, Download, Eye, Mail, Loader2 } from 'lucide-react'
+import { Settings, CheckCircle2, Save, ShieldAlert, Users, Trophy, Download, Eye, Loader2, Printer } from 'lucide-react'
 import Image from 'next/image'
 import { motion, AnimatePresence } from 'framer-motion'
-import { getMatches, getRanking, updateMatchScore } from '@/lib/actions'
+import {
+  getMatches,
+  getAdminProfiles,
+  listPrintOrdersForAdmin,
+  updatePrintOrderAdmin,
+  updateMatchScore,
+  type PrintOrderRow,
+  type PrintOrderStatus,
+} from '@/lib/actions'
+
+const PRINT_STATUS_OPTIONS: { value: PrintOrderStatus; label: string }[] = [
+  { value: 'pending', label: 'Pendiente' },
+  { value: 'in_review', label: 'En revisión' },
+  { value: 'printing', label: 'Imprenta' },
+  { value: 'ready', label: 'Listo' },
+  { value: 'shipped', label: 'Enviado' },
+  { value: 'cancelled', label: 'Cancelado' },
+]
+
+function productTypeLabel(t: string) {
+  if (t === 'figurita') return 'Figurita'
+  if (t === 'sticker') return 'Stickers'
+  if (t === 'poster') return 'Poster'
+  return t
+}
 
 export default function AdminPage() {
   const [matches, setMatches] = useState<any[]>([])
@@ -12,12 +36,17 @@ export default function AdminPage() {
   const [loading, setLoading] = useState(true)
   const [isSaving, setIsSaving] = useState<string | null>(null)
   const [results, setResults] = useState<Record<string, { home: string, away: string }>>({})
-  const [activeTab, setActiveTab] = useState<'results' | 'users' | 'podium'>('results')
+  const [activeTab, setActiveTab] = useState<'results' | 'users' | 'podium' | 'print-orders'>('results')
+
+  const [printOrders, setPrintOrders] = useState<PrintOrderRow[]>([])
+  const [printOrdersLoading, setPrintOrdersLoading] = useState(false)
+  const [printSavingId, setPrintSavingId] = useState<string | null>(null)
+  const [adminNotesDraft, setAdminNotesDraft] = useState<Record<string, string>>({})
 
   useEffect(() => {
     async function loadData() {
       const fetchedMatches = await getMatches()
-      const fetchedUsers = await getRanking()
+      const fetchedUsers = await getAdminProfiles()
       
       const mappedMatches = (fetchedMatches || []).map((m: any) => ({
         ...m,
@@ -34,6 +63,60 @@ export default function AdminPage() {
     loadData()
   }, [])
 
+  useEffect(() => {
+    if (activeTab !== 'print-orders') return
+    let cancelled = false
+    async function loadPrint() {
+      setPrintOrdersLoading(true)
+      try {
+        const rows = await listPrintOrdersForAdmin()
+        if (cancelled) return
+        setPrintOrders(rows)
+        setAdminNotesDraft((prev) => {
+          const next = { ...prev }
+          for (const o of rows) {
+            if (next[o.id] === undefined) next[o.id] = o.admin_notes ?? ''
+          }
+          return next
+        })
+      } catch (e: any) {
+        if (!cancelled) alert(e?.message || 'Error al cargar pedidos de imprenta')
+      } finally {
+        if (!cancelled) setPrintOrdersLoading(false)
+      }
+    }
+    loadPrint()
+    return () => {
+      cancelled = true
+    }
+  }, [activeTab])
+
+  const handlePrintStatusChange = async (orderId: string, status: PrintOrderStatus) => {
+    setPrintSavingId(orderId)
+    try {
+      await updatePrintOrderAdmin(orderId, { status })
+      setPrintOrders((prev) => prev.map((o) => (o.id === orderId ? { ...o, status } : o)))
+    } catch (e: any) {
+      alert(e?.message || 'No se pudo actualizar el estado')
+    } finally {
+      setPrintSavingId(null)
+    }
+  }
+
+  const handleSavePrintAdminNotes = async (orderId: string) => {
+    setPrintSavingId(orderId)
+    try {
+      const notes = adminNotesDraft[orderId] ?? ''
+      await updatePrintOrderAdmin(orderId, { admin_notes: notes.trim() || null })
+      setPrintOrders((prev) =>
+        prev.map((o) => (o.id === orderId ? { ...o, admin_notes: notes.trim() || null } : o)),
+      )
+    } catch (e: any) {
+      alert(e?.message || 'No se pudieron guardar las notas')
+    } finally {
+      setPrintSavingId(null)
+    }
+  }
 
   const handleResultChange = (matchId: string, team: 'home' | 'away', value: string) => {
     setResults(prev => ({
@@ -115,6 +198,12 @@ export default function AdminPage() {
               className={`px-6 py-3 rounded-xl font-bold flex items-center gap-2 transition-all ${activeTab === 'podium' ? 'bg-amber-500 text-black shadow-[0_0_20px_rgba(245,158,11,0.4)] border border-amber-400/50' : 'bg-white/5 text-white/50 hover:bg-white/10 border border-white/5'}`}
             >
               <Trophy className="w-5 h-5" /> Podio y Ganadores
+            </button>
+            <button 
+              onClick={() => setActiveTab('print-orders')}
+              className={`px-6 py-3 rounded-xl font-bold flex items-center gap-2 transition-all ${activeTab === 'print-orders' ? 'bg-violet-600 text-white shadow-[0_0_20px_rgba(139,92,246,0.35)] border border-violet-400/50' : 'bg-white/5 text-white/50 hover:bg-white/10 border border-white/5'}`}
+            >
+              <Printer className="w-5 h-5" /> Imprenta
             </button>
           </div>
           
@@ -220,7 +309,7 @@ export default function AdminPage() {
                     <thead className="bg-white/5 border-b border-white/10 text-xs uppercase tracking-widest text-white/50">
                       <tr>
                         <th className="px-6 py-4 font-bold">Usuario</th>
-                        <th className="px-6 py-4 font-bold">Email</th>
+                        <th className="px-6 py-4 font-bold">Rol</th>
                         <th className="px-6 py-4 font-bold text-center">Partidos Predichos</th>
                         <th className="px-6 py-4 font-bold text-center">Puntos Totales</th>
                         <th className="px-6 py-4 font-bold">Última Actividad</th>
@@ -238,7 +327,15 @@ export default function AdminPage() {
                               <span className="font-bold text-white">{user.username}</span>
                             </div>
                           </td>
-                          <td className="px-6 py-4 text-sm text-white/70">{user.email}</td>
+                          <td className="px-6 py-4">
+                            <span className={`inline-flex rounded-full border px-2.5 py-0.5 text-xs font-bold uppercase tracking-wide ${
+                              user.role === 'admin'
+                                ? 'border-red-500/40 bg-red-500/15 text-red-300'
+                                : 'border-white/15 bg-white/5 text-white/60'
+                            }`}>
+                              {user.role === 'admin' ? 'Admin' : 'Usuario'}
+                            </span>
+                          </td>
                           <td className="px-6 py-4 text-center">
                             <span className="bg-white/10 px-3 py-1 rounded-full text-xs font-mono text-white/80 border border-white/10">
                               - / 104
@@ -298,8 +395,8 @@ export default function AdminPage() {
                     <div className="flex items-center gap-2 text-gray-300 font-black text-3xl mt-2 drop-shadow-md">
                       {users[1].total_points} <span className="text-sm text-gray-300/50 uppercase tracking-widest">PTS</span>
                     </div>
-                    <a href={`mailto:${users[1].email || ''}`} className="mt-6 flex items-center gap-2 text-xs text-white/50 hover:text-white transition-colors bg-white/5 px-4 py-2 rounded-full border border-white/10">
-                      <Mail className="w-3 h-3" /> Contactar
+                    <a href="/pedidos" className="mt-6 flex items-center gap-2 text-xs text-white/50 hover:text-white transition-colors bg-white/5 px-4 py-2 rounded-full border border-white/10">
+                      Coordinar por Imprenta
                     </a>
                   </div>
                   <div className="w-full h-16 bg-gray-300/20 border-x border-t border-gray-300/30 rounded-t-xl flex items-center justify-center mt-2">
@@ -321,8 +418,8 @@ export default function AdminPage() {
                     <div className="flex items-center gap-2 text-amber-400 font-black text-5xl mt-2 drop-shadow-[0_0_10px_rgba(245,158,11,0.8)]">
                       {users[0].total_points} <span className="text-base text-amber-500/50 uppercase tracking-widest">PTS</span>
                     </div>
-                    <a href={`mailto:${users[0].email || ''}`} className="mt-8 flex items-center gap-2 text-sm text-amber-100 hover:text-white transition-colors bg-amber-500/20 px-5 py-2.5 rounded-full border border-amber-500/30 font-bold">
-                      <Mail className="w-4 h-4" /> Enviar Premio
+                    <a href="/pedidos" className="mt-8 flex items-center gap-2 text-sm text-amber-100 hover:text-white transition-colors bg-amber-500/20 px-5 py-2.5 rounded-full border border-amber-500/30 font-bold">
+                      Coordinar por Imprenta
                     </a>
                   </div>
                   <div className="w-full h-24 bg-gradient-to-t from-amber-500/20 to-amber-500/40 border-x border-t border-amber-500/50 rounded-t-xl flex items-start justify-center pt-4 mt-2 shadow-[0_-10px_20px_rgba(245,158,11,0.15)]">
@@ -343,8 +440,8 @@ export default function AdminPage() {
                     <div className="flex items-center gap-2 text-orange-500 font-black text-3xl mt-2 drop-shadow-md">
                       {users[2].total_points} <span className="text-sm text-orange-500/50 uppercase tracking-widest">PTS</span>
                     </div>
-                    <a href={`mailto:${users[2].email || ''}`} className="mt-6 flex items-center gap-2 text-xs text-white/50 hover:text-white transition-colors bg-white/5 px-4 py-2 rounded-full border border-white/10">
-                      <Mail className="w-3 h-3" /> Contactar
+                    <a href="/pedidos" className="mt-6 flex items-center gap-2 text-xs text-white/50 hover:text-white transition-colors bg-white/5 px-4 py-2 rounded-full border border-white/10">
+                      Coordinar por Imprenta
                     </a>
                   </div>
                   <div className="w-full h-12 bg-orange-900/40 border-x border-t border-orange-700/50 rounded-t-xl flex items-center justify-center mt-2">
@@ -353,6 +450,131 @@ export default function AdminPage() {
                 </div>
                 )}
               </div>
+            </motion.div>
+          )}
+
+          {activeTab === 'print-orders' && (
+            <motion.div
+              key="print-orders"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              className="space-y-6"
+            >
+              <div className="flex flex-col gap-2 rounded-2xl border border-violet-500/25 bg-violet-500/5 p-6 backdrop-blur-sm shadow-xl sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <h3 className="text-lg font-bold text-violet-200">Pedidos de imprenta</h3>
+                  <p className="text-sm text-white/55">
+                    Figuritas, stickers y posters solicitados desde la página{' '}
+                    <a href="/pedidos" className="font-semibold text-violet-300 underline decoration-violet-500/40 underline-offset-2">
+                      /pedidos
+                    </a>
+                    .
+                  </p>
+                </div>
+              </div>
+
+              {printOrdersLoading ? (
+                <div className="flex justify-center py-16">
+                  <Loader2 className="h-10 w-10 animate-spin text-violet-400" />
+                </div>
+              ) : printOrders.length === 0 ? (
+                <p className="rounded-2xl border border-white/10 bg-[#0a0f1c]/80 px-6 py-12 text-center text-white/50">
+                  No hay pedidos todavía.
+                </p>
+              ) : (
+                <div className="glass-card overflow-hidden rounded-2xl border border-white/10 bg-[#0a0f1c]/80 backdrop-blur-xl">
+                  <div className="overflow-x-auto">
+                    <table className="w-full min-w-[900px] text-left text-sm">
+                      <thead className="border-b border-white/10 bg-white/5 text-xs uppercase tracking-widest text-white/50">
+                        <tr>
+                          <th className="px-4 py-3 font-bold">Fecha</th>
+                          <th className="px-4 py-3 font-bold">Usuario</th>
+                          <th className="px-4 py-3 font-bold">Producto</th>
+                          <th className="px-4 py-3 font-bold text-center">Cant.</th>
+                          <th className="px-4 py-3 font-bold">Contacto</th>
+                          <th className="px-4 py-3 font-bold">Estado</th>
+                          <th className="px-4 py-3 font-bold">Notas admin</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-white/5">
+                        {printOrders.map((o) => (
+                          <tr key={o.id} className="align-top hover:bg-white/[0.03]">
+                            <td className="whitespace-nowrap px-4 py-3 text-white/45">
+                              {new Date(o.created_at).toLocaleString('es-AR')}
+                            </td>
+                            <td className="px-4 py-3">
+                              <div className="flex items-center gap-2">
+                                <div className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-full bg-gradient-to-br from-violet-500 to-fuchsia-600 text-xs font-bold text-white">
+                                  {o.profiles?.avatar_url ? (
+                                    // eslint-disable-next-line @next/next/no-img-element
+                                    <img src={o.profiles.avatar_url} alt="" className="h-full w-full object-cover" />
+                                  ) : (
+                                    (o.profiles?.username || '?').charAt(0).toUpperCase()
+                                  )}
+                                </div>
+                                <span className="font-semibold text-white">{o.profiles?.username || '—'}</span>
+                              </div>
+                            </td>
+                            <td className="px-4 py-3 font-medium text-white/90">{productTypeLabel(o.product_type)}</td>
+                            <td className="px-4 py-3 text-center font-mono text-white/80">{o.quantity}</td>
+                            <td className="max-w-[220px] px-4 py-3 text-xs text-white/70">
+                              <div className="font-semibold text-white/90">{o.contact_name}</div>
+                              <div>{o.contact_email}</div>
+                              {o.contact_phone && <div className="text-white/50">{o.contact_phone}</div>}
+                              {o.notes && (
+                                <p className="mt-1 line-clamp-3 border-t border-white/10 pt-1 text-white/45" title={o.notes}>
+                                  {o.notes}
+                                </p>
+                              )}
+                            </td>
+                            <td className="px-4 py-3">
+                              <div className="flex items-center gap-2">
+                                <select
+                                  value={o.status}
+                                  disabled={printSavingId === o.id}
+                                  onChange={(e) =>
+                                    handlePrintStatusChange(o.id, e.target.value as PrintOrderStatus)
+                                  }
+                                  className="max-w-[160px] rounded-lg border border-white/15 bg-[#060913] px-2 py-2 text-xs font-semibold text-white outline-none focus:ring-2 focus:ring-violet-500/50 disabled:opacity-50"
+                                >
+                                  {PRINT_STATUS_OPTIONS.map((opt) => (
+                                    <option key={opt.value} value={opt.value}>
+                                      {opt.label}
+                                    </option>
+                                  ))}
+                                </select>
+                                {printSavingId === o.id && (
+                                  <Loader2 className="h-4 w-4 shrink-0 animate-spin text-violet-400" />
+                                )}
+                              </div>
+                            </td>
+                            <td className="px-4 py-3">
+                              <textarea
+                                rows={2}
+                                value={adminNotesDraft[o.id] ?? ''}
+                                onChange={(e) =>
+                                  setAdminNotesDraft((prev) => ({ ...prev, [o.id]: e.target.value }))
+                                }
+                                className="mb-2 w-full min-w-[180px] resize-y rounded-lg border border-white/10 bg-black/40 px-2 py-2 text-xs text-white outline-none focus:ring-2 focus:ring-violet-500/40"
+                                placeholder="Interno…"
+                              />
+                              <button
+                                type="button"
+                                disabled={printSavingId === o.id}
+                                onClick={() => handleSavePrintAdminNotes(o.id)}
+                                className="rounded-lg border border-violet-500/40 bg-violet-500/20 px-3 py-1.5 text-xs font-bold text-violet-100 transition hover:bg-violet-500/30 disabled:opacity-40"
+                              >
+                                Guardar nota
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
             </motion.div>
           )}
         </AnimatePresence>

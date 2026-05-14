@@ -32,10 +32,13 @@ export async function getMatches() {
 
 export async function getRanking() {
   const supabase = await createClient()
+  // Ranking global = solo puntos de pronósticos del fixture (profiles.total_points).
+  // El dashboard puede mostrar fixture + llaves; eso no entra en total_points salvo que se integre en backend.
   const { data: profiles, error } = await supabase
     .from('profiles')
     .select('id, username, avatar_url, total_points, last_active')
     .order('total_points', { ascending: false })
+    .order('last_active', { ascending: false, nullsFirst: false })
     .limit(50)
 
   if (error) {
@@ -45,6 +48,30 @@ export async function getRanking() {
   return profiles
 }
 
+export type PrintProductType = 'figurita' | 'sticker' | 'poster'
+export type PrintOrderStatus =
+  | 'pending'
+  | 'in_review'
+  | 'printing'
+  | 'ready'
+  | 'shipped'
+  | 'cancelled'
+
+export type PrintOrderRow = {
+  id: string
+  user_id: string
+  product_type: PrintProductType
+  quantity: number
+  notes: string | null
+  contact_name: string
+  contact_email: string
+  contact_phone: string | null
+  status: PrintOrderStatus
+  admin_notes: string | null
+  created_at: string
+  updated_at: string
+  profiles?: { username: string | null; avatar_url: string | null } | null
+}
 
 // --- ACCIONES DE USUARIO ---
 
@@ -141,6 +168,156 @@ export async function verifyAdmin() {
   return profile?.role === 'admin'
 }
 
+/** Lista ampliada de perfiles para el panel admin (sin email en DB: ver contacto en pedidos de imprenta). */
+export async function getAdminProfiles() {
+  const supabase = await createClient()
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('id, username, avatar_url, total_points, last_active, created_at, role')
+    .order('total_points', { ascending: false })
+    .order('last_active', { ascending: false, nullsFirst: false })
+    .limit(500)
+
+  if (error) {
+    console.error('Error fetching admin profiles:', error)
+    return []
+  }
+  return data ?? []
+}
+
+export async function listPrintOrdersForAdmin(): Promise<PrintOrderRow[]> {
+  const isAdmin = await verifyAdmin()
+  if (!isAdmin) throw new Error('No autorizado')
+
+  const supabase = await createClient()
+  const { data, error } = await supabase
+    .from('print_orders')
+    .select('*, profiles(username, avatar_url)')
+    .order('created_at', { ascending: false })
+    .limit(300)
+
+  if (error) {
+    console.error('Error listing print orders:', error)
+    throw new Error('No se pudieron cargar los pedidos')
+  }
+  return (data ?? []) as PrintOrderRow[]
+}
+
+export async function listMyPrintOrders(): Promise<PrintOrderRow[]> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return []
+
+  const { data, error } = await supabase
+    .from('print_orders')
+    .select('*')
+    .eq('user_id', user.id)
+    .order('created_at', { ascending: false })
+    .limit(50)
+
+  if (error) {
+    console.error('Error listing my print orders:', error)
+    return []
+  }
+  return (data ?? []) as PrintOrderRow[]
+}
+
+export async function createPrintOrder(input: {
+  product_type: PrintProductType
+  quantity: number
+  notes?: string
+  contact_name: string
+  contact_email: string
+  contact_phone?: string
+}) {
+  const supabase = await createClient()
+  const { data: { user }, error: authError } = await supabase.auth.getUser()
+  if (authError || !user) {
+    return { error: 'Tenés que iniciar sesión para pedir una impresión' }
+  }
+
+  const profileCheck = await ensureUserProfile(supabase, user)
+  if (profileCheck.error) {
+    return { error: profileCheck.error }
+  }
+
+  const allowed: PrintProductType[] = ['figurita', 'sticker', 'poster']
+  if (!allowed.includes(input.product_type)) {
+    return { error: 'Tipo de producto inválido' }
+  }
+
+  const qty = Math.min(99, Math.max(1, Math.floor(Number(input.quantity)) || 1))
+  const name = input.contact_name.trim()
+  const email = input.contact_email.trim()
+  if (name.length < 2) return { error: 'Indicá un nombre de contacto válido' }
+  if (email.length < 5 || !email.includes('@')) return { error: 'Indicá un email de contacto válido' }
+
+  const { error } = await supabase.from('print_orders').insert({
+    user_id: user.id,
+    product_type: input.product_type,
+    quantity: qty,
+    notes: input.notes?.trim() || null,
+    contact_name: name,
+    contact_email: email,
+    contact_phone: input.contact_phone?.trim() || null,
+    status: 'pending',
+  })
+
+  if (error) {
+    console.error('Error creating print order:', error)
+    return { error: 'No se pudo registrar el pedido. ¿Ya ejecutaste la migración SQL en Supabase?' }
+  }
+
+  revalidatePath('/pedidos')
+  revalidatePath('/admin')
+  return { success: true }
+}
+
+export async function updatePrintOrderAdmin(
+  orderId: string,
+  patch: { status?: PrintOrderStatus; admin_notes?: string | null }
+) {
+  const isAdmin = await verifyAdmin()
+  if (!isAdmin) throw new Error('No autorizado')
+
+  const allowedStatus: PrintOrderStatus[] = [
+    'pending',
+    'in_review',
+    'printing',
+    'ready',
+    'shipped',
+    'cancelled',
+  ]
+  if (patch.status && !allowedStatus.includes(patch.status)) {
+    throw new Error('Estado inválido')
+  }
+
+  const supabase = await createClient()
+  const update: Record<string, unknown> = {}
+  if (patch.status) update.status = patch.status
+  if (patch.admin_notes !== undefined) update.admin_notes = patch.admin_notes
+
+  if (Object.keys(update).length === 0) {
+    return { success: true }
+  }
+
+  const { error } = await supabase.from('print_orders').update(update).eq('id', orderId)
+  if (error) {
+    console.error('Error updating print order:', error)
+    throw new Error('No se pudo actualizar el pedido')
+  }
+
+  revalidatePath('/admin')
+  revalidatePath('/pedidos')
+  return { success: true }
+}
+
+/** Convierte marcadores de DB/formulario a entero (evita fallar el === si vienen como string). */
+function toScoreInt(v: unknown): number {
+  const n = Number(v)
+  return Number.isFinite(n) ? Math.trunc(n) : 0
+}
+
 export async function updateMatchScore(matchId: string, homeScore: number, awayScore: number) {
   const isAdmin = await verifyAdmin()
   if (!isAdmin) {
@@ -148,13 +325,15 @@ export async function updateMatchScore(matchId: string, homeScore: number, awayS
   }
 
   const supabase = await createClient()
+  const hs = toScoreInt(homeScore)
+  const as = toScoreInt(awayScore)
 
   // 1. Actualizar el partido
   const { error: matchError } = await supabase
     .from('matches')
     .update({ 
-      home_score: homeScore, 
-      away_score: awayScore,
+      home_score: hs, 
+      away_score: as,
       status: 'finished'
     })
     .eq('id', matchId)
@@ -168,14 +347,16 @@ export async function updateMatchScore(matchId: string, homeScore: number, awayS
   const { data: predictions } = await supabase.from('predictions').select('*').eq('match_id', matchId)
   
   if (predictions && predictions.length > 0) {
-    const realResult = homeScore > awayScore ? 'HOME' : homeScore < awayScore ? 'AWAY' : 'DRAW'
+    const realResult = hs > as ? 'HOME' : hs < as ? 'AWAY' : 'DRAW'
 
     for (const pred of predictions) {
       let points = 0
-      const predResult = pred.home_score > pred.away_score ? 'HOME' : pred.home_score < pred.away_score ? 'AWAY' : 'DRAW'
+      const ph = toScoreInt(pred.home_score)
+      const pa = toScoreInt(pred.away_score)
+      const predResult = ph > pa ? 'HOME' : ph < pa ? 'AWAY' : 'DRAW'
 
       // Acierto exacto: 3 puntos
-      if (pred.home_score === homeScore && pred.away_score === awayScore) {
+      if (ph === hs && pa === as) {
         points = 3
       } 
       // Acierto ganador/empate: 1 punto
@@ -183,19 +364,36 @@ export async function updateMatchScore(matchId: string, homeScore: number, awayS
         points = 1
       }
 
-      if (points > 0 || pred.points_earned !== points) {
-        // Actualizar predicción con puntos ganados
-        await supabase.from('predictions').update({ points_earned: points }).eq('id', pred.id)
+      const prevEarned = toScoreInt(pred.points_earned)
+      if (points !== prevEarned) {
+        const { error: predUpdErr } = await supabase
+          .from('predictions')
+          .update({ points_earned: points })
+          .eq('id', pred.id)
+        if (predUpdErr) {
+          console.error('Error updating prediction points:', predUpdErr)
+          continue
+        }
 
-        // Actualizar total_points del usuario
-        // Calculamos el delta de puntos si ya tenía puntos (ej. si el admin corrigió el resultado)
-        const pointDelta = points - (pred.points_earned || 0)
-        
+        const pointDelta = points - prevEarned
         if (pointDelta !== 0) {
-           // Obtenemos los puntos actuales
-           const { data: profile } = await supabase.from('profiles').select('total_points').eq('id', pred.user_id).single()
-           const newTotal = (profile?.total_points || 0) + pointDelta
-           await supabase.from('profiles').update({ total_points: newTotal }).eq('id', pred.user_id)
+          const { data: profile, error: profileReadErr } = await supabase
+            .from('profiles')
+            .select('total_points')
+            .eq('id', pred.user_id)
+            .single()
+          if (profileReadErr) {
+            console.error('Error reading profile for ranking:', profileReadErr)
+            continue
+          }
+          const newTotal = (profile?.total_points || 0) + pointDelta
+          const { error: profileUpdErr } = await supabase
+            .from('profiles')
+            .update({ total_points: newTotal })
+            .eq('id', pred.user_id)
+          if (profileUpdErr) {
+            console.error('Error updating profile total_points:', profileUpdErr)
+          }
         }
       }
     }
@@ -338,10 +536,16 @@ export async function getLeagueLeaderboard(leagueId: string) {
     .eq('league_id', leagueId)
 
   if (error) return []
-  return members.map((m: any) => ({
-    user_id: m.user_id,
-    ...m.profiles
-  })).sort((a: any, b: any) => b.total_points - a.total_points)
+  return members
+    .map((m: any) => ({
+      user_id: m.user_id,
+      ...m.profiles,
+    }))
+    .sort((a: any, b: any) => {
+      const d = (b.total_points || 0) - (a.total_points || 0)
+      if (d !== 0) return d
+      return String(a.username || '').localeCompare(String(b.username || ''), 'es')
+    })
 }
 
 

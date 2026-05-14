@@ -58,14 +58,14 @@ export default function RankingPage() {
           </p>
         </motion.div>
 
-        {/* 3D PODIUM */}
+        {/* PODIO: solo columnas para los puestos que existan (no rompe con 1 o 2 usuarios) */}
         <motion.div 
           initial={{ opacity: 0, scale: 0.9 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ delay: 0.2 }}
           className="flex flex-col md:flex-row items-end justify-center gap-4 lg:gap-8 mb-20 pt-10 px-4"
         >
-          {/* 2ND PLACE */}
+          {sortedUsers.length >= 2 && (
           <div className="w-full md:w-1/3 flex flex-col items-center group">
             <div className="glass-card w-full border border-gray-300/30 bg-gradient-to-b from-gray-300/10 to-transparent p-6 rounded-t-3xl rounded-b-xl flex flex-col items-center relative overflow-hidden transition-all group-hover:-translate-y-2 group-hover:shadow-[0_0_30px_rgba(209,213,219,0.2)]">
               <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-gray-300 to-transparent" />
@@ -89,8 +89,9 @@ export default function RankingPage() {
               <span className="text-5xl font-black text-gray-300/40">2</span>
             </div>
           </div>
+          )}
 
-          {/* 1ST PLACE */}
+          {sortedUsers.length >= 1 && (
           <div className="w-full md:w-1/3 flex flex-col items-center z-10 -mb-8 group">
             <div className="glass-card w-full border border-amber-400/50 bg-gradient-to-b from-amber-500/20 to-[#0a0f1c]/80 p-8 rounded-t-[2.5rem] rounded-b-2xl flex flex-col items-center relative overflow-hidden transition-all group-hover:-translate-y-4 group-hover:shadow-[0_0_60px_rgba(245,158,11,0.3)] shadow-[0_0_40px_rgba(245,158,11,0.15)]">
               <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-transparent via-amber-400 to-transparent" />
@@ -121,8 +122,9 @@ export default function RankingPage() {
               <span className="text-7xl font-black text-amber-400/80 drop-shadow-xl relative z-10">1</span>
             </div>
           </div>
+          )}
 
-          {/* 3RD PLACE */}
+          {sortedUsers.length >= 3 && (
           <div className="w-full md:w-1/3 flex flex-col items-center group">
             <div className="glass-card w-full border border-orange-700/50 bg-gradient-to-b from-orange-800/20 to-transparent p-6 rounded-t-3xl rounded-b-xl flex flex-col items-center relative overflow-hidden transition-all group-hover:-translate-y-2 group-hover:shadow-[0_0_30px_rgba(194,65,12,0.2)]">
               <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-orange-600 to-transparent" />
@@ -146,6 +148,7 @@ export default function RankingPage() {
               <span className="text-4xl font-black text-orange-500/40">3</span>
             </div>
           </div>
+          )}
         </motion.div>
 
         {/* REST OF THE RANKING */}

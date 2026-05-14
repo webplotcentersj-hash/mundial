@@ -2,7 +2,8 @@
 
 import { useState, useRef, useCallback } from 'react'
 import { toPng } from 'html-to-image'
-import { Download, Upload, ImageIcon, RefreshCw, Sparkles } from 'lucide-react'
+import Link from 'next/link'
+import { Download, Upload, ImageIcon, RefreshCw, Sparkles, Printer } from 'lucide-react'
 import { mockTeams } from '@/lib/mockData'
 import Image from 'next/image'
 import { getPlayerApodo } from '@/lib/figuritaPlayerApodo'
@@ -302,6 +303,13 @@ export default function FiguritaPage() {
               {!displayPhoto && (
                 <p className="text-xs text-center text-red-400 mt-2">Sube una foto para poder descargar.</p>
               )}
+              <Link
+                href="/pedidos"
+                className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl border border-emerald-500/30 bg-emerald-500/10 py-3 text-sm font-bold text-emerald-200 transition hover:border-emerald-400/50 hover:bg-emerald-500/15"
+              >
+                <Printer className="h-4 w-4 shrink-0" aria-hidden />
+                Pedir impresión profesional
+              </Link>
             </div>
 
           </div>

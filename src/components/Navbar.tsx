@@ -15,6 +15,7 @@ import {
   LogIn,
   LogOut,
   UserRound,
+  Printer,
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { createClient } from '@/lib/supabase/client'
@@ -32,6 +33,7 @@ const navLinks: {
   { href: '/fixture', label: 'Fixture', icon: CalendarDays },
   { href: '/ranking', label: 'Ranking', icon: Medal },
   { href: '/figurita', label: 'Mi Figurita', icon: Sparkles, variant: 'emerald' },
+  { href: '/pedidos', label: 'Imprenta', icon: Printer },
   { href: '/dashboard', label: 'Mi Prode', icon: LayoutDashboard, variant: 'amber' },
 ]
 
