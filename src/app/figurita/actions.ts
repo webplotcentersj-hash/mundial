@@ -345,7 +345,6 @@ Avoid nudity or violence.`
             responseModalities: [Modality.IMAGE, Modality.TEXT],
             imageConfig: {
               aspectRatio: '3:4',
-              personGeneration: 'ALLOW_ALL',
             },
             temperature: 0.35,
           },

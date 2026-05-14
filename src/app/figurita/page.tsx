@@ -14,7 +14,10 @@ const countries = mockTeams.filter(t => t.group !== 'KO').sort((a, b) => a.name.
 const DEFAULT_CARD_BACKGROUND =
   'linear-gradient(180deg, #262626 0%, #171717 45%, #0a0a0a 100%)'
 
+type FiguritaMode = 'classic' | 'ia'
+
 export default function FiguritaPage() {
+  const [mode, setMode] = useState<FiguritaMode>('classic')
   const [photo, setPhoto] = useState<string | null>(null)
   const [name, setName] = useState<string>('Tu Nombre')
   const [position, setPosition] = useState<string>('Mediocampista')
@@ -29,7 +32,15 @@ export default function FiguritaPage() {
 
   const selectedTeam = countries.find(t => t.code === selectedTeamCode) || countries[0]
 
-  const displayPhoto = aiPortrait ?? photo
+  const displayPhoto = mode === 'classic' ? photo : (aiPortrait ?? photo)
+
+  const setFiguritaMode = (next: FiguritaMode) => {
+    setMode(next)
+    setAiError(null)
+    if (next === 'classic') {
+      setAiPortrait(null)
+    }
+  }
 
   async function resizePhotoForAi(dataUrl: string): Promise<string> {
     const maxSide = 960
@@ -138,14 +149,46 @@ export default function FiguritaPage() {
           {/* EDITOR (Izquierda) */}
           <div className="bg-neutral-900/50 backdrop-blur-md p-6 rounded-2xl border border-white/5 space-y-6">
             <h2 className="text-xl font-bold border-b border-white/10 pb-2">Personaliza tu Jugador</h2>
+
+            <div className="flex rounded-xl border border-white/10 bg-black/30 p-1">
+              <button
+                type="button"
+                onClick={() => setFiguritaMode('classic')}
+                className={`flex-1 rounded-lg py-2.5 text-sm font-bold transition ${
+                  mode === 'classic'
+                    ? 'bg-emerald-600/90 text-white shadow-sm'
+                    : 'text-neutral-400 hover:text-white'
+                }`}
+              >
+                Sin IA
+              </button>
+              <button
+                type="button"
+                onClick={() => setFiguritaMode('ia')}
+                className={`flex-1 rounded-lg py-2.5 text-sm font-bold transition ${
+                  mode === 'ia'
+                    ? 'bg-emerald-600/90 text-white shadow-sm'
+                    : 'text-neutral-400 hover:text-white'
+                }`}
+              >
+                Con IA
+              </button>
+            </div>
             
             {/* Foto */}
             <div className="space-y-2">
               <label className="text-sm font-medium text-neutral-300 block">Sube tu foto (Cara/Busto)</label>
-              <p className="text-xs text-neutral-500 leading-snug">
-                Crear con IA genera un retrato con tu cara, una camiseta genérica a colores de la selección (sin escudos
-                oficiales) y un estadio nocturno estilo Mundial 2026.
-              </p>
+              {mode === 'classic' ? (
+                <p className="text-xs text-neutral-500 leading-snug">
+                  Subí la foto y completá nombre, posición y selección. La vista previa se actualiza al toque; descargá
+                  cuando quieras, sin generar nada con IA.
+                </p>
+              ) : (
+                <p className="text-xs text-neutral-500 leading-snug">
+                  Crear con IA genera un retrato con tu cara, una camiseta genérica a colores de la selección (sin escudos
+                  oficiales) y un estadio nocturno estilo Mundial 2026.
+                </p>
+              )}
               <div 
                 onClick={() => fileInputRef.current?.click()}
                 className="border-2 border-dashed border-white/20 rounded-xl p-8 text-center cursor-pointer hover:bg-white/5 transition-colors flex flex-col items-center justify-center gap-3"
@@ -216,26 +259,30 @@ export default function FiguritaPage() {
                 </select>
               </div>
 
-              <button
-                type="button"
-                onClick={handleGeminiLook}
-                disabled={aiLoading}
-                className="flex w-full items-center justify-center gap-2 rounded-lg border border-emerald-400/35 bg-gradient-to-r from-emerald-600/35 to-cyan-600/25 py-3 text-sm font-bold text-white transition hover:border-emerald-300/45 hover:from-emerald-500/45 hover:to-cyan-500/35 disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                {aiLoading ? (
-                  <>
-                    <RefreshCw className="h-4 w-4 animate-spin" aria-hidden /> Creando…
-                  </>
-                ) : (
-                  <>
-                    <Sparkles className="h-4 w-4 shrink-0" aria-hidden /> Crear con IA
-                  </>
-                )}
-              </button>
-              {aiError && (
-                <p className="rounded-lg border border-red-500/30 bg-red-950/40 px-3 py-2 text-xs leading-snug text-red-200/95">
-                  {aiError}
-                </p>
+              {mode === 'ia' && (
+                <>
+                  <button
+                    type="button"
+                    onClick={handleGeminiLook}
+                    disabled={aiLoading}
+                    className="flex w-full items-center justify-center gap-2 rounded-lg border border-emerald-400/35 bg-gradient-to-r from-emerald-600/35 to-cyan-600/25 py-3 text-sm font-bold text-white transition hover:border-emerald-300/45 hover:from-emerald-500/45 hover:to-cyan-500/35 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {aiLoading ? (
+                      <>
+                        <RefreshCw className="h-4 w-4 animate-spin" aria-hidden /> Creando…
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles className="h-4 w-4 shrink-0" aria-hidden /> Crear con IA
+                      </>
+                    )}
+                  </button>
+                  {aiError && (
+                    <p className="rounded-lg border border-red-500/30 bg-red-950/40 px-3 py-2 text-xs leading-snug text-red-200/95">
+                      {aiError}
+                    </p>
+                  )}
+                </>
               )}
             </div>
             
@@ -289,13 +336,22 @@ export default function FiguritaPage() {
                 <div className="absolute inset-0 z-[1] flex flex-col items-center justify-center gap-2 bg-neutral-800 px-4 text-center">
                   <ImageIcon className="mb-0 h-20 w-20 text-neutral-600" />
                   <span className="text-sm font-bold uppercase tracking-widest text-neutral-500">Sin Foto</span>
-                  <span className="max-w-[200px] text-[9px] leading-tight text-neutral-500">
-                    Fondo y camiseta IA visibles abajo · subí foto para tapar esta zona
-                  </span>
-                  <span className="max-w-[240px] text-[10px] leading-tight text-neutral-500">
-                    Subí tu cara y tocá Crear con IA para armar camiseta a colores de la selección y fondo de estadio
-                    Mundial 2026.
-                  </span>
+                  {mode === 'classic' ? (
+                    <span className="max-w-[260px] text-[10px] leading-tight text-neutral-500">
+                      Subí una foto (cara o busto) y cargá nombre, posición y selección a la izquierda. Vista previa al
+                      instante, sin IA.
+                    </span>
+                  ) : (
+                    <>
+                      <span className="max-w-[200px] text-[9px] leading-tight text-neutral-500">
+                        Fondo y camiseta IA visibles abajo · subí foto para tapar esta zona
+                      </span>
+                      <span className="max-w-[240px] text-[10px] leading-tight text-neutral-500">
+                        Subí tu cara y tocá Crear con IA para armar camiseta a colores de la selección y fondo de estadio
+                        Mundial 2026.
+                      </span>
+                    </>
+                  )}
                 </div>
               )}
 
@@ -369,9 +425,11 @@ export default function FiguritaPage() {
                 <span className="inline-block w-2 h-2 shrink-0 rounded-full bg-emerald-500 animate-pulse" />
                 Vista previa en tiempo real
               </span>
-              {(aiPortrait || aiLoading) && <span className="text-emerald-400/80">· Look IA</span>}
+              {mode === 'ia' && (aiPortrait || aiLoading) && (
+                <span className="text-emerald-400/80">· Look IA</span>
+              )}
             </p>
-            {aiPortrait && (
+            {mode === 'ia' && aiPortrait && (
               <button
                 type="button"
                 onClick={() => setAiPortrait(null)}
