@@ -68,6 +68,8 @@ export type PrintOrderRow = {
   contact_phone: string | null
   status: PrintOrderStatus
   admin_notes: string | null
+  customer_image_url: string | null
+  admin_file_url: string | null
   created_at: string
   updated_at: string
   profiles?: { username: string | null; avatar_url: string | null } | null
@@ -168,7 +170,7 @@ export async function verifyAdmin() {
   return profile?.role === 'admin'
 }
 
-/** Lista ampliada de perfiles para el panel admin (sin email en DB: ver contacto en pedidos de imprenta). */
+/** Lista ampliada de perfiles para el panel admin (sin email en DB: ver contacto en pedidos del Store). */
 export async function getAdminProfiles() {
   const supabase = await createClient()
   const { data, error } = await supabase
@@ -229,11 +231,12 @@ export async function createPrintOrder(input: {
   contact_name: string
   contact_email: string
   contact_phone?: string
+  customer_image_url?: string | null
 }) {
   const supabase = await createClient()
   const { data: { user }, error: authError } = await supabase.auth.getUser()
   if (authError || !user) {
-    return { error: 'Tenés que iniciar sesión para pedir una impresión' }
+    return { error: 'Tenés que iniciar sesión para pedir en el Store' }
   }
 
   const profileCheck = await ensureUserProfile(supabase, user)
@@ -252,6 +255,18 @@ export async function createPrintOrder(input: {
   if (name.length < 2) return { error: 'Indicá un nombre de contacto válido' }
   if (email.length < 5 || !email.includes('@')) return { error: 'Indicá un email de contacto válido' }
 
+  const baseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL?.replace(/\/$/, '')
+  let customerImageUrl: string | null = null
+  if (input.customer_image_url?.trim()) {
+    const u = input.customer_image_url.trim()
+    const prefix = baseUrl ? `${baseUrl}/storage/v1/object/public/store-prints/` : null
+    if (!prefix || !u.startsWith(prefix)) {
+      return { error: 'La imagen adjunta no es válida. Volvé a enviarla desde Mi Figurita o el Store.' }
+    }
+    if (u.length > 2048) return { error: 'URL de imagen demasiado larga' }
+    customerImageUrl = u
+  }
+
   const { error } = await supabase.from('print_orders').insert({
     user_id: user.id,
     product_type: input.product_type,
@@ -261,21 +276,22 @@ export async function createPrintOrder(input: {
     contact_email: email,
     contact_phone: input.contact_phone?.trim() || null,
     status: 'pending',
+    customer_image_url: customerImageUrl,
   })
 
   if (error) {
     console.error('Error creating print order:', error)
-    return { error: 'No se pudo registrar el pedido. ¿Ya ejecutaste la migración SQL en Supabase?' }
+    return { error: 'No se pudo registrar el pedido. ¿Ejecutaste las migraciones SQL en Supabase (tabla + bucket store-prints)?' }
   }
 
-  revalidatePath('/pedidos')
+  revalidatePath('/store')
   revalidatePath('/admin')
   return { success: true }
 }
 
 export async function updatePrintOrderAdmin(
   orderId: string,
-  patch: { status?: PrintOrderStatus; admin_notes?: string | null }
+  patch: { status?: PrintOrderStatus; admin_notes?: string | null; admin_file_url?: string | null }
 ) {
   const isAdmin = await verifyAdmin()
   if (!isAdmin) throw new Error('No autorizado')
@@ -292,10 +308,22 @@ export async function updatePrintOrderAdmin(
     throw new Error('Estado inválido')
   }
 
+  const baseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL?.replace(/\/$/, '')
+  if (patch.admin_file_url !== undefined && patch.admin_file_url !== null) {
+    const u = patch.admin_file_url.trim()
+    const prefix = baseUrl ? `${baseUrl}/storage/v1/object/public/store-prints/` : null
+    if (u.length > 0 && (!prefix || !u.startsWith(prefix))) {
+      throw new Error('URL de archivo admin inválida')
+    }
+  }
+
   const supabase = await createClient()
   const update: Record<string, unknown> = {}
   if (patch.status) update.status = patch.status
   if (patch.admin_notes !== undefined) update.admin_notes = patch.admin_notes
+  if (patch.admin_file_url !== undefined) {
+    update.admin_file_url = patch.admin_file_url?.trim() || null
+  }
 
   if (Object.keys(update).length === 0) {
     return { success: true }
@@ -308,7 +336,7 @@ export async function updatePrintOrderAdmin(
   }
 
   revalidatePath('/admin')
-  revalidatePath('/pedidos')
+  revalidatePath('/store')
   return { success: true }
 }
 

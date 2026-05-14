@@ -1,13 +1,15 @@
 'use client'
 
 import { useState, useRef, useCallback } from 'react'
+import { useRouter } from 'next/navigation'
 import { toPng } from 'html-to-image'
-import Link from 'next/link'
-import { Download, Upload, ImageIcon, RefreshCw, Sparkles, Printer } from 'lucide-react'
+import { Download, Upload, ImageIcon, RefreshCw, Sparkles, Store } from 'lucide-react'
 import { mockTeams } from '@/lib/mockData'
 import Image from 'next/image'
 import { getPlayerApodo } from '@/lib/figuritaPlayerApodo'
 import { generateFiguritaPortrait } from '@/app/figurita/actions'
+import { createClient } from '@/lib/supabase/client'
+import { STORE_PRINTS_BUCKET, writeFiguritaStoreImageToSession } from '@/lib/storePrints'
 
 // Filtramos equipos placeholder (como 'Ganador 74') y ordenamos alfabéticamente
 const countries = mockTeams.filter(t => t.group !== 'KO').sort((a, b) => a.name.localeCompare(b.name))
@@ -18,6 +20,7 @@ const DEFAULT_CARD_BACKGROUND =
 type FiguritaMode = 'classic' | 'ia'
 
 export default function FiguritaPage() {
+  const router = useRouter()
   const [mode, setMode] = useState<FiguritaMode>('classic')
   const [photo, setPhoto] = useState<string | null>(null)
   const [name, setName] = useState<string>('Tu Nombre')
@@ -27,6 +30,7 @@ export default function FiguritaPage() {
   const [aiPortrait, setAiPortrait] = useState<string | null>(null)
   const [aiLoading, setAiLoading] = useState(false)
   const [aiError, setAiError] = useState<string | null>(null)
+  const [isSendingStore, setIsSendingStore] = useState(false)
   
   const figuritaRef = useRef<HTMLDivElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -119,7 +123,8 @@ export default function FiguritaPage() {
       
       const dataUrl = await toPng(figuritaRef.current, { 
         quality: 0.95,
-        pixelRatio: 2 // Mayor resolución para impresión/redes
+        pixelRatio: 3,
+        cacheBust: true,
       })
       
       const link = document.createElement('a')
@@ -134,6 +139,52 @@ export default function FiguritaPage() {
     }
   }, [name])
 
+  const handleSendToStore = useCallback(async () => {
+    if (figuritaRef.current === null || !displayPhoto) {
+      alert('Subí una foto primero para armar la figurita.')
+      return
+    }
+    setIsSendingStore(true)
+    try {
+      await new Promise((r) => setTimeout(r, 150))
+      const supabase = createClient()
+      const {
+        data: { user },
+      } = await supabase.auth.getUser()
+      if (!user) {
+        router.push('/login?next=/figurita')
+        return
+      }
+      const dataUrl = await toPng(figuritaRef.current, {
+        quality: 1,
+        pixelRatio: 3,
+        cacheBust: true,
+      })
+      const blob = await (await fetch(dataUrl)).blob()
+      const path = `${user.id}/figurita-${crypto.randomUUID()}.png`
+      const { error: upErr } = await supabase.storage.from(STORE_PRINTS_BUCKET).upload(path, blob, {
+        contentType: 'image/png',
+        upsert: false,
+      })
+      if (upErr) {
+        console.error(upErr)
+        alert(
+          upErr.message ||
+            'No se pudo subir la imagen. Revisá en Supabase el bucket store-prints y la migración 20260515_store_prints.sql.',
+        )
+        return
+      }
+      const pub = supabase.storage.from(STORE_PRINTS_BUCKET).getPublicUrl(path).data.publicUrl
+      writeFiguritaStoreImageToSession(pub)
+      router.push('/store')
+    } catch (err) {
+      console.error('handleSendToStore', err)
+      alert('No se pudo enviar al Store. Probá de nuevo o descargá la figurita.')
+    } finally {
+      setIsSendingStore(false)
+    }
+  }, [displayPhoto, router])
+
   return (
     <div className="min-h-screen bg-transparent p-4 md:p-8 pt-24 text-white">
       <div className="max-w-5xl mx-auto">
@@ -142,7 +193,7 @@ export default function FiguritaPage() {
           <h1 className="text-4xl md:text-5xl font-black italic tracking-tight uppercase text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-cyan-400">
             Tu Figurita Oficial
           </h1>
-          <p className="text-neutral-400 mt-2 text-lg">Crea tu propia figurita del Mundial y envíala a imprimir.</p>
+          <p className="text-neutral-400 mt-2 text-lg">Creá tu figurita y mandala al Store en alta calidad para imprimir.</p>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-start">
@@ -303,13 +354,19 @@ export default function FiguritaPage() {
               {!displayPhoto && (
                 <p className="text-xs text-center text-red-400 mt-2">Sube una foto para poder descargar.</p>
               )}
-              <Link
-                href="/pedidos"
-                className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl border border-emerald-500/30 bg-emerald-500/10 py-3 text-sm font-bold text-emerald-200 transition hover:border-emerald-400/50 hover:bg-emerald-500/15"
+              <button
+                type="button"
+                onClick={handleSendToStore}
+                disabled={isSendingStore || isGenerating || !displayPhoto}
+                className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl border border-emerald-500/30 bg-emerald-500/10 py-3 text-sm font-bold text-emerald-200 transition hover:border-emerald-400/50 hover:bg-emerald-500/15 disabled:cursor-not-allowed disabled:opacity-50"
               >
-                <Printer className="h-4 w-4 shrink-0" aria-hidden />
-                Pedir impresión profesional
-              </Link>
+                {isSendingStore ? (
+                  <RefreshCw className="h-4 w-4 shrink-0 animate-spin" aria-hidden />
+                ) : (
+                  <Store className="h-4 w-4 shrink-0" aria-hidden />
+                )}
+                {isSendingStore ? 'Subiendo…' : 'Enviar al Store (alta calidad)'}
+              </button>
             </div>
 
           </div>

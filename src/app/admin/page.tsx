@@ -1,9 +1,11 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Settings, CheckCircle2, Save, ShieldAlert, Users, Trophy, Download, Eye, Loader2, Printer } from 'lucide-react'
+import { Settings, CheckCircle2, Save, ShieldAlert, Users, Trophy, Download, Eye, Loader2, Store, Upload } from 'lucide-react'
 import Image from 'next/image'
 import { motion, AnimatePresence } from 'framer-motion'
+import { createClient } from '@/lib/supabase/client'
+import { STORE_PRINTS_BUCKET } from '@/lib/storePrints'
 import {
   getMatches,
   getAdminProfiles,
@@ -17,7 +19,7 @@ import {
 const PRINT_STATUS_OPTIONS: { value: PrintOrderStatus; label: string }[] = [
   { value: 'pending', label: 'Pendiente' },
   { value: 'in_review', label: 'En revisión' },
-  { value: 'printing', label: 'Imprenta' },
+  { value: 'printing', label: 'Producción' },
   { value: 'ready', label: 'Listo' },
   { value: 'shipped', label: 'Enviado' },
   { value: 'cancelled', label: 'Cancelado' },
@@ -80,7 +82,7 @@ export default function AdminPage() {
           return next
         })
       } catch (e: any) {
-        if (!cancelled) alert(e?.message || 'Error al cargar pedidos de imprenta')
+        if (!cancelled) alert(e?.message || 'Error al cargar pedidos del Store')
       } finally {
         if (!cancelled) setPrintOrdersLoading(false)
       }
@@ -113,6 +115,37 @@ export default function AdminPage() {
       )
     } catch (e: any) {
       alert(e?.message || 'No se pudieron guardar las notas')
+    } finally {
+      setPrintSavingId(null)
+    }
+  }
+
+  const handleAdminStoreFileUpload = async (orderId: string, file: File | null) => {
+    if (!file) return
+    const max = 10 * 1024 * 1024
+    if (file.size > max) {
+      alert('El archivo supera 10 MB.')
+      return
+    }
+    setPrintSavingId(orderId)
+    try {
+      const supabase = createClient()
+      const {
+        data: { user },
+      } = await supabase.auth.getUser()
+      if (!user) throw new Error('No hay sesión')
+      const safe = file.name.replace(/[^a-zA-Z0-9._-]/g, '_')
+      const path = `admin/${orderId}/${Date.now()}-${safe}`
+      const { error: upErr } = await supabase.storage.from(STORE_PRINTS_BUCKET).upload(path, file, {
+        contentType: file.type || 'application/octet-stream',
+        upsert: true,
+      })
+      if (upErr) throw new Error(upErr.message)
+      const pub = supabase.storage.from(STORE_PRINTS_BUCKET).getPublicUrl(path).data.publicUrl
+      await updatePrintOrderAdmin(orderId, { admin_file_url: pub })
+      setPrintOrders((prev) => prev.map((o) => (o.id === orderId ? { ...o, admin_file_url: pub } : o)))
+    } catch (e: any) {
+      alert(e?.message || 'No se pudo subir el archivo (¿bucket store-prints y políticas SQL?)')
     } finally {
       setPrintSavingId(null)
     }
@@ -203,7 +236,7 @@ export default function AdminPage() {
               onClick={() => setActiveTab('print-orders')}
               className={`px-6 py-3 rounded-xl font-bold flex items-center gap-2 transition-all ${activeTab === 'print-orders' ? 'bg-violet-600 text-white shadow-[0_0_20px_rgba(139,92,246,0.35)] border border-violet-400/50' : 'bg-white/5 text-white/50 hover:bg-white/10 border border-white/5'}`}
             >
-              <Printer className="w-5 h-5" /> Imprenta
+              <Store className="w-5 h-5" /> Store
             </button>
           </div>
           
@@ -395,8 +428,8 @@ export default function AdminPage() {
                     <div className="flex items-center gap-2 text-gray-300 font-black text-3xl mt-2 drop-shadow-md">
                       {users[1].total_points} <span className="text-sm text-gray-300/50 uppercase tracking-widest">PTS</span>
                     </div>
-                    <a href="/pedidos" className="mt-6 flex items-center gap-2 text-xs text-white/50 hover:text-white transition-colors bg-white/5 px-4 py-2 rounded-full border border-white/10">
-                      Coordinar por Imprenta
+                    <a href="/store" className="mt-6 flex items-center gap-2 text-xs text-white/50 hover:text-white transition-colors bg-white/5 px-4 py-2 rounded-full border border-white/10">
+                      Ir al Store
                     </a>
                   </div>
                   <div className="w-full h-16 bg-gray-300/20 border-x border-t border-gray-300/30 rounded-t-xl flex items-center justify-center mt-2">
@@ -418,8 +451,8 @@ export default function AdminPage() {
                     <div className="flex items-center gap-2 text-amber-400 font-black text-5xl mt-2 drop-shadow-[0_0_10px_rgba(245,158,11,0.8)]">
                       {users[0].total_points} <span className="text-base text-amber-500/50 uppercase tracking-widest">PTS</span>
                     </div>
-                    <a href="/pedidos" className="mt-8 flex items-center gap-2 text-sm text-amber-100 hover:text-white transition-colors bg-amber-500/20 px-5 py-2.5 rounded-full border border-amber-500/30 font-bold">
-                      Coordinar por Imprenta
+                    <a href="/store" className="mt-8 flex items-center gap-2 text-sm text-amber-100 hover:text-white transition-colors bg-amber-500/20 px-5 py-2.5 rounded-full border border-amber-500/30 font-bold">
+                      Ir al Store
                     </a>
                   </div>
                   <div className="w-full h-24 bg-gradient-to-t from-amber-500/20 to-amber-500/40 border-x border-t border-amber-500/50 rounded-t-xl flex items-start justify-center pt-4 mt-2 shadow-[0_-10px_20px_rgba(245,158,11,0.15)]">
@@ -440,8 +473,8 @@ export default function AdminPage() {
                     <div className="flex items-center gap-2 text-orange-500 font-black text-3xl mt-2 drop-shadow-md">
                       {users[2].total_points} <span className="text-sm text-orange-500/50 uppercase tracking-widest">PTS</span>
                     </div>
-                    <a href="/pedidos" className="mt-6 flex items-center gap-2 text-xs text-white/50 hover:text-white transition-colors bg-white/5 px-4 py-2 rounded-full border border-white/10">
-                      Coordinar por Imprenta
+                    <a href="/store" className="mt-6 flex items-center gap-2 text-xs text-white/50 hover:text-white transition-colors bg-white/5 px-4 py-2 rounded-full border border-white/10">
+                      Ir al Store
                     </a>
                   </div>
                   <div className="w-full h-12 bg-orange-900/40 border-x border-t border-orange-700/50 rounded-t-xl flex items-center justify-center mt-2">
@@ -463,11 +496,11 @@ export default function AdminPage() {
             >
               <div className="flex flex-col gap-2 rounded-2xl border border-violet-500/25 bg-violet-500/5 p-6 backdrop-blur-sm shadow-xl sm:flex-row sm:items-center sm:justify-between">
                 <div>
-                  <h3 className="text-lg font-bold text-violet-200">Pedidos de imprenta</h3>
+                  <h3 className="text-lg font-bold text-violet-200">Pedidos del Store</h3>
                   <p className="text-sm text-white/55">
-                    Figuritas, stickers y posters solicitados desde la página{' '}
-                    <a href="/pedidos" className="font-semibold text-violet-300 underline decoration-violet-500/40 underline-offset-2">
-                      /pedidos
+                    Figuritas, stickers y posters desde{' '}
+                    <a href="/store" className="font-semibold text-violet-300 underline decoration-violet-500/40 underline-offset-2">
+                      /store
                     </a>
                     .
                   </p>
@@ -485,7 +518,7 @@ export default function AdminPage() {
               ) : (
                 <div className="glass-card overflow-hidden rounded-2xl border border-white/10 bg-[#0a0f1c]/80 backdrop-blur-xl">
                   <div className="overflow-x-auto">
-                    <table className="w-full min-w-[900px] text-left text-sm">
+                    <table className="w-full min-w-[1100px] text-left text-sm">
                       <thead className="border-b border-white/10 bg-white/5 text-xs uppercase tracking-widest text-white/50">
                         <tr>
                           <th className="px-4 py-3 font-bold">Fecha</th>
@@ -493,6 +526,7 @@ export default function AdminPage() {
                           <th className="px-4 py-3 font-bold">Producto</th>
                           <th className="px-4 py-3 font-bold text-center">Cant.</th>
                           <th className="px-4 py-3 font-bold">Contacto</th>
+                          <th className="px-4 py-3 font-bold">Arte / adjuntos</th>
                           <th className="px-4 py-3 font-bold">Estado</th>
                           <th className="px-4 py-3 font-bold">Notas admin</th>
                         </tr>
@@ -527,6 +561,61 @@ export default function AdminPage() {
                                   {o.notes}
                                 </p>
                               )}
+                            </td>
+                            <td className="max-w-[200px] px-4 py-3 align-top text-xs text-white/70">
+                              <div className="space-y-2">
+                                {o.customer_image_url ? (
+                                  <a
+                                    href={o.customer_image_url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="block"
+                                  >
+                                    <span className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-white/40">
+                                      Arte cliente
+                                    </span>
+                                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                                    <img
+                                      src={o.customer_image_url}
+                                      alt=""
+                                      className="h-20 w-14 rounded border border-white/15 object-cover object-top"
+                                    />
+                                  </a>
+                                ) : (
+                                  <span className="text-white/35">Sin arte</span>
+                                )}
+                                {o.admin_file_url ? (
+                                  <a
+                                    href={o.admin_file_url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="block break-all font-medium text-violet-300 underline decoration-violet-500/40 underline-offset-2 hover:text-violet-200"
+                                  >
+                                    Ver archivo admin
+                                  </a>
+                                ) : null}
+                                <div>
+                                  <input
+                                    type="file"
+                                    id={`admin-store-up-${o.id}`}
+                                    className="hidden"
+                                    accept="image/png,image/jpeg,image/webp,application/pdf"
+                                    disabled={printSavingId === o.id}
+                                    onChange={(e) => {
+                                      const f = e.target.files?.[0] ?? null
+                                      void handleAdminStoreFileUpload(o.id, f)
+                                      e.target.value = ''
+                                    }}
+                                  />
+                                  <label
+                                    htmlFor={`admin-store-up-${o.id}`}
+                                    className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-white/15 bg-white/5 px-2.5 py-1.5 text-[11px] font-bold text-white/80 transition hover:border-violet-400/40 hover:bg-violet-500/10 hover:text-white"
+                                  >
+                                    <Upload className="h-3.5 w-3.5" aria-hidden />
+                                    Subir archivo
+                                  </label>
+                                </div>
+                              </div>
                             </td>
                             <td className="px-4 py-3">
                               <div className="flex items-center gap-2">
