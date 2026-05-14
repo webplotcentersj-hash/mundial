@@ -1,11 +1,11 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useLayoutEffect } from 'react'
 import { toPng } from 'html-to-image'
 import { motion, AnimatePresence } from 'framer-motion'
 import { groupColors, Team } from '@/lib/mockData'
 import Image from 'next/image'
-import { Trophy, Save, Lock, Zap, Loader2 } from 'lucide-react'
+import { Trophy, Save, Zap, Loader2, RotateCcw } from 'lucide-react'
 import { getTeams, getUserBracket, saveUserBracket, getOfficialBracket, saveOfficialBracket } from '@/lib/actions'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
@@ -65,16 +65,18 @@ const KO_STRUCTURE = {
 const GroupBox = ({ groupName, teams }: { groupName: string, teams: Team[] }) => {
   const color = groupColors[groupName] || 'from-gray-500 to-gray-700'
   return (
-    <div className={`p-2 rounded-xl bg-black/60 backdrop-blur-xl border border-white/10 shadow-[0_0_20px_rgba(0,0,0,0.5)] relative overflow-hidden group w-[160px] h-[95px] flex flex-col justify-between hover:border-white/30 transition-colors`}>
-      <div className={`absolute top-0 left-0 w-1.5 h-full bg-gradient-to-b ${color}`} />
-      <div className="grid grid-cols-2 gap-1.5 h-full content-start ml-1">
+    <div
+      className={`rounded-lg sm:rounded-xl bg-black/60 backdrop-blur-xl border border-white/10 shadow-[0_0_20px_rgba(0,0,0,0.5)] relative overflow-hidden group flex flex-col justify-between hover:border-white/30 transition-colors p-1.5 sm:p-2 w-[92px] h-[58px] sm:w-[130px] sm:h-[82px] md:w-[160px] md:h-[95px]`}
+    >
+      <div className={`absolute top-0 left-0 w-1 sm:w-1.5 h-full bg-gradient-to-b ${color}`} />
+      <div className="grid grid-cols-2 gap-0.5 sm:gap-1.5 h-full content-start ml-0.5 sm:ml-1">
         {teams.map(t => (
-          <div key={t.id} className="w-full h-5 rounded relative overflow-hidden border border-white/10 bg-white/5" title={t.name}>
+          <div key={t.id} className="w-full h-3.5 sm:h-4 md:h-5 rounded relative overflow-hidden border border-white/10 bg-white/5" title={t.name}>
             <Image unoptimized src={`https://flagcdn.com/${t.code}.svg`} alt={t.name} fill className="object-cover object-center" />
           </div>
         ))}
       </div>
-      <div className={`w-full py-0.5 text-center text-[10px] font-black tracking-widest text-white rounded bg-gradient-to-r ${color} mt-1 ml-0.5 shadow-lg`}>
+      <div className={`w-full py-0.5 text-center text-[7px] sm:text-[9px] md:text-[10px] font-black tracking-tighter sm:tracking-widest text-white rounded bg-gradient-to-r ${color} mt-0.5 sm:mt-1 ml-0.5 shadow-lg`}>
         GRUPO {groupName}
       </div>
     </div>
@@ -93,8 +95,10 @@ export default function BracketPage() {
   const [teams, setTeams] = useState<any[]>([])
   const [loadingTeams, setLoadingTeams] = useState(true)
   const bracketRef = useRef<HTMLDivElement>(null)
+  const bracketViewportRef = useRef<HTMLDivElement>(null)
   const router = useRouter()
   const [isSaving, setIsSaving] = useState(false)
+  const [bracketScale, setBracketScale] = useState(1)
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
   const getTeam = (id: string | null) => id ? teams.find(t => t.id === id) || null : null
@@ -171,12 +175,65 @@ export default function BracketPage() {
   }
 
   const clearDownstream = (matchId: string) => {
-    setMatchWinners(prev => {
+    setMatchWinners((prev) => {
       const next = { ...prev }
       delete next[matchId]
-      return {} 
+      return next
     })
   }
+
+  const persistBracketNow = async (slots: Record<string, string>, winners: Record<string, string>) => {
+    if (isAdminMode) await saveOfficialBracket(slots, winners)
+    else await saveUserBracket(slots, winners)
+  }
+
+  const handleResetBracket = async () => {
+    if (!isLoggedIn) return
+    const ok = window.confirm(
+      isAdminMode
+        ? '¿Vaciar la llave oficial? Los jugadores dejarán de ver estos resultados hasta que vuelvas a cargar la llave.'
+        : '¿Vaciar toda tu llave? Se borran los 32avos y todos los cruces siguientes.'
+    )
+    if (!ok) return
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current)
+      saveTimeoutRef.current = null
+    }
+    setR32Slots({})
+    setMatchWinners({})
+    setIsSaving(true)
+    try {
+      await persistBracketNow({}, {})
+    } catch (err) {
+      console.error(err)
+      alert('No se pudo guardar el reinicio. Intentá de nuevo.')
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
+  useLayoutEffect(() => {
+    const el = bracketViewportRef.current
+    if (!el || typeof window === 'undefined') return
+    const BRACKET_W = 1100
+    const MIN_SCALE = 0.34
+    const update = () => {
+      const w = el.getBoundingClientRect().width
+      if (w >= BRACKET_W - 1) {
+        setBracketScale(1)
+        return
+      }
+      setBracketScale(Math.max(MIN_SCALE, (w - 6) / BRACKET_W))
+    }
+    update()
+    const ro = new ResizeObserver(update)
+    ro.observe(el)
+    window.addEventListener('orientationchange', update)
+    return () => {
+      ro.disconnect()
+      window.removeEventListener('orientationchange', update)
+    }
+  }, [isLoaded, loadingTeams])
 
   const isTeamAvailable = (teamId: string) => !Object.values(r32Slots).includes(teamId)
 
@@ -338,8 +395,8 @@ export default function BracketPage() {
 
       {/* Admin Mode Badge */}
       {isAdminMode && (
-        <div className="fixed top-4 left-1/2 -translate-x-1/2 bg-red-600/90 backdrop-blur-md text-white font-bold text-xs px-4 py-1.5 rounded-full border border-red-500/50 z-50 shadow-[0_0_15px_rgba(220,38,38,0.4)] exclude-from-capture flex items-center gap-2 uppercase tracking-widest">
-          <Zap className="w-3.5 h-3.5" /> Admin: Llaves Oficiales
+        <div className="fixed top-20 left-1/2 z-50 flex -translate-x-1/2 items-center gap-2 rounded-full border border-red-500/50 bg-red-600/90 px-4 py-1.5 text-xs font-bold uppercase tracking-widest text-white shadow-[0_0_15px_rgba(220,38,38,0.4)] backdrop-blur-md exclude-from-capture sm:top-4">
+          <Zap className="h-3.5 w-3.5" /> Admin: Llaves Oficiales
         </div>
       )}
 
@@ -364,28 +421,80 @@ export default function BracketPage() {
         </div>
       )}
 
-      {/* Floating Share Button & Saving indicator */}
-      <div className="fixed bottom-6 right-6 z-50 exclude-from-capture flex items-center gap-4">
+      {/* Acciones fijas: reiniciar + compartir (mobile: ancho completo) */}
+      <div
+        className="exclude-from-capture fixed z-50 flex max-w-[100vw] flex-col gap-2 left-3 right-3 bottom-[max(0.75rem,env(safe-area-inset-bottom,0px))] sm:bottom-6 sm:right-6 sm:left-auto sm:flex-row sm:items-center sm:gap-3"
+      >
         <AnimatePresence>
           {isSaving && (
-            <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} className="bg-black/50 backdrop-blur-md px-4 py-2 rounded-full border border-white/10 text-xs font-bold text-white/70 flex items-center gap-2">
-              <Loader2 className="w-3 h-3 animate-spin text-primary" /> Guardando en nube...
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 10 }}
+              className="order-first flex items-center gap-2 rounded-full border border-white/10 bg-black/50 px-4 py-2 text-xs font-bold text-white/70 backdrop-blur-md sm:order-none"
+            >
+              <Loader2 className="h-3 w-3 animate-spin text-primary" /> Guardando…
             </motion.div>
           )}
         </AnimatePresence>
 
-        <button 
+        {isLoggedIn && (
+          <button
+            type="button"
+            onClick={handleResetBracket}
+            className="flex w-full items-center justify-center gap-2 rounded-full border border-white/15 bg-white/10 px-4 py-3 text-sm font-bold text-white/90 backdrop-blur-md transition-colors hover:border-red-400/40 hover:bg-red-500/15 sm:w-auto"
+          >
+            <RotateCcw className="h-4 w-4 shrink-0" />
+            Reiniciar llave
+          </button>
+        )}
+
+        <button
+          type="button"
           onClick={captureAndShare}
           disabled={isCapturing}
-          className="bg-gradient-to-r from-primary to-amber-600 hover:from-primary/90 hover:to-amber-600/90 text-white font-bold px-4 py-3 rounded-full transition-all shadow-[0_0_30px_rgba(235,103,27,0.6)] flex items-center gap-2 text-sm border border-white/20 hover:scale-105 disabled:opacity-50 backdrop-blur-md"
+          className="flex w-full items-center justify-center gap-2 rounded-full border border-white/20 bg-gradient-to-r from-primary to-amber-600 px-4 py-3 text-sm font-bold text-white shadow-[0_0_30px_rgba(235,103,27,0.45)] backdrop-blur-md transition-all hover:scale-[1.02] disabled:opacity-50 sm:w-auto"
         >
-          {isCapturing ? 'Generando...' : <><Save className="w-5 h-5" /> Compartir Bracket</>}
+          {isCapturing ? (
+            'Generando…'
+          ) : (
+            <>
+              <Save className="h-5 w-5 shrink-0" /> Compartir bracket
+            </>
+          )}
         </button>
       </div>
 
-      {/* Bracket Container - Responsive Scale */}
-      <div className="w-full overflow-x-auto overflow-y-hidden pb-8 custom-scrollbar">
-        <div ref={bracketRef} className="w-full min-w-[1100px] max-w-[1600px] h-[750px] mx-auto flex items-stretch justify-between gap-1 sm:gap-2 relative z-10 mt-4 px-2">
+      <div className="relative z-10 mx-auto mt-1 w-full max-w-[1600px] flex-1 px-2 pb-32 pt-1 sm:mt-2 sm:px-3 sm:pb-28 md:pb-24">
+        <div className="mb-2 sm:mb-4">
+          <h1 className="text-lg font-black tracking-tight text-white sm:text-2xl">Llaves eliminatorias</h1>
+          <p className="mt-1 max-w-xl text-[11px] leading-snug text-white/50 sm:text-sm">
+            En el celu el cuadro se achica para entrar en pantalla; la imagen al compartir sigue en alta resolución.
+          </p>
+        </div>
+
+        <div
+          ref={bracketViewportRef}
+          className="w-full overflow-x-auto overflow-y-hidden pb-2 [-webkit-overflow-scrolling:touch] [scrollbar-width:thin] touch-pan-x"
+        >
+          <div
+            className="mx-auto flex justify-center"
+            style={{
+              minHeight: bracketScale < 0.999 ? Math.ceil(750 * bracketScale) + 8 : 750,
+            }}
+          >
+            <div
+              style={{
+                width: 1100,
+                height: 750,
+                transform: bracketScale < 0.999 ? `scale(${bracketScale})` : undefined,
+                transformOrigin: 'top center',
+              }}
+            >
+              <div
+                ref={bracketRef}
+                className="relative flex h-[750px] w-[1100px] shrink-0 items-stretch justify-between gap-0.5 sm:gap-1 md:gap-2"
+              >
           
           {/* LEFT GROUPS */}
           <div className="flex flex-col justify-around h-full w-[60px] sm:w-[90px] shrink-0">
@@ -510,9 +619,12 @@ export default function BracketPage() {
             <div key={g} className="flex-1 flex items-center justify-end pl-1">
               <GroupBox groupName={g} teams={teams.filter(t => t.group === g)} />
             </div>
-            ))}
-          </div>
+          ))}
+        </div>
 
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -526,15 +638,15 @@ export default function BracketPage() {
           >
             <motion.div 
               initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.9, y: 20 }}
-              className="bg-[#060913] border border-primary/30 p-8 rounded-[2rem] max-w-lg w-full shadow-[0_0_50px_rgba(235,103,27,0.2)] relative overflow-hidden"
+              className="relative max-h-[85dvh] w-full max-w-lg overflow-y-auto rounded-[1.5rem] border border-primary/30 bg-[#060913] p-5 shadow-[0_0_50px_rgba(235,103,27,0.2)] sm:rounded-[2rem] sm:p-8"
               onClick={e => e.stopPropagation()}
             >
               <div className="absolute top-0 right-0 w-64 h-64 bg-primary/20 rounded-full blur-[80px] pointer-events-none -translate-y-1/2 translate-x-1/2" />
               
-              <h3 className="text-3xl font-black text-white mb-2 tracking-wide">Clasifica a {activeSlot.label}</h3>
-              <p className="text-white/50 text-sm mb-8 font-light">Elige al equipo que ocupará este lugar en los Dieciseisavos de Final. Solo se muestran equipos disponibles.</p>
+              <h3 className="mb-2 text-xl font-black tracking-wide text-white sm:text-3xl">Clasifica a {activeSlot.label}</h3>
+              <p className="mb-6 text-xs font-light text-white/50 sm:mb-8 sm:text-sm">Elegí al equipo para este lugar en dieciseisavos. Solo aparecen equipos que todavía no asignaste.</p>
               
-              <div className="grid grid-cols-2 gap-3 relative z-10">
+              <div className="relative z-10 grid grid-cols-1 gap-2.5 sm:grid-cols-2 sm:gap-3">
                 {teams
                   .filter(t => activeSlot.allowedGroups.includes(t.group))
                   .filter(t => isTeamAvailable(t.id))
