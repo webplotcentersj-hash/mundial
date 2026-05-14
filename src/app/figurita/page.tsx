@@ -279,9 +279,16 @@ export default function FiguritaPage() {
               
               {/* Elementos de la UI de la figurita (Marcos, Textos, Bandera) */}
               
-              {/* Logo "FIFA" o del evento genérico arriba a la derecha */}
-              <div className="absolute top-4 right-4 bg-white text-black text-[10px] font-black px-2 py-1 rounded-sm uppercase tracking-wider">
-                Mundial 2026
+              {/* Logo de la app arriba a la derecha */}
+              <div className="pointer-events-none absolute top-3 right-3 z-10 h-10 w-[104px] rounded-md bg-white p-1 shadow-md ring-1 ring-black/10">
+                <Image
+                  src="/plot%20center%20mundial.png"
+                  alt="Plot Mundial"
+                  width={160}
+                  height={45}
+                  className="h-full w-full object-contain object-center"
+                  priority
+                />
               </div>
 
               {/* Bandera del país seleccionado arriba a la izquierda */}
