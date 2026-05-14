@@ -23,7 +23,6 @@ export default function FiguritaPage() {
   const [isGenerating, setIsGenerating] = useState(false)
   const [aiTheme, setAiTheme] = useState<FiguritaAiTheme | null>(null)
   const [aiLoading, setAiLoading] = useState(false)
-  const [aiHint, setAiHint] = useState<string | null>(null)
   
   const figuritaRef = useRef<HTMLDivElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -32,18 +31,19 @@ export default function FiguritaPage() {
 
   useEffect(() => {
     setAiTheme(null)
-    setAiHint(null)
   }, [selectedTeamCode])
 
   const handleGeminiLook = async () => {
     setAiLoading(true)
-    setAiHint(null)
     try {
-      const { theme, error } = await generateFiguritaTheme(selectedTeam.name, selectedTeam.code)
-      setAiTheme(theme)
-      if (error) setAiHint(error)
+      const res = await generateFiguritaTheme(selectedTeam.name, selectedTeam.code)
+      if (!res.ok) {
+        alert(res.error)
+        return
+      }
+      setAiTheme(res.theme)
     } catch {
-      setAiHint('No se pudo generar el diseño.')
+      alert('No se pudo generar el diseño.')
     } finally {
       setAiLoading(false)
     }
@@ -170,34 +170,23 @@ export default function FiguritaPage() {
                   ))}
                 </select>
               </div>
-            </div>
 
-            <div className="space-y-2 rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-4">
-              <div className="flex items-center gap-2 text-sm font-semibold text-emerald-200/90">
-                <Sparkles className="h-4 w-4 shrink-0 text-emerald-400" />
-                Gemini · camiseta y fondo
-              </div>
-              <p className="text-xs text-neutral-400">
-                Genera un fondo de estadio y un patrón de camiseta alineado a la selección (solo en servidor; necesitás{' '}
-                <code className="rounded bg-black/40 px-1 text-[10px] text-emerald-300/90">GEMINI_API_KEY</code>).
-              </p>
               <button
                 type="button"
                 onClick={handleGeminiLook}
                 disabled={aiLoading}
-                className="flex w-full items-center justify-center gap-2 rounded-lg border border-emerald-400/35 bg-gradient-to-r from-emerald-600/40 to-cyan-600/30 py-3 text-sm font-bold text-white transition hover:border-emerald-300/50 hover:from-emerald-500/50 hover:to-cyan-500/40 disabled:cursor-not-allowed disabled:opacity-60"
+                className="flex w-full items-center justify-center gap-2 rounded-lg border border-emerald-400/35 bg-gradient-to-r from-emerald-600/35 to-cyan-600/25 py-3 text-sm font-bold text-white transition hover:border-emerald-300/45 hover:from-emerald-500/45 hover:to-cyan-500/35 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {aiLoading ? (
                   <>
-                    <RefreshCw className="h-4 w-4 animate-spin" /> Generando con IA…
+                    <RefreshCw className="h-4 w-4 animate-spin" aria-hidden /> Creando…
                   </>
                 ) : (
                   <>
-                    <Sparkles className="h-4 w-4" /> Crear look con IA
+                    <Sparkles className="h-4 w-4 shrink-0" aria-hidden /> Crear con IA
                   </>
                 )}
               </button>
-              {aiHint && <p className="text-center text-xs text-amber-400/90">{aiHint}</p>}
             </div>
             
             <div className="pt-4 border-t border-white/10">
