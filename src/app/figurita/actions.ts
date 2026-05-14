@@ -1,6 +1,6 @@
 'use server'
 
-import { GoogleGenAI } from '@google/genai'
+import { GoogleGenAI, type GenerateContentResponse } from '@google/genai'
 import type { FiguritaAiTheme, FiguritaStripeStyle } from '@/lib/figuritaTheme'
 
 const STRIPES: FiguritaStripeStyle[] = ['vertical', 'horizontal', 'sash', 'none', 'hoops']
@@ -157,7 +157,7 @@ Ejemplo de forma (no copies valores): {"backgroundCss":"linear-gradient(160deg,#
   try {
     const ai = new GoogleGenAI({ apiKey })
 
-    let response: { text?: string } | undefined
+    let response: GenerateContentResponse | undefined
     let lastError: unknown
 
     for (let mi = 0; mi < modelChain.length; mi++) {
@@ -198,10 +198,21 @@ Ejemplo de forma (no copies valores): {"backgroundCss":"linear-gradient(160deg,#
 
     const text = response.text?.trim()
     if (!text) {
+      const c0 = response.candidates?.[0]
+      const fr = c0?.finishReason
+      const extra =
+        fr != null && String(fr) !== 'STOP'
+          ? ` (${String(fr).replace(/^FINISH_REASON_/, '')})`
+          : response.promptFeedback?.blockReason
+            ? ` (bloqueo: ${response.promptFeedback.blockReason})`
+            : ''
       return {
         ok: false,
-        error:
-          'El modelo no devolvió contenido. Si definiste GEMINI_MODEL, probá gemini-2.0-flash o vaciá la variable para usar el fallback automático.',
+        error: [
+          `El modelo no devolvió texto usable${extra}.`,
+          'En local: GEMINI_API_KEY en .env.local (sin NEXT_PUBLIC) y reiniciá el servidor.',
+          'Opcional: GEMINI_MODEL=gemini-2.0-flash',
+        ].join(' '),
       }
     }
     let parsed: Record<string, unknown>

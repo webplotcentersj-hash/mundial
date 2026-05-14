@@ -24,6 +24,7 @@ export default function FiguritaPage() {
   const [isGenerating, setIsGenerating] = useState(false)
   const [aiTheme, setAiTheme] = useState<FiguritaAiTheme | null>(null)
   const [aiLoading, setAiLoading] = useState(false)
+  const [aiError, setAiError] = useState<string | null>(null)
   
   const figuritaRef = useRef<HTMLDivElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -32,19 +33,22 @@ export default function FiguritaPage() {
 
   useEffect(() => {
     setAiTheme(null)
+    setAiError(null)
   }, [selectedTeamCode])
 
   const handleGeminiLook = async () => {
     setAiLoading(true)
+    setAiError(null)
     try {
       const res = await generateFiguritaTheme(selectedTeam.name, selectedTeam.code)
       if (!res.ok) {
-        alert(res.error)
+        setAiError(res.error)
         return
       }
       setAiTheme(res.theme)
-    } catch {
-      alert('No se pudo generar el diseño.')
+    } catch (e) {
+      console.error('generateFiguritaTheme', e)
+      setAiError('No se pudo generar el diseño. Revisá la consola o probá otra vez.')
     } finally {
       setAiLoading(false)
     }
@@ -188,6 +192,11 @@ export default function FiguritaPage() {
                   </>
                 )}
               </button>
+              {aiError && (
+                <p className="rounded-lg border border-red-500/30 bg-red-950/40 px-3 py-2 text-xs leading-snug text-red-200/95">
+                  {aiError}
+                </p>
+              )}
             </div>
             
             <div className="pt-4 border-t border-white/10">
@@ -269,9 +278,30 @@ export default function FiguritaPage() {
                   className="absolute inset-0 w-full h-full object-cover object-top"
                 />
               ) : (
-                <div className="absolute inset-0 flex flex-col items-center justify-center bg-neutral-800">
-                  <ImageIcon className="w-20 h-20 text-neutral-600 mb-2" />
-                  <span className="text-neutral-500 font-bold uppercase tracking-widest text-sm">Sin Foto</span>
+                <div
+                  className={
+                    aiTheme
+                      ? 'pointer-events-none absolute inset-x-0 top-0 z-[1] flex h-[max(34%,150px)] max-h-[40%] flex-col items-center justify-center gap-1 border-b border-white/15 bg-gradient-to-b from-neutral-950/85 via-neutral-900/45 to-transparent px-4 text-center backdrop-blur-[2px]'
+                      : 'absolute inset-0 z-[1] flex flex-col items-center justify-center bg-neutral-800'
+                  }
+                >
+                  <ImageIcon
+                    className={aiTheme ? 'mb-0 h-12 w-12 text-neutral-500' : 'mb-2 h-20 w-20 text-neutral-600'}
+                  />
+                  <span
+                    className={
+                      aiTheme
+                        ? 'text-[10px] font-bold uppercase tracking-widest text-neutral-400'
+                        : 'text-sm font-bold uppercase tracking-widest text-neutral-500'
+                    }
+                  >
+                    Sin Foto
+                  </span>
+                  {aiTheme && (
+                    <span className="max-w-[200px] text-[9px] leading-tight text-neutral-500">
+                      Fondo y camiseta IA visibles abajo · subí foto para tapar esta zona
+                    </span>
+                  )}
                 </div>
               )}
 
@@ -281,7 +311,7 @@ export default function FiguritaPage() {
               {/* Elementos de la UI de la figurita (Marcos, Textos, Bandera) */}
               
               {/* Logo de la app arriba a la derecha */}
-              <div className="pointer-events-none absolute top-3 right-3 z-10 h-10 w-[104px] rounded-md bg-white p-1 shadow-md ring-1 ring-black/10">
+              <div className="pointer-events-none absolute top-3 right-3 z-10 h-10 w-[104px] rounded-md bg-neutral-800 p-1 shadow-md ring-1 ring-white/15">
                 <Image
                   src="/plot%20center%20mundial.png"
                   alt="Plot Mundial"
