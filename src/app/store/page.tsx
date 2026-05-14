@@ -17,7 +17,6 @@ import {
   Phone,
   MessageSquare,
   ShieldCheck,
-  Palette,
   ShoppingCart,
   Trash2,
   Minus,
@@ -32,6 +31,7 @@ import {
   type PrintProductType,
 } from '@/lib/actions'
 import { readFiguritaStoreImageFromSession, clearFiguritaStoreImageFromSession } from '@/lib/storePrints'
+import { StorePageHero } from '@/components/store/store-page-hero'
 
 const CART_STORAGE_KEY = 'plotmundial_store_cart_v1'
 
@@ -328,34 +328,7 @@ export default function StorePage() {
           </Link>
         </motion.div>
 
-        {/* Hero */}
-        <motion.header
-          initial={{ opacity: 0, y: 16 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.45, delay: 0.05 }}
-          className="mb-14 text-center md:mb-16 md:text-left"
-        >
-          <div className="mb-5 flex flex-col items-center gap-3 md:flex-row md:items-center md:gap-4">
-            <span className="inline-flex items-center gap-2 rounded-full border border-violet-400/30 bg-gradient-to-r from-violet-500/20 to-fuchsia-500/15 px-4 py-1.5 text-[11px] font-black uppercase tracking-[0.2em] text-violet-200/95 shadow-[0_0_24px_rgba(139,92,246,0.2)]">
-              <Palette className="h-3.5 w-3.5 text-fuchsia-300" aria-hidden />
-              Plot Mundial · Store
-            </span>
-            <span className="hidden h-px w-12 bg-gradient-to-r from-transparent to-white/20 md:block" />
-            <span className="text-xs font-medium text-white/40">Impresión y merchandising</span>
-          </div>
-          <h1 className="mx-auto max-w-4xl text-5xl font-black leading-[0.95] tracking-tighter text-transparent md:mx-0 md:text-7xl md:leading-[0.92]">
-            <span className="bg-gradient-to-br from-white via-violet-100 to-fuchsia-300 bg-clip-text">Tu pedido,</span>
-            <br className="md:hidden" />
-            <span className="bg-gradient-to-r from-fuchsia-400 via-violet-300 to-cyan-300 bg-clip-text"> con onda de estadio.</span>
-          </h1>
-          <p className="mx-auto mt-5 max-w-2xl text-base leading-relaxed text-white/55 md:mx-0 md:text-lg">
-            Figuritas, stickers y posters con calidad de colección. Si venís desde{' '}
-            <Link href="/figurita" className="font-semibold text-emerald-300/90 underline decoration-emerald-500/40 underline-offset-2 hover:text-emerald-200">
-              Mi Figurita
-            </Link>
-            , tu PNG en alta resolución viaja con el pedido. Armá el carrito y mandá todo junto.
-          </p>
-        </motion.header>
+        <StorePageHero cartItemCount={cart.reduce((s, line) => s + line.quantity, 0)} />
 
         {!userReady ? (
           <div className="flex min-h-[40vh] flex-col items-center justify-center gap-4">
@@ -485,10 +458,11 @@ export default function StorePage() {
 
               {/* Panel principal: armado + carrito + checkout */}
               <motion.div
+                id="store-armado"
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.4, delay: 0.1 }}
-                className="relative overflow-hidden rounded-[2rem] border border-white/12 bg-gradient-to-b from-white/[0.09] via-[#0c1222]/90 to-[#060913] p-6 shadow-[0_0_0_1px_rgba(255,255,255,0.04)_inset,0_32px_100px_-24px_rgba(0,0,0,0.75)] backdrop-blur-2xl md:p-9 lg:col-span-7"
+                className="relative scroll-mt-28 overflow-hidden rounded-[2rem] border border-white/12 bg-gradient-to-b from-white/[0.09] via-[#0c1222]/90 to-[#060913] p-6 shadow-[0_0_0_1px_rgba(255,255,255,0.04)_inset,0_32px_100px_-24px_rgba(0,0,0,0.75)] backdrop-blur-2xl md:p-9 lg:col-span-7"
               >
                 <div className="absolute -right-20 -top-20 h-56 w-56 rounded-full bg-fuchsia-500/10 blur-3xl" />
                 <div className="absolute -bottom-16 -left-10 h-48 w-48 rounded-full bg-violet-600/10 blur-3xl" />
