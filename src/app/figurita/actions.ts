@@ -5,7 +5,16 @@ import type { FiguritaAiTheme, FiguritaStripeStyle } from '@/lib/figuritaTheme'
 
 const STRIPES: FiguritaStripeStyle[] = ['vertical', 'horizontal', 'sash', 'none', 'hoops']
 
-/** Clave de Google AI Studio / GenAI: varios nombres que suele usar la gente y la doc. */
+/** Limpia pegados desde Vercel / .env (comillas, saltos de línea, BOM). */
+function sanitizeApiKey(raw: string): string {
+  let s = raw.trim().replace(/^\uFEFF/, '')
+  if ((s.startsWith('"') && s.endsWith('"')) || (s.startsWith("'") && s.endsWith("'"))) {
+    s = s.slice(1, -1).trim()
+  }
+  return s.replace(/\s+/g, '')
+}
+
+/** Clave de Google AI Studio: varios nombres usados en la doc y en Vercel. */
 function resolveGenaiApiKey(): string | undefined {
   const keys = [
     process.env.GEMINI_API_KEY,
@@ -16,7 +25,7 @@ function resolveGenaiApiKey(): string | undefined {
   ]
   for (const k of keys) {
     const v = k?.trim()
-    if (v) return v
+    if (v) return sanitizeApiKey(v)
   }
   return undefined
 }
@@ -24,15 +33,41 @@ function resolveGenaiApiKey(): string | undefined {
 function formatGenaiError(e: unknown): string {
   if (e instanceof Error) {
     const m = e.message
-    if (/API key not valid|invalid api key|401|403/i.test(m)) {
-      return 'Clave de API rechazada o sin acceso. Revisá que sea de Google AI Studio y que el modelo esté habilitado.'
+    if (/API key not valid|invalid api key|API_KEY_INVALID|401|UNAUTHENTICATED/i.test(m)) {
+      return [
+        'La API key no es válida o está revocada.',
+        'Creá una nueva en Google AI Studio (Get API key) y guardala como GEMINI_API_KEY en Vercel → sin comillas ni espacios.',
+        'https://aistudio.google.com/apikey',
+      ].join(' ')
     }
-    if (/not found|404|does not exist|unsupported/i.test(m)) {
-      return `Error del modelo o endpoint: ${m.slice(0, 220)}`
+    if (/403|PERMISSION_DENIED|permission|billing|enabled|consumer/i.test(m) && !/API key not valid/i.test(m)) {
+      return [
+        'Google rechazó la petición (permisos, facturación o API no habilitada para este proyecto).',
+        'En Google AI Studio verificá que la Generative Language API esté habilitada y que la key sea de la misma cuenta.',
+        `Detalle: ${m.slice(0, 200)}`,
+      ].join(' ')
+    }
+    if (/not found|404|NOT_FOUND|does not exist|unsupported/i.test(m)) {
+      return `Modelo o endpoint: ${m.slice(0, 220)}`
     }
     return m.slice(0, 280)
   }
   return String(e).slice(0, 280)
+}
+
+function stripModelId(id: string): string {
+  const t = id.trim()
+  return t.startsWith('models/') ? t.slice('models/'.length) : t
+}
+
+function isInvalidApiKeyError(e: unknown): boolean {
+  const m = e instanceof Error ? e.message : String(e)
+  return /API key not valid|invalid api key|API_KEY_INVALID|401|UNAUTHENTICATED/i.test(m)
+}
+
+function isLikelyWrongModelError(e: unknown): boolean {
+  const m = e instanceof Error ? e.message : String(e)
+  return /404|NOT_FOUND|not found|is not found|Unsupported|unsupported|model/i.test(m)
 }
 
 export type GenerateFiguritaThemeResult =
@@ -85,8 +120,9 @@ function normalizeTheme(o: Record<string, unknown>): FiguritaAiTheme | null {
 }
 
 /**
- * Llama a Gemini (solo servidor) y devuelve colores + gradiente para la figurita.
- * API key: GEMINI_API_KEY u otras (ver resolveGenaiApiKey). Opcional: GEMINI_MODEL (default gemini-2.0-flash).
+ * Llama a Gemini (solo servidor). SDK: @google/genai — https://ai.google.dev/gemini-api/docs/libraries
+ * Clave: GEMINI_API_KEY (recomendado) u otras (resolveGenaiApiKey).
+ * Modelo: GEMINI_MODEL opcional; si falla, se prueba gemini-3-flash-preview → 2.5 → 2.0.
  */
 export async function generateFiguritaTheme(
   countryName: string,
@@ -101,8 +137,11 @@ export async function generateFiguritaTheme(
     }
   }
 
-  let model = (process.env.GEMINI_MODEL || 'gemini-2.0-flash').trim()
-  if (model.startsWith('models/')) model = model.slice('models/'.length)
+  const envModel = process.env.GEMINI_MODEL?.trim()
+  const stripped = envModel ? stripModelId(envModel) : null
+  const modelChain = stripped
+    ? [stripped, 'gemini-2.5-flash', 'gemini-2.0-flash']
+    : ['gemini-3-flash-preview', 'gemini-2.5-flash', 'gemini-2.0-flash']
 
   const prompt = `Sos director de arte de figuritas coleccionables del Mundial 2026.
 Equipo: "${countryName}" (código bandera típico: ${countryCode}).
@@ -117,26 +156,53 @@ Ejemplo de forma (no copies valores): {"backgroundCss":"linear-gradient(160deg,#
 
   try {
     const ai = new GoogleGenAI({ apiKey })
-    let response
-    try {
-      response = await ai.models.generateContent({
-        model,
-        contents: prompt,
-        config: {
-          responseMimeType: 'application/json',
-          temperature: 0.45,
-        },
-      })
-    } catch {
-      response = await ai.models.generateContent({
-        model,
-        contents: prompt,
-        config: { temperature: 0.45 },
-      })
+
+    let response: { text?: string } | undefined
+    let lastError: unknown
+
+    for (let mi = 0; mi < modelChain.length; mi++) {
+      const model = modelChain[mi]!
+      try {
+        try {
+          response = await ai.models.generateContent({
+            model,
+            contents: prompt,
+            config: {
+              responseMimeType: 'application/json',
+              temperature: 0.45,
+            },
+          })
+        } catch {
+          response = await ai.models.generateContent({
+            model,
+            contents: prompt,
+            config: { temperature: 0.45 },
+          })
+        }
+        break
+      } catch (e) {
+        lastError = e
+        if (isInvalidApiKeyError(e)) {
+          return { ok: false, error: formatGenaiError(e) }
+        }
+        if (mi < modelChain.length - 1 && isLikelyWrongModelError(e)) {
+          continue
+        }
+        return { ok: false, error: formatGenaiError(e) }
+      }
     }
+
+    if (!response) {
+      return { ok: false, error: formatGenaiError(lastError) }
+    }
+
     const text = response.text?.trim()
     if (!text) {
-      return { ok: false, error: 'El modelo no devolvió contenido. Probá otro GEMINI_MODEL (ej. gemini-2.0-flash).' }
+      return {
+        ok: false,
+        error:
+          'El modelo no devolvió contenido. Si definiste GEMINI_MODEL, probá gemini-2.0-flash o vaciá la variable para usar el fallback automático.',
+      }
     }
     let parsed: Record<string, unknown>
     try {
