@@ -289,6 +289,9 @@ export default function FiguritaPage() {
                 <div className="absolute inset-0 z-[1] flex flex-col items-center justify-center gap-2 bg-neutral-800 px-4 text-center">
                   <ImageIcon className="mb-0 h-20 w-20 text-neutral-600" />
                   <span className="text-sm font-bold uppercase tracking-widest text-neutral-500">Sin Foto</span>
+                  <span className="max-w-[200px] text-[9px] leading-tight text-neutral-500">
+                    Fondo y camiseta IA visibles abajo · subí foto para tapar esta zona
+                  </span>
                   <span className="max-w-[240px] text-[10px] leading-tight text-neutral-500">
                     Subí tu cara y tocá Crear con IA para armar camiseta a colores de la selección y fondo de estadio
                     Mundial 2026.
@@ -366,7 +369,7 @@ export default function FiguritaPage() {
                 <span className="inline-block w-2 h-2 shrink-0 rounded-full bg-emerald-500 animate-pulse" />
                 Vista previa en tiempo real
               </span>
-              {aiPortrait && <span className="text-emerald-400/80">· Retrato IA</span>}
+              {(aiPortrait || aiLoading) && <span className="text-emerald-400/80">· Look IA</span>}
             </p>
             {aiPortrait && (
               <button
