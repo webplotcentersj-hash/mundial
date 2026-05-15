@@ -1,23 +1,49 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { Trophy, Save, MapPin, GitBranch, Users, Medal, Search, Plus, Sparkles, Flame, Star, Target, Loader2, Zap } from 'lucide-react'
+import { useState, useEffect, useMemo } from 'react'
+import {
+  Trophy,
+  Save,
+  MapPin,
+  Users,
+  Medal,
+  Search,
+  Plus,
+  Sparkles,
+  Star,
+  Target,
+  Loader2,
+  Zap,
+} from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import Image from 'next/image'
-import { getMatches, getUserPredictions, savePrediction as savePredictionAction, getUserBracket, getOfficialBracket, getUserLeagues, getLeagueLeaderboard, createLeague, joinLeague, getUserMedals } from '@/lib/actions'
+import {
+  getMatches,
+  getUserPredictions,
+  savePrediction as savePredictionAction,
+  savePredictionsBulk,
+  getUserBracket,
+  getOfficialBracket,
+  getUserLeagues,
+  getLeagueLeaderboard,
+  createLeague,
+  joinLeague,
+  getUserMedals,
+} from '@/lib/actions'
 import { createClient } from '@/lib/supabase/client'
+import { cn } from '@/lib/utils'
 
 export default function DashboardPage() {
   const [activeTab, setActiveTab] = useState<'matches' | 'leagues' | 'medals'>('matches')
-  const [predictions, setPredictions] = useState<Record<string, { home: string, away: string }>>({})
+  const [predictions, setPredictions] = useState<Record<string, { home: string; away: string }>>({})
   const [matches, setMatches] = useState<any[]>([])
   const [bracketPoints, setBracketPoints] = useState(0)
   const [basePoints, setBasePoints] = useState(0)
   const [isSaving, setIsSaving] = useState<string | null>(null)
+  const [isSavingBulk, setIsSavingBulk] = useState(false)
   const [loading, setLoading] = useState(true)
   const [username, setUsername] = useState('JUGADOR')
-  
-  // Ligas
+
   const [leagues, setLeagues] = useState<any[]>([])
   const [activeLeagueId, setActiveLeagueId] = useState<string | null>(null)
   const [leagueLeaderboard, setLeagueLeaderboard] = useState<any[]>([])
@@ -26,14 +52,24 @@ export default function DashboardPage() {
   const [isJoining, setIsJoining] = useState(false)
   const [isCreating, setIsCreating] = useState(false)
   const [lastSavedMatchId, setLastSavedMatchId] = useState<string | null>(null)
-  
-  // Medallas
+
   const [medals, setMedals] = useState<string[]>([])
+
+  async function refreshPointsFromServer() {
+    const userPreds = await getUserPredictions()
+    let totalPts = 0
+    userPreds.forEach((p: any) => {
+      totalPts += p.points_earned || 0
+    })
+    setBasePoints(totalPts)
+  }
 
   useEffect(() => {
     async function loadData() {
       const supabase = createClient()
-      const { data: { user } } = await supabase.auth.getUser()
+      const {
+        data: { user },
+      } = await supabase.auth.getUser()
       if (user) {
         setUsername(user.user_metadata?.username || user.email?.split('@')[0] || 'JUGADOR')
       }
@@ -43,22 +79,25 @@ export default function DashboardPage() {
         ...m,
         homeScore: m.home_score,
         awayScore: m.away_score,
-        homeTeam: m.homeTeam ? { ...m.homeTeam, group: m.homeTeam.group_id } : { name: 'Por definir', code: 'tbd', group: 'KO' },
-        awayTeam: m.awayTeam ? { ...m.awayTeam, group: m.awayTeam.group_id } : { name: 'Por definir', code: 'tbd', group: 'KO' },
+        homeTeam: m.homeTeam
+          ? { ...m.homeTeam, group: m.homeTeam.group_id }
+          : { name: 'Por definir', code: 'tbd', group: 'KO' },
+        awayTeam: m.awayTeam
+          ? { ...m.awayTeam, group: m.awayTeam.group_id }
+          : { name: 'Por definir', code: 'tbd', group: 'KO' },
       }))
       setMatches(mappedMatches)
       const userPreds = await getUserPredictions()
-      
-      const predsMap: Record<string, { home: string, away: string }> = {}
+
+      const predsMap: Record<string, { home: string; away: string }> = {}
       let totalPts = 0
       userPreds.forEach((p: any) => {
         predsMap[p.match_id] = { home: String(p.home_score), away: String(p.away_score) }
-        totalPts += (p.points_earned || 0)
+        totalPts += p.points_earned || 0
       })
       setPredictions(predsMap)
       setBasePoints(totalPts)
 
-      // Cargar Puntos de Bracket
       try {
         const userBracket = await getUserBracket()
         const officialBracket = await getOfficialBracket()
@@ -78,9 +117,10 @@ export default function DashboardPage() {
           }
           setBracketPoints(pts)
         }
-      } catch(e) {}
+      } catch {
+        /* bracket opcional */
+      }
 
-      // Ligas
       const myLeagues = await getUserLeagues()
       setLeagues(myLeagues)
       if (myLeagues.length > 0) {
@@ -89,7 +129,6 @@ export default function DashboardPage() {
         setLeagueLeaderboard(lb)
       }
 
-      // Medallas
       const myMedals = await getUserMedals()
       setMedals(myMedals.map((m: any) => m.medal_id))
 
@@ -98,15 +137,24 @@ export default function DashboardPage() {
     loadData()
   }, [])
 
-  const pendingMatches = matches.filter(m => m.status === 'pending').slice(0, 8)
+  const pendingMatches = useMemo(() => matches.filter((m) => m.status === 'pending'), [matches])
+
+  const filledPendingCount = useMemo(
+    () =>
+      pendingMatches.filter((m) => {
+        const p = predictions[m.id]
+        return p && p.home !== '' && p.away !== ''
+      }).length,
+    [pendingMatches, predictions],
+  )
 
   const handlePredictionChange = (matchId: string, team: 'home' | 'away', value: string) => {
-    setPredictions(prev => ({
+    setPredictions((prev) => ({
       ...prev,
       [matchId]: {
         ...prev[matchId],
-        [team]: value
-      }
+        [team]: value,
+      },
     }))
   }
 
@@ -119,21 +167,52 @@ export default function DashboardPage() {
         if (result?.error) {
           alert(result.error)
         } else {
-          const userPreds = await getUserPredictions()
-          let totalPts = 0
-          userPreds.forEach((p: any) => {
-            totalPts += p.points_earned || 0
-          })
-          setBasePoints(totalPts)
+          await refreshPointsFromServer()
           setLastSavedMatchId(matchId)
           window.setTimeout(() => setLastSavedMatchId((id) => (id === matchId ? null : id)), 2800)
         }
       } catch (err: any) {
         console.error(err)
-        alert("Ocurrió un error inesperado al guardar la predicción.")
+        alert('Ocurrió un error inesperado al guardar la predicción.')
       } finally {
         setIsSaving(null)
       }
+    }
+  }
+
+  const saveAllFilledPredictions = async () => {
+    const rows = pendingMatches
+      .map((m) => {
+        const p = predictions[m.id]
+        if (!p || p.home === '' || p.away === '') return null
+        const h = parseInt(p.home, 10)
+        const a = parseInt(p.away, 10)
+        if (Number.isNaN(h) || Number.isNaN(a)) return null
+        return { matchId: m.id, homeScore: h, awayScore: a }
+      })
+      .filter(Boolean) as { matchId: string; homeScore: number; awayScore: number }[]
+
+    if (rows.length === 0) {
+      alert('Completá al menos un partido pendiente con goles local y visitante.')
+      return
+    }
+
+    setIsSavingBulk(true)
+    try {
+      const res = await savePredictionsBulk(rows)
+      await refreshPointsFromServer()
+      if (res.errors.length > 0) {
+        alert(
+          `Guardados: ${res.saved}. ${res.skipped ? `Omitidos (datos incompletos): ${res.skipped}. ` : ''}Errores:\n${res.errors.slice(0, 8).join('\n')}${res.errors.length > 8 ? '\n…' : ''}`,
+        )
+      } else {
+        alert(`Listo: se guardaron ${res.saved} pronóstico${res.saved === 1 ? '' : 's'}.`)
+      }
+    } catch (e) {
+      console.error(e)
+      alert('No se pudo guardar el lote. Probá de nuevo.')
+    } finally {
+      setIsSavingBulk(false)
     }
   }
 
@@ -184,219 +263,255 @@ export default function DashboardPage() {
     setLeagueLeaderboard(lb)
   }
 
-  const activeLeague = leagues.find(l => l.id === activeLeagueId)
-  const myRank = activeLeagueId ? leagueLeaderboard.findIndex(m => m.username === username || m.username === username.toLowerCase()) + 1 : 0
+  const activeLeague = leagues.find((l) => l.id === activeLeagueId)
+  const myRank = activeLeagueId
+    ? leagueLeaderboard.findIndex((m) => m.username === username || m.username === username.toLowerCase()) + 1
+    : 0
+
+  const tabBtn = (active: boolean) =>
+    cn(
+      'flex items-center gap-2 border-2 px-5 py-3 text-sm font-black uppercase tracking-wide transition-all sm:px-6 [font-family:var(--font-store-display),sans-serif]',
+      active
+        ? 'border-[#111] bg-[#111] text-[#ccff00] shadow-[4px_4px_0_#666]'
+        : 'border-[#111] bg-white text-[#111] shadow-[2px_2px_0_#ccc] hover:-translate-x-px hover:-translate-y-px hover:shadow-[4px_4px_0_#111]',
+    )
+
+  if (loading) {
+    return (
+      <div className="flex min-h-[50vh] items-center justify-center font-[family-name:var(--font-store-sans)]">
+        <Loader2 className="h-10 w-10 animate-spin text-[#111]" aria-hidden />
+      </div>
+    )
+  }
 
   return (
-    <div className="min-h-screen bg-transparent relative font-outfit p-4 lg:p-8 pt-24 -mt-16 w-full">
-      <div className="fixed inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 mix-blend-overlay pointer-events-none" />
-      <div className="fixed top-0 left-0 w-full h-[500px] bg-primary/10 rounded-b-[100%] blur-[100px] -z-10 pointer-events-none" />
-
-      <div className="max-w-6xl mx-auto relative z-10">
-        
-        {/* HEADER */}
-        <motion.div 
-          initial={{ opacity: 0, y: -20 }}
+    <div className="min-h-[calc(100vh-4rem)] w-full max-w-[100vw] overflow-x-hidden px-4 py-8 pb-28 md:px-8 md:py-10 md:pb-24">
+      <div className="relative z-10 mx-auto max-w-6xl font-[family-name:var(--font-store-sans)]">
+        <motion.div
+          initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
-          className="flex min-w-0 flex-col items-stretch justify-between gap-6 pb-8 mb-12 border-b border-white/10 md:flex-row md:items-center"
+          className="mb-10 flex min-w-0 flex-col gap-6 border-b-2 border-[#111] pb-8 md:flex-row md:items-center md:justify-between"
         >
-          <div className="flex min-w-0 items-center gap-4 sm:gap-6">
-            <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full border-2 border-white/10 bg-gradient-to-br from-primary to-amber-600 text-2xl font-black uppercase text-white shadow-[0_0_30px_rgba(235,103,27,0.4)] sm:h-20 sm:w-20 sm:text-3xl">
-              {username.substring(0,2)}
+          <div className="flex min-w-0 items-start gap-4 sm:items-center sm:gap-6">
+            <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-xl border-[3px] border-[#111] bg-[#ccff00] text-xl font-black uppercase text-[#111] shadow-[4px_4px_0_#111] sm:h-20 sm:w-20 sm:text-2xl [font-family:var(--font-store-display),sans-serif]">
+              {username.substring(0, 2)}
             </div>
-            <div className="min-w-0 flex-1">
-              <h1 className="break-words pb-1 font-black uppercase leading-[1.15] tracking-wide text-transparent [text-wrap:balance] bg-clip-text bg-gradient-to-r from-white to-white/75 text-2xl sm:text-4xl md:text-5xl md:tracking-widest">
-                HOLA, {username}
+            <div className="min-w-0 flex-1 pt-1">
+              <p className="text-xs font-bold uppercase tracking-[0.2em] text-[#5d3fd3]">Mi prode</p>
+              <h1 className="break-words text-2xl font-black uppercase leading-tight tracking-tight text-[#111] [text-wrap:balance] sm:text-4xl md:text-5xl [font-family:var(--font-store-display),sans-serif]">
+                Hola, {username}
               </h1>
-              <p className="mt-1 text-xs font-bold uppercase tracking-widest text-primary sm:text-sm">Tu Prode Personal</p>
+              <p className="mt-2 max-w-xl text-sm font-medium text-[#444]">
+                Pronosticá los partidos pendientes; podés guardar de a uno o todos los completos de una vez.
+              </p>
             </div>
           </div>
-          
-          <div className="glass-card flex shrink-0 items-center gap-4 rounded-2xl border border-white/10 bg-[#0a0f1c]/80 px-6 py-4 backdrop-blur-xl sm:px-8">
-            <Trophy className="h-7 w-7 shrink-0 text-primary drop-shadow-[0_0_10px_rgba(235,103,27,0.8)] sm:h-8 sm:w-8" />
+
+          <div className="flex shrink-0 items-center gap-4 rounded-xl border-[3px] border-[#111] bg-white px-6 py-4 shadow-[6px_6px_0_#111] sm:px-8">
+            <Trophy className="h-8 w-8 shrink-0 text-[#EB671B]" aria-hidden />
             <div className="min-w-0">
-              <div className="mb-1 text-[10px] font-bold uppercase tracking-widest text-white/50 sm:text-xs">Mis Puntos</div>
-              <div className="bg-gradient-to-r from-primary to-amber-400 bg-clip-text pb-0.5 text-2xl font-bold leading-none text-transparent tabular-nums sm:text-3xl">
+              <div className="mb-1 text-[10px] font-bold uppercase tracking-widest text-[#666] sm:text-xs">
+                Mis puntos
+              </div>
+              <div className="text-3xl font-black tabular-nums text-[#111] [font-family:var(--font-store-display),sans-serif]">
                 {basePoints + bracketPoints}
               </div>
               {bracketPoints > 0 && (
-                <div className="text-[10px] text-amber-400 mt-1 font-bold">
-                  +{bracketPoints} pts por Llaves
-                </div>
+                <div className="mt-1 text-[10px] font-bold text-[#5d3fd3]">+{bracketPoints} pts por llaves</div>
               )}
             </div>
           </div>
         </motion.div>
 
-        {/* TABS */}
         <div className="mb-8 flex flex-wrap gap-3 sm:gap-4" role="tablist" aria-label="Secciones del panel">
-          <button 
-            type="button"
-            role="tab"
-            aria-selected={activeTab === 'matches'}
-            onClick={() => setActiveTab('matches')}
-            className={`flex items-center gap-2 rounded-xl px-5 py-3 text-sm font-bold transition-all sm:px-6 ${activeTab === 'matches' ? 'border border-primary/50 bg-primary text-white shadow-[0_0_20px_rgba(235,103,27,0.4)]' : 'border border-white/5 bg-white/5 text-white/70 hover:bg-white/10 hover:text-white'}`}
-          >
-            <Sparkles className="h-5 w-5 shrink-0" /> Mis Pronósticos
+          <button type="button" role="tab" aria-selected={activeTab === 'matches'} onClick={() => setActiveTab('matches')} className={tabBtn(activeTab === 'matches')}>
+            <Sparkles className="h-5 w-5 shrink-0" /> Mis pronósticos
           </button>
-          <button 
-            type="button"
-            role="tab"
-            aria-selected={activeTab === 'leagues'}
-            onClick={() => setActiveTab('leagues')}
-            className={`flex items-center gap-2 rounded-xl px-5 py-3 text-sm font-bold transition-all sm:px-6 ${activeTab === 'leagues' ? 'border border-primary/50 bg-primary text-white shadow-[0_0_20px_rgba(235,103,27,0.4)]' : 'border border-white/5 bg-white/5 text-white/70 hover:bg-white/10 hover:text-white'}`}
-          >
-            <Users className="h-5 w-5 shrink-0" /> Ligas de Amigos
+          <button type="button" role="tab" aria-selected={activeTab === 'leagues'} onClick={() => setActiveTab('leagues')} className={tabBtn(activeTab === 'leagues')}>
+            <Users className="h-5 w-5 shrink-0" /> Ligas
           </button>
-          <button 
-            type="button"
-            role="tab"
-            aria-selected={activeTab === 'medals'}
-            onClick={() => setActiveTab('medals')}
-            className={`flex items-center gap-2 rounded-xl px-5 py-3 text-sm font-bold transition-all sm:px-6 ${activeTab === 'medals' ? 'border border-primary/50 bg-primary text-white shadow-[0_0_20px_rgba(235,103,27,0.4)]' : 'border border-white/5 bg-white/5 text-white/70 hover:bg-white/10 hover:text-white'}`}
-          >
-            <Medal className="h-5 w-5 shrink-0" /> Mis Trofeos
+          <button type="button" role="tab" aria-selected={activeTab === 'medals'} onClick={() => setActiveTab('medals')} className={tabBtn(activeTab === 'medals')}>
+            <Medal className="h-5 w-5 shrink-0" /> Trofeos
           </button>
         </div>
 
-        {/* CONTENT AREA */}
-        <AnimatePresence>
-          
-          {/* TAB: MATCHES */}
+        <AnimatePresence mode="wait">
           {activeTab === 'matches' && (
-            <motion.div key="matches" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} className="space-y-12">
-              
-              <section>
-                <div className="flex items-center justify-between mb-6">
-                  <h2 className="text-2xl font-black text-white flex items-center gap-3">
-                    PARTIDOS PENDIENTES
-                    <span className="bg-primary/20 text-primary text-sm px-3 py-1 rounded-full border border-primary/30">{pendingMatches.length}</span>
-                  </h2>
+            <motion.div key="matches" initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -12 }} className="space-y-8">
+              <section className="border-[3px] border-[#111] bg-white p-5 shadow-[8px_8px_0_#111] sm:p-6">
+                <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <h2 className="flex flex-wrap items-center gap-3 text-xl font-black uppercase text-[#111] sm:text-2xl [font-family:var(--font-store-display),sans-serif]">
+                      Partidos pendientes
+                      <span className="rounded-full border-2 border-[#111] bg-[#ccff00] px-3 py-1 text-sm tabular-nums text-[#111]">
+                        {pendingMatches.length}
+                      </span>
+                    </h2>
+                    <p className="mt-1 text-sm text-[#555]">
+                      Completados con marcador:{' '}
+                      <strong className="text-[#111]">
+                        {filledPendingCount}/{pendingMatches.length}
+                      </strong>
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={saveAllFilledPredictions}
+                    disabled={isSavingBulk || filledPendingCount === 0}
+                    className="btn-primary hover-lift inline-flex items-center justify-center gap-2 px-6 py-3 text-center disabled:cursor-not-allowed disabled:opacity-45 [font-family:var(--font-store-display),sans-serif]"
+                  >
+                    {isSavingBulk ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                    {isSavingBulk ? 'Guardando lote…' : `Guardar todos (${filledPendingCount})`}
+                  </button>
                 </div>
-                
-                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-                  {pendingMatches.map(match => (
-                    <div key={match.id} className="relative glass-card p-6 rounded-2xl border border-white/10 hover:border-white/20 transition-all group overflow-hidden bg-[#0a0f1c]/80 backdrop-blur-xl">
-                      <div className="flex items-center justify-between mb-6">
-                        <span className="text-[10px] font-bold px-2 py-1 rounded bg-white/5 text-white/50 uppercase tracking-widest border border-white/10">{match.stage}</span>
-                        <div className="flex items-center gap-1 text-[10px] text-white/40 uppercase font-bold tracking-widest">
-                          <MapPin className="w-3 h-3" /> {match.venue}
+
+                <div className="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-3">
+                  {pendingMatches.map((match) => (
+                    <div
+                      key={match.id}
+                      className="relative overflow-hidden rounded-xl border-2 border-[#eee] bg-[#fafafa] p-5 shadow-[3px_3px_0_#ccc] transition-all hover:border-[#111] hover:shadow-[5px_5px_0_#111]"
+                    >
+                      <div className="mb-4 flex items-center justify-between gap-2">
+                        <span className="rounded border border-[#111] bg-[#111] px-2 py-1 text-[10px] font-black uppercase tracking-widest text-[#ccff00]">
+                          {match.stage}
+                        </span>
+                        <div className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-wide text-[#666]">
+                          <MapPin className="h-3 w-3 shrink-0 text-[#EB671B]" aria-hidden />
+                          <span className="truncate">{match.venue}</span>
                         </div>
                       </div>
-                      
-                      {/* Home Team Input */}
-                      <div className="flex items-center justify-between mb-4 bg-black/40 p-3 rounded-xl border border-white/5">
-                        <div className="flex items-center gap-3">
-                          <div className="w-8 h-6 rounded overflow-hidden relative border border-white/10 bg-white/5 flex items-center justify-center">
-                            {match.homeTeam.code === 'tbd' ? <span className="text-white/30 text-[10px] font-bold">?</span> : <Image unoptimized src={`https://flagcdn.com/${match.homeTeam.code}.svg`} alt={match.homeTeam.name} fill className="object-cover" />}
+
+                      <div className="mb-3 flex items-center justify-between gap-3 rounded-lg border-2 border-[#ddd] bg-white p-3">
+                        <div className="flex min-w-0 items-center gap-3">
+                          <div className="relative flex h-7 w-10 shrink-0 items-center justify-center overflow-hidden rounded border-2 border-[#111] bg-white">
+                            {match.homeTeam.code === 'tbd' ? (
+                              <span className="text-xs font-black text-[#999]">?</span>
+                            ) : (
+                              <Image unoptimized src={`https://flagcdn.com/${match.homeTeam.code}.svg`} alt={match.homeTeam.name} fill className="object-cover" />
+                            )}
                           </div>
-                          <span className="font-bold text-white text-sm">{match.homeTeam.name}</span>
+                          <span className="truncate text-sm font-bold text-[#111]">{match.homeTeam.name}</span>
                         </div>
-                        <input 
-                          type="number" min="0" placeholder="-"
-                          className="w-14 h-12 bg-[#060913] border border-white/10 rounded-lg text-center font-mono font-bold text-xl text-white placeholder:text-white/20 focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all"
-                          value={predictions[match.id]?.home ?? ''} onChange={(e) => handlePredictionChange(match.id, 'home', e.target.value)}
+                        <input
+                          type="number"
+                          min={0}
+                          placeholder="—"
+                          className="store-field w-16 py-2 text-center font-mono text-lg font-black"
+                          value={predictions[match.id]?.home ?? ''}
+                          onChange={(e) => handlePredictionChange(match.id, 'home', e.target.value)}
                         />
                       </div>
 
-                      {/* Away Team Input */}
-                      <div className="flex items-center justify-between mb-6 bg-black/40 p-3 rounded-xl border border-white/5">
-                        <div className="flex items-center gap-3">
-                          <div className="w-8 h-6 rounded overflow-hidden relative border border-white/10 bg-white/5 flex items-center justify-center">
-                            {match.awayTeam.code === 'tbd' ? <span className="text-white/30 text-[10px] font-bold">?</span> : <Image unoptimized src={`https://flagcdn.com/${match.awayTeam.code}.svg`} alt={match.awayTeam.name} fill className="object-cover" />}
+                      <div className="mb-4 flex items-center justify-between gap-3 rounded-lg border-2 border-[#ddd] bg-white p-3">
+                        <div className="flex min-w-0 items-center gap-3">
+                          <div className="relative flex h-7 w-10 shrink-0 items-center justify-center overflow-hidden rounded border-2 border-[#111] bg-white">
+                            {match.awayTeam.code === 'tbd' ? (
+                              <span className="text-xs font-black text-[#999]">?</span>
+                            ) : (
+                              <Image unoptimized src={`https://flagcdn.com/${match.awayTeam.code}.svg`} alt={match.awayTeam.name} fill className="object-cover" />
+                            )}
                           </div>
-                          <span className="font-bold text-white text-sm">{match.awayTeam.name}</span>
+                          <span className="truncate text-sm font-bold text-[#111]">{match.awayTeam.name}</span>
                         </div>
-                        <input 
-                          type="number" min="0" placeholder="-"
-                          className="w-14 h-12 bg-[#060913] border border-white/10 rounded-lg text-center font-mono font-bold text-xl text-white placeholder:text-white/20 focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all"
-                          value={predictions[match.id]?.away ?? ''} onChange={(e) => handlePredictionChange(match.id, 'away', e.target.value)}
+                        <input
+                          type="number"
+                          min={0}
+                          placeholder="—"
+                          className="store-field w-16 py-2 text-center font-mono text-lg font-black"
+                          value={predictions[match.id]?.away ?? ''}
+                          onChange={(e) => handlePredictionChange(match.id, 'away', e.target.value)}
                         />
                       </div>
 
-                      <button 
+                      <button
                         type="button"
                         onClick={() => savePrediction(match.id)}
                         disabled={!predictions[match.id]?.home || !predictions[match.id]?.away || isSaving === match.id}
-                        className="flex w-full items-center justify-center gap-2 rounded-xl border border-primary/50 bg-primary/80 py-3 text-sm font-bold text-white shadow-[0_0_15px_rgba(235,103,27,0.2)] transition-all hover:bg-primary disabled:opacity-30 disabled:shadow-none disabled:hover:bg-primary/80"
+                        className="btn-secondary hover-lift flex w-full items-center justify-center gap-2 py-3 text-center disabled:cursor-not-allowed disabled:opacity-40 [font-family:var(--font-store-display),sans-serif]"
                       >
-                        {isSaving === match.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />} 
-                        {isSaving === match.id ? 'Guardando...' : lastSavedMatchId === match.id ? 'Guardado ✓' : 'Guardar Predicción'}
+                        {isSaving === match.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                        {isSaving === match.id ? 'Guardando…' : lastSavedMatchId === match.id ? 'Guardado ✓' : 'Guardar este partido'}
                       </button>
                     </div>
                   ))}
                 </div>
-              </section>
 
+                {pendingMatches.length === 0 && (
+                  <p className="py-12 text-center font-semibold text-[#555]">No hay partidos pendientes por ahora.</p>
+                )}
+              </section>
             </motion.div>
           )}
 
-          {/* TAB: LEAGUES */}
           {activeTab === 'leagues' && (
-            <motion.div key="leagues" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} className="min-h-[240px] space-y-8">
-              <p className="text-sm text-white/55">
-                Creá una liga, compartí el código con amigos o unite con el que te pasaron. El ranking usa los mismos puntos que en Plot Mundial.
+            <motion.div key="leagues" initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -12 }} className="min-h-[240px] space-y-8">
+              <p className="text-sm font-medium text-[#444]">
+                Creá una liga, compartí el código o unite con el que te pasaron. El ranking usa los mismos puntos que en Plot Mundial.
               </p>
 
               <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-                <div className="glass-card p-8 rounded-2xl border border-white/10 bg-gradient-to-br from-white/5 to-transparent relative overflow-hidden group hover:border-primary/50 transition-colors">
-                  <div className="absolute top-0 right-0 w-32 h-32 bg-primary/10 rounded-full blur-[40px] group-hover:bg-primary/20 transition-all" />
-                  <Users className="w-10 h-10 text-primary mb-4" />
-                  <h3 className="text-2xl font-black text-white mb-2">Unirse a Liga</h3>
-                  <p className="text-white/50 text-sm mb-6">Ingresa el código que te compartieron tus amigos para entrar a su ranking privado.</p>
+                <div className="border-[3px] border-[#111] bg-white p-8 shadow-[8px_8px_0_#111]">
+                  <Users className="mb-4 h-10 w-10 text-[#5d3fd3]" />
+                  <h3 className="mb-2 text-2xl font-black uppercase text-[#111] [font-family:var(--font-store-display),sans-serif]">Unirse a liga</h3>
+                  <p className="mb-6 text-sm text-[#555]">Ingresá el código que te compartieron.</p>
                   <div className="flex gap-2">
-                    <input 
-                      type="text" 
-                      placeholder="Ej: PLOT-1234" 
+                    <input
+                      type="text"
+                      placeholder="Ej: PLOT-1234"
                       value={joinCode}
                       onChange={(e) => setJoinCode(e.target.value.toUpperCase())}
-                      className="flex-1 bg-black/50 border border-white/10 rounded-xl px-4 text-white focus:outline-none focus:border-primary uppercase font-mono" 
+                      className="store-field min-w-0 flex-1 font-mono uppercase"
                     />
-                    <button 
+                    <button
                       type="button"
                       onClick={handleJoinLeague}
                       disabled={!joinCode.trim() || isJoining}
-                      className="rounded-xl bg-primary p-3 text-white transition-colors hover:bg-primary/90 disabled:opacity-50"
+                      className="btn-primary shrink-0 px-4 disabled:opacity-50"
+                      aria-label="Unirse"
                     >
-                      {isJoining ? <Loader2 className="w-5 h-5 animate-spin" /> : <Search className="w-5 h-5" />}
+                      {isJoining ? <Loader2 className="h-5 w-5 animate-spin" /> : <Search className="h-5 w-5" />}
                     </button>
                   </div>
                 </div>
 
-                <div className="glass-card p-8 rounded-2xl border border-white/10 bg-gradient-to-br from-white/5 to-transparent relative overflow-hidden group hover:border-amber-500/50 transition-colors">
-                  <div className="absolute top-0 right-0 w-32 h-32 bg-amber-500/10 rounded-full blur-[40px] group-hover:bg-amber-500/20 transition-all" />
-                  <Trophy className="w-10 h-10 text-amber-500 mb-4" />
-                  <h3 className="text-2xl font-black text-white mb-2">Crear Nueva Liga</h3>
-                  <p className="text-white/50 text-sm mb-6">Conviértete en administrador, crea tus propias reglas e invita a tu grupo.</p>
+                <div className="border-[3px] border-[#111] bg-white p-8 shadow-[8px_8px_0_#111]">
+                  <Trophy className="mb-4 h-10 w-10 text-[#EB671B]" />
+                  <h3 className="mb-2 text-2xl font-black uppercase text-[#111] [font-family:var(--font-store-display),sans-serif]">Nueva liga</h3>
+                  <p className="mb-6 text-sm text-[#555]">Sos admin y obtenés el código para invitar.</p>
                   <div className="flex gap-2">
-                    <input 
-                      type="text" 
-                      placeholder="Nombre de la liga" 
+                    <input
+                      type="text"
+                      placeholder="Nombre de la liga"
                       value={newLeagueName}
                       onChange={(e) => setNewLeagueName(e.target.value)}
-                      className="flex-1 bg-black/50 border border-white/10 rounded-xl px-4 text-white focus:outline-none focus:border-amber-500 font-outfit" 
+                      className="store-field min-w-0 flex-1"
                     />
-                    <button 
+                    <button
                       type="button"
                       onClick={handleCreateLeague}
                       disabled={!newLeagueName.trim() || isCreating}
-                      className="rounded-xl bg-amber-500 p-3 text-white transition-colors hover:bg-amber-600 disabled:opacity-50"
+                      className="btn-secondary shrink-0 px-4 disabled:opacity-50"
+                      aria-label="Crear liga"
                     >
-                      {isCreating ? <Loader2 className="w-5 h-5 animate-spin" /> : <Plus className="w-5 h-5" />}
+                      {isCreating ? <Loader2 className="h-5 w-5 animate-spin" /> : <Plus className="h-5 w-5" />}
                     </button>
                   </div>
                 </div>
               </div>
 
-              {/* LIGAS ACTIVAS */}
               {leagues.length > 0 && (
-                <div className="flex gap-4 overflow-x-auto pb-2 scrollbar-hide mt-8">
-                  {leagues.map(l => (
-                    <button 
+                <div className="flex gap-3 overflow-x-auto pb-2 [-webkit-overflow-scrolling:touch]">
+                  {leagues.map((l) => (
+                    <button
                       type="button"
                       key={l.id}
                       onClick={() => loadLeaderboard(l.id)}
-                      className={`whitespace-nowrap px-6 py-2 rounded-full border text-sm font-bold transition-all ${activeLeagueId === l.id ? 'bg-primary/20 border-primary text-white shadow-[0_0_15px_rgba(235,103,27,0.3)]' : 'bg-white/5 border-white/10 text-white/50 hover:bg-white/10'}`}
+                      className={cn(
+                        'whitespace-nowrap rounded-full border-2 px-6 py-2 text-sm font-black uppercase transition-all [font-family:var(--font-store-display),sans-serif]',
+                        activeLeagueId === l.id
+                          ? 'border-[#111] bg-[#ccff00] text-[#111] shadow-[3px_3px_0_#111]'
+                          : 'border-[#111] bg-white text-[#111] hover:bg-[#fafafa]',
+                      )}
                     >
                       {l.name}
                     </button>
@@ -404,118 +519,171 @@ export default function DashboardPage() {
                 </div>
               )}
 
-              {/* RANKING DE LIGA SELECCIONADA */}
               {activeLeague && (
-                <div className="glass-card p-6 md:p-8 rounded-3xl border border-primary/30 bg-[#0a0f1c]/90 relative overflow-hidden shadow-[0_0_30px_rgba(235,103,27,0.1)]">
-                  <div className="flex flex-col md:flex-row items-center justify-between gap-4 mb-8">
+                <div className="border-[3px] border-[#111] bg-white p-6 shadow-[8px_8px_0_#111] md:p-8">
+                  <div className="mb-8 flex flex-col items-start justify-between gap-4 md:flex-row md:items-center">
                     <div>
-                      <h3 className="text-2xl font-black text-white flex items-center gap-3">
-                        {activeLeague.name} <span className="bg-green-500/20 text-green-400 text-xs px-3 py-1 rounded-full border border-green-500/30 font-bold">Activa</span>
+                      <h3 className="flex flex-wrap items-center gap-3 text-2xl font-black text-[#111] [font-family:var(--font-store-display),sans-serif]">
+                        {activeLeague.name}{' '}
+                        <span className="rounded-full border-2 border-[#111] bg-[#ccff00] px-3 py-0.5 text-xs font-black uppercase text-[#111]">
+                          Activa
+                        </span>
                       </h3>
-                      <p className="text-white/50 text-sm mt-1">
-                        Código de invitación: <span className="font-mono text-white bg-white/10 px-2 py-0.5 rounded">{activeLeague.invite_code}</span>
+                      <p className="mt-2 text-sm text-[#555]">
+                        Código:{' '}
+                        <span className="font-mono font-bold text-[#111]">{activeLeague.invite_code}</span>
                       </p>
                     </div>
                     {myRank > 0 && (
-                      <div className="bg-black/50 border border-white/10 rounded-xl p-3 text-center min-w-[120px]">
-                        <div className="text-[10px] text-white/50 uppercase tracking-widest font-bold mb-1">Mi Posición</div>
-                        <div className="text-2xl font-black text-primary">#{myRank}</div>
+                      <div className="min-w-[120px] rounded-xl border-2 border-[#111] bg-[#fafafa] p-3 text-center shadow-[3px_3px_0_#111]">
+                        <div className="text-[10px] font-bold uppercase tracking-widest text-[#666]">Tu posición</div>
+                        <div className="text-2xl font-black text-[#EB671B]">#{myRank}</div>
                       </div>
                     )}
                   </div>
 
-                  <div className="bg-white/5 rounded-2xl border border-white/5 overflow-x-auto">
+                  <div className="overflow-x-auto rounded-xl border-2 border-[#ddd] bg-[#fafafa]">
                     <div className="min-w-[450px]">
-                      <div className="grid grid-cols-12 gap-4 p-4 border-b border-white/5 bg-black/40 text-xs font-bold text-white/40 uppercase tracking-widest">
+                      <div className="grid grid-cols-12 gap-4 border-b-2 border-[#111] bg-white p-4 text-xs font-black uppercase tracking-widest text-[#666]">
                         <div className="col-span-2 text-center">Pos</div>
                         <div className="col-span-7">Jugador</div>
-                        <div className="col-span-3 text-right pr-4">Pts</div>
+                        <div className="col-span-3 pr-4 text-right">Pts</div>
                       </div>
-                      <div className="divide-y divide-white/5">
+                      <div className="divide-y-2 divide-[#eee]">
                         {leagueLeaderboard.map((member, idx) => {
                           const isMe = member.username === username || member.username === username.toLowerCase()
-                          let bgClass = "hover:bg-white/5 transition-colors"
-                          let posClass = "text-white/30"
-                          let textClass = "text-white/70"
-                          let ptsClass = "text-white/50"
+                          let row = 'bg-white hover:bg-[#fafafa]'
+                          let posClass = 'text-[#999]'
+                          let textClass = 'text-[#333]'
+                          let ptsClass = 'text-[#555]'
 
-                          if (idx === 0) { bgClass = "bg-amber-500/5"; posClass = "text-amber-500"; textClass = "text-white"; ptsClass = "text-amber-500" }
-                          else if (idx === 1) { bgClass = "bg-gray-400/5"; posClass = "text-gray-400"; textClass = "text-white"; ptsClass = "text-gray-400" }
-                          else if (idx === 2) { bgClass = "bg-amber-700/10"; posClass = "text-amber-700"; textClass = "text-white"; ptsClass = "text-amber-700" }
+                          if (idx === 0) {
+                            row = 'bg-[#fffbeb]'
+                            posClass = 'text-[#EB671B]'
+                            textClass = 'text-[#111]'
+                            ptsClass = 'text-[#111]'
+                          } else if (idx === 1) {
+                            row = 'bg-[#f5f5f5]'
+                            posClass = 'text-[#666]'
+                            textClass = 'text-[#111]'
+                            ptsClass = 'text-[#444]'
+                          } else if (idx === 2) {
+                            row = 'bg-[#fff7ed]'
+                            posClass = 'text-[#c2410c]'
+                            textClass = 'text-[#111]'
+                            ptsClass = 'text-[#333]'
+                          }
 
-                          if (isMe) { bgClass = "bg-primary/10 border-l-2 border-primary"; posClass = "text-primary"; textClass = "text-white"; ptsClass = "text-primary" }
+                          if (isMe) {
+                            row = 'border-l-4 border-[#5d3fd3] bg-[#f5f3ff]'
+                            posClass = 'text-[#5d3fd3]'
+                            textClass = 'text-[#111]'
+                            ptsClass = 'text-[#5d3fd3]'
+                          }
 
                           return (
-                            <div key={member.user_id} className={`grid grid-cols-12 gap-4 p-4 items-center ${bgClass}`}>
-                              <div className={`col-span-2 text-center font-black ${posClass}`}>#{idx + 1}</div>
-                              <div className={`col-span-7 font-bold flex items-center gap-2 ${textClass}`}>
-                                {member.avatar_url ? <img src={member.avatar_url} className="w-6 h-6 rounded-full" /> : <div className="w-6 h-6 rounded-full bg-white/10" />}
-                                {member.username} {isMe && "(Tú)"}
+                            <div key={member.user_id} className={cn('grid grid-cols-12 items-center gap-4 p-4', row)}>
+                              <div className={cn('col-span-2 text-center font-black', posClass)}>#{idx + 1}</div>
+                              <div className={cn('col-span-7 flex items-center gap-2 font-bold', textClass)}>
+                                {member.avatar_url ? (
+                                  // eslint-disable-next-line @next/next/no-img-element
+                                  <img src={member.avatar_url} alt="" className="h-6 w-6 rounded-full" />
+                                ) : (
+                                  <div className="h-6 w-6 rounded-full border border-[#ddd] bg-[#eee]" />
+                                )}
+                                {member.username} {isMe && '(vos)'}
                               </div>
-                              <div className={`col-span-3 text-right pr-4 font-mono font-bold ${ptsClass}`}>{member.total_points || 0}</div>
+                              <div className={cn('col-span-3 pr-4 text-right font-mono font-black', ptsClass)}>
+                                {member.total_points || 0}
+                              </div>
                             </div>
                           )
                         })}
                         {leagueLeaderboard.length === 0 && (
-                          <div className="p-8 text-center text-white/50">Esta liga aún no tiene miembros o puntos.</div>
+                          <div className="p-8 text-center font-medium text-[#666]">Esta liga aún no tiene datos.</div>
                         )}
                       </div>
                     </div>
                   </div>
                 </div>
               )}
-
             </motion.div>
           )}
 
-          {/* TAB: MEDALS */}
           {activeTab === 'medals' && (
-            <motion.div key="medals" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} className="space-y-8">
-              
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                
-                {/* MEDAL 1: Nostradamus */}
-                <div className={`glass-card p-6 rounded-2xl border ${medals.includes('nostradamus') ? 'border-purple-500/30 bg-gradient-to-b from-purple-500/10 to-transparent shadow-[0_0_20px_rgba(168,85,247,0.15)]' : 'border-white/5 bg-black/50 grayscale opacity-70'} flex flex-col items-center text-center relative overflow-hidden group`}>
-                  <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-10 mix-blend-overlay pointer-events-none" />
-                  <div className={`w-24 h-24 rounded-full ${medals.includes('nostradamus') ? 'bg-gradient-to-br from-purple-400 to-indigo-600 shadow-[0_0_30px_rgba(168,85,247,0.5)]' : 'bg-white/5 text-white/30'} flex items-center justify-center mb-4 border-4 border-[#0a0f1c] relative z-10`}>
-                    <Star className="w-10 h-10 text-white" />
+            <motion.div key="medals" initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -12 }} className="space-y-8">
+              <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
+                <div
+                  className={cn(
+                    'flex flex-col items-center border-[3px] border-[#111] bg-white p-6 text-center shadow-[8px_8px_0_#111]',
+                    medals.includes('nostradamus') ? '' : 'opacity-80 grayscale',
+                  )}
+                >
+                  <div
+                    className={cn(
+                      'mb-4 flex h-24 w-24 items-center justify-center rounded-full border-4 border-[#111]',
+                      medals.includes('nostradamus') ? 'bg-gradient-to-br from-purple-400 to-indigo-600 text-white' : 'bg-[#eee] text-[#999]',
+                    )}
+                  >
+                    <Star className="h-10 w-10" />
                   </div>
-                  <h3 className={`text-xl font-black ${medals.includes('nostradamus') ? 'text-purple-300' : 'text-white/50'} mb-2`}>Nostradamus</h3>
-                  <p className="text-sm text-white/60">Acertaste el resultado exacto (goles) de un partido difícil.</p>
-                  <div className={`mt-4 px-4 py-1.5 rounded-full text-xs font-bold border ${medals.includes('nostradamus') ? 'bg-purple-500/20 text-purple-300 border-purple-500/30' : 'bg-black/50 text-white/30 border-white/10'}`}>
+                  <h3 className={cn('mb-2 text-xl font-black [font-family:var(--font-store-display),sans-serif]', medals.includes('nostradamus') ? 'text-[#5d3fd3]' : 'text-[#999]')}>
+                    Nostradamus
+                  </h3>
+                  <p className="text-sm text-[#555]">Resultado exacto en un partido difícil.</p>
+                  <div className={cn('mt-4 rounded-full border-2 px-4 py-1.5 text-xs font-black uppercase', medals.includes('nostradamus') ? 'border-[#111] bg-[#ccff00]' : 'border-[#ccc] bg-[#fafafa] text-[#666]')}>
                     {medals.includes('nostradamus') ? 'Desbloqueada' : 'Bloqueada'}
                   </div>
                 </div>
 
-                {/* MEDAL 2: Madrugador */}
-                <div className={`glass-card p-6 rounded-2xl border ${medals.includes('madrugador') ? 'border-blue-500/30 bg-gradient-to-b from-blue-500/10 to-transparent shadow-[0_0_20px_rgba(59,130,246,0.15)]' : 'border-white/5 bg-black/50 grayscale opacity-70'} flex flex-col items-center text-center relative overflow-hidden group`}>
-                  <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-10 mix-blend-overlay pointer-events-none" />
-                  <div className={`w-24 h-24 rounded-full ${medals.includes('madrugador') ? 'bg-gradient-to-br from-blue-400 to-cyan-600 shadow-[0_0_30px_rgba(59,130,246,0.5)]' : 'bg-white/5 text-white/30'} flex items-center justify-center mb-4 border-4 border-[#0a0f1c] relative z-10`}>
-                    <Zap className="w-10 h-10 text-white" />
+                <div
+                  className={cn(
+                    'flex flex-col items-center border-[3px] border-[#111] bg-white p-6 text-center shadow-[8px_8px_0_#111]',
+                    medals.includes('madrugador') ? '' : 'opacity-80 grayscale',
+                  )}
+                >
+                  <div
+                    className={cn(
+                      'mb-4 flex h-24 w-24 items-center justify-center rounded-full border-4 border-[#111]',
+                      medals.includes('madrugador') ? 'bg-gradient-to-br from-blue-400 to-cyan-600 text-white' : 'bg-[#eee] text-[#999]',
+                    )}
+                  >
+                    <Zap className="h-10 w-10" />
                   </div>
-                  <h3 className={`text-xl font-black ${medals.includes('madrugador') ? 'text-blue-300' : 'text-white/50'} mb-2`}>Madrugador</h3>
-                  <p className="text-sm text-white/60">Pronosticaste todos los partidos de la Fase de Grupos a tiempo.</p>
-                  <div className={`mt-4 px-4 py-1.5 rounded-full text-xs font-bold border ${medals.includes('madrugador') ? 'bg-blue-500/20 text-blue-300 border-blue-500/30' : 'bg-black/50 text-white/30 border-white/10'}`}>
+                  <h3 className={cn('mb-2 text-xl font-black [font-family:var(--font-store-display),sans-serif]', medals.includes('madrugador') ? 'text-[#2563eb]' : 'text-[#999]')}>
+                    Madrugador
+                  </h3>
+                  <p className="text-sm text-[#555]">Todos los partidos de grupos a tiempo.</p>
+                  <div className={cn('mt-4 rounded-full border-2 px-4 py-1.5 text-xs font-black uppercase', medals.includes('madrugador') ? 'border-[#111] bg-[#ccff00]' : 'border-[#ccc] bg-[#fafafa] text-[#666]')}>
                     {medals.includes('madrugador') ? 'Desbloqueada' : 'Bloqueada'}
                   </div>
                 </div>
 
-                {/* MEDAL 3: Cazagigantes */}
-                <div className={`glass-card p-6 rounded-2xl border ${medals.includes('cazagigantes') ? 'border-green-500/30 bg-gradient-to-b from-green-500/10 to-transparent shadow-[0_0_20px_rgba(34,197,94,0.15)]' : 'border-white/5 bg-black/50 grayscale opacity-70'} flex flex-col items-center text-center relative overflow-hidden group`}>
-                  <div className={`w-24 h-24 rounded-full ${medals.includes('cazagigantes') ? 'bg-gradient-to-br from-green-400 to-emerald-600 shadow-[0_0_30px_rgba(34,197,94,0.5)]' : 'bg-white/5 text-white/30'} flex items-center justify-center mb-4 border-4 border-[#0a0f1c] relative z-10`}>
-                    <Target className="w-10 h-10 text-white" />
+                <div
+                  className={cn(
+                    'flex flex-col items-center border-[3px] border-[#111] bg-white p-6 text-center shadow-[8px_8px_0_#111]',
+                    medals.includes('cazagigantes') ? '' : 'opacity-80 grayscale',
+                  )}
+                >
+                  <div
+                    className={cn(
+                      'mb-4 flex h-24 w-24 items-center justify-center rounded-full border-4 border-[#111]',
+                      medals.includes('cazagigantes') ? 'bg-gradient-to-br from-green-400 to-emerald-600 text-white' : 'bg-[#eee] text-[#999]',
+                    )}
+                  >
+                    <Target className="h-10 w-10" />
                   </div>
-                  <h3 className={`text-xl font-black ${medals.includes('cazagigantes') ? 'text-green-300' : 'text-white/50'} mb-2`}>Cazagigantes</h3>
-                  <p className="text-sm text-white/60">Predice la victoria de un equipo débil contra un claro favorito.</p>
-                  <div className={`mt-4 px-4 py-1.5 rounded-full text-xs font-bold border ${medals.includes('cazagigantes') ? 'bg-green-500/20 text-green-300 border-green-500/30' : 'bg-black/50 text-white/30 border-white/10'}`}>
+                  <h3 className={cn('mb-2 text-xl font-black [font-family:var(--font-store-display),sans-serif]', medals.includes('cazagigantes') ? 'text-[#15803d]' : 'text-[#999]')}>
+                    Cazagigantes
+                  </h3>
+                  <p className="text-sm text-[#555]">Victoria del débil contra favorito.</p>
+                  <div className={cn('mt-4 rounded-full border-2 px-4 py-1.5 text-xs font-black uppercase', medals.includes('cazagigantes') ? 'border-[#111] bg-[#ccff00]' : 'border-[#ccc] bg-[#fafafa] text-[#666]')}>
                     {medals.includes('cazagigantes') ? 'Desbloqueada' : 'Bloqueada'}
                   </div>
                 </div>
-
               </div>
             </motion.div>
           )}
-
         </AnimatePresence>
       </div>
     </div>

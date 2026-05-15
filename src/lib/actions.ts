@@ -95,19 +95,16 @@ export async function getUserPredictions() {
   return predictions
 }
 
-export async function savePrediction(matchId: string, homeScore: number, awayScore: number) {
-  const supabase = await createClient()
-  const { data: { user }, error: authError } = await supabase.auth.getUser()
+type PredictionUpsertClient = Awaited<ReturnType<typeof createClient>>
 
-  if (authError || !user) {
-    return { error: 'Debes iniciar sesión para guardar predicciones' }
-  }
-
-  const profileCheck = await ensureUserProfile(supabase, user)
-  if (profileCheck.error) {
-    return { error: profileCheck.error }
-  }
-
+/** Upsert una predicción (sin revalidate). El llamador debe verificar sesión y perfil cuando aplique. */
+async function upsertPredictionRow(
+  supabase: PredictionUpsertClient,
+  userId: string,
+  matchId: string,
+  homeScore: number,
+  awayScore: number,
+): Promise<{ error?: string }> {
   const { data: match } = await supabase.from('matches').select('status').eq('id', matchId).maybeSingle()
   if (match?.status === 'finished') {
     return { error: 'Este partido ya finalizó. No podés cambiar el pronóstico.' }
@@ -116,7 +113,7 @@ export async function savePrediction(matchId: string, homeScore: number, awaySco
   const { data: existing, error: findErr } = await supabase
     .from('predictions')
     .select('id')
-    .eq('user_id', user.id)
+    .eq('user_id', userId)
     .eq('match_id', matchId)
     .maybeSingle()
 
@@ -141,7 +138,7 @@ export async function savePrediction(matchId: string, homeScore: number, awaySco
     }
   } else {
     const { error } = await supabase.from('predictions').insert({
-      user_id: user.id,
+      user_id: userId,
       match_id: matchId,
       home_score: homeScore,
       away_score: awayScore,
@@ -153,9 +150,74 @@ export async function savePrediction(matchId: string, homeScore: number, awaySco
     }
   }
 
+  return {}
+}
+
+export async function savePrediction(matchId: string, homeScore: number, awayScore: number) {
+  const supabase = await createClient()
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser()
+
+  if (authError || !user) {
+    return { error: 'Debes iniciar sesión para guardar predicciones' }
+  }
+
+  const profileCheck = await ensureUserProfile(supabase, user)
+  if (profileCheck.error) {
+    return { error: profileCheck.error }
+  }
+
+  const res = await upsertPredictionRow(supabase, user.id, matchId, homeScore, awayScore)
+  if (res.error) return { error: res.error }
+
   revalidatePath('/dashboard')
   revalidatePath('/fixture')
   return { success: true }
+}
+
+/** Guarda muchos pronósticos en una sola acción (misma validación que savePrediction por ítem). */
+export async function savePredictionsBulk(
+  rows: { matchId: string; homeScore: number; awayScore: number }[],
+): Promise<{ saved: number; errors: string[]; skipped: number }> {
+  const supabase = await createClient()
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser()
+
+  if (authError || !user) {
+    return { saved: 0, errors: ['Debes iniciar sesión para guardar predicciones'], skipped: 0 }
+  }
+
+  const profileCheck = await ensureUserProfile(supabase, user)
+  if (profileCheck.error) {
+    return { saved: 0, errors: [profileCheck.error], skipped: 0 }
+  }
+
+  let saved = 0
+  let skipped = 0
+  const errors: string[] = []
+
+  for (const r of rows) {
+    const h = Number(r.homeScore)
+    const a = Number(r.awayScore)
+    if (!Number.isFinite(h) || !Number.isFinite(a) || h < 0 || a < 0) {
+      skipped++
+      continue
+    }
+    const res = await upsertPredictionRow(supabase, user.id, r.matchId, Math.floor(h), Math.floor(a))
+    if (res.error) errors.push(`${r.matchId}: ${res.error}`)
+    else saved++
+  }
+
+  if (saved > 0) {
+    revalidatePath('/dashboard')
+    revalidatePath('/fixture')
+  }
+
+  return { saved, errors, skipped }
 }
 
 

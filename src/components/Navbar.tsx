@@ -49,7 +49,8 @@ export default function Navbar() {
     pathname === '/' ||
     pathname.startsWith('/store') ||
     pathname.startsWith('/figurita') ||
-    pathname.startsWith('/fixture')
+    pathname.startsWith('/fixture') ||
+    pathname.startsWith('/dashboard')
   const [mobileOpen, setMobileOpen] = useState(false)
   const [user, setUser] = useState<SupabaseUser | null>(null)
   const [authReady, setAuthReady] = useState(false)
