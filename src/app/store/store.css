@@ -17,8 +17,7 @@
 .plot-store .summary-title,
 .plot-store .summary-total,
 .plot-store .trending-header h3,
-.plot-store .footer-logo,
-.plot-store .price-tag {
+.plot-store .footer-logo {
   font-family: var(--font-store-display), "Archivo Black", sans-serif;
 }
 
@@ -420,115 +419,6 @@
   width: 100%;
   height: 100%;
   touch-action: none;
-}
-
-.plot-store .main-image-container--interactive .price-tag {
-  z-index: 3;
-  pointer-events: none;
-}
-
-.price-tag {
-  position: absolute;
-  bottom: 30px;
-  left: -20px;
-  background: #ccff00;
-  border: 2px solid #000;
-  padding: 10px 15px;
-  font-weight: 700;
-  font-family: "Archivo Black";
-  font-size: 20px;
-  box-shadow: 4px 4px 0 #000;
-  transform: rotate(5deg);
-}
-
-.secondary-image {
-  position: absolute;
-  top: 60px;
-  right: -20px;
-  width: 200px;
-  height: 200px;
-  border: 3px solid #111;
-  z-index: 3;
-  background: #fff;
-  transform: rotate(6deg);
-  box-shadow: 6px 6px 0px #ff3366;
-}
-
-@media (max-width: 968px) {
-  .secondary-image {
-    width: 150px;
-    height: 150px;
-    top: 40px;
-    right: -10px;
-  }
-}
-
-@media (max-width: 768px) {
-  .secondary-image {
-    width: 120px;
-    height: 120px;
-    top: 20px;
-    right: -5px;
-  }
-}
-
-.secondary-image img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.sticker-graphic {
-  position: absolute;
-  bottom: 50px;
-  right: 20px;
-  z-index: 4;
-}
-
-@media (max-width: 768px) {
-  .sticker-graphic {
-    bottom: 30px;
-    right: 10px;
-  }
-}
-
-.sticker-graphic img {
-  width: 140px;
-  height: 140px;
-  border-radius: 50%;
-  border: 3px solid #111;
-  object-fit: cover;
-  box-shadow: 4px 4px 0 #000;
-}
-
-@media (max-width: 768px) {
-  .sticker-graphic img {
-    width: 100px;
-    height: 100px;
-  }
-
-  .hot-badge {
-    width: 40px;
-    height: 40px;
-    font-size: 12px;
-  }
-}
-
-.hot-badge {
-  position: absolute;
-  top: -10px;
-  right: -10px;
-  background: #ff3366;
-  color: white;
-  width: 50px;
-  height: 50px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-weight: bold;
-  border: 2px solid black;
-  transform: rotate(15deg);
 }
 
 .decorative-star {

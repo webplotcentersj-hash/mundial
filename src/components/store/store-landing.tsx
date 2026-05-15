@@ -127,18 +127,7 @@ export function StoreLanding({ cartItemCount, selectedProduct, onSelectProduct }
             >
               <InteractiveTravelCard alt="Figurita coleccionable Lionel Messi" />
             </motion.div>
-            <div className="price-tag">PREMIUM</div>
           </motion.div>
-          <div className="secondary-image">
-            <img
-              src="https://images.unsplash.com/photo-1431324155629-1a6deb1dec8d?w=600&q=80"
-              alt="Estadio y merchandising"
-            />
-          </div>
-          <div className="sticker-graphic">
-            <img src="https://images.unsplash.com/photo-1547447134-cd3f5c716030?w=400&q=80" alt="Stickers" />
-            <div className="hot-badge">TOP</div>
-          </div>
           <svg
             className="decorative-star"
             width="80"
