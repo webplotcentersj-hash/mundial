@@ -14,6 +14,7 @@ import {
   Target,
   Loader2,
   Zap,
+  ClipboardCheck,
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import Image from 'next/image'
@@ -34,8 +35,9 @@ import { createClient } from '@/lib/supabase/client'
 import { cn } from '@/lib/utils'
 
 export default function DashboardPage() {
-  const [activeTab, setActiveTab] = useState<'matches' | 'leagues' | 'medals'>('matches')
+  const [activeTab, setActiveTab] = useState<'matches' | 'results' | 'leagues' | 'medals'>('matches')
   const [predictions, setPredictions] = useState<Record<string, { home: string; away: string }>>({})
+  const [pointsByMatchId, setPointsByMatchId] = useState<Record<string, number>>({})
   const [matches, setMatches] = useState<any[]>([])
   const [bracketPoints, setBracketPoints] = useState(0)
   const [basePoints, setBasePoints] = useState(0)
@@ -58,9 +60,12 @@ export default function DashboardPage() {
   async function refreshPointsFromServer() {
     const userPreds = await getUserPredictions()
     let totalPts = 0
+    const ptsMap: Record<string, number> = {}
     userPreds.forEach((p: any) => {
       totalPts += p.points_earned || 0
+      ptsMap[p.match_id] = typeof p.points_earned === 'number' ? p.points_earned : Number(p.points_earned) || 0
     })
+    setPointsByMatchId(ptsMap)
     setBasePoints(totalPts)
   }
 
@@ -90,12 +95,15 @@ export default function DashboardPage() {
       const userPreds = await getUserPredictions()
 
       const predsMap: Record<string, { home: string; away: string }> = {}
+      const ptsMap: Record<string, number> = {}
       let totalPts = 0
       userPreds.forEach((p: any) => {
         predsMap[p.match_id] = { home: String(p.home_score), away: String(p.away_score) }
         totalPts += p.points_earned || 0
+        ptsMap[p.match_id] = typeof p.points_earned === 'number' ? p.points_earned : Number(p.points_earned) || 0
       })
       setPredictions(predsMap)
+      setPointsByMatchId(ptsMap)
       setBasePoints(totalPts)
 
       try {
@@ -138,6 +146,26 @@ export default function DashboardPage() {
   }, [])
 
   const pendingMatches = useMemo(() => matches.filter((m) => m.status === 'pending'), [matches])
+
+  const finishedMatches = useMemo(
+    () =>
+      [...matches.filter((m) => m.status === 'finished')].sort(
+        (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
+      ),
+    [matches],
+  )
+
+  const finishedResultsSummary = useMemo(() => {
+    let playedWithPred = 0
+    let ptsFromFinished = 0
+    for (const m of finishedMatches) {
+      const p = predictions[m.id]
+      if (!p || p.home === '' || p.away === '') continue
+      playedWithPred++
+      ptsFromFinished += pointsByMatchId[m.id] ?? 0
+    }
+    return { playedWithPred, ptsFromFinished }
+  }, [finishedMatches, predictions, pointsByMatchId])
 
   const filledPendingCount = useMemo(
     () =>
@@ -327,6 +355,9 @@ export default function DashboardPage() {
           <button type="button" role="tab" aria-selected={activeTab === 'matches'} onClick={() => setActiveTab('matches')} className={tabBtn(activeTab === 'matches')}>
             <Sparkles className="h-5 w-5 shrink-0" /> Mis pronósticos
           </button>
+          <button type="button" role="tab" aria-selected={activeTab === 'results'} onClick={() => setActiveTab('results')} className={tabBtn(activeTab === 'results')}>
+            <ClipboardCheck className="h-5 w-5 shrink-0" /> Tus resultados
+          </button>
           <button type="button" role="tab" aria-selected={activeTab === 'leagues'} onClick={() => setActiveTab('leagues')} className={tabBtn(activeTab === 'leagues')}>
             <Users className="h-5 w-5 shrink-0" /> Ligas
           </button>
@@ -438,6 +469,158 @@ export default function DashboardPage() {
 
                 {pendingMatches.length === 0 && (
                   <p className="py-12 text-center font-semibold text-[#555]">No hay partidos pendientes por ahora.</p>
+                )}
+              </section>
+            </motion.div>
+          )}
+
+          {activeTab === 'results' && (
+            <motion.div key="results" initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -12 }} className="space-y-8">
+              <section className="border-[3px] border-[#111] bg-white p-5 shadow-[8px_8px_0_#111] sm:p-6">
+                <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+                  <div>
+                    <h2 className="flex flex-wrap items-center gap-3 text-xl font-black uppercase text-[#111] sm:text-2xl [font-family:var(--font-store-display),sans-serif]">
+                      Partidos jugados
+                      <span className="rounded-full border-2 border-[#111] bg-[#ccff00] px-3 py-1 text-sm tabular-nums text-[#111]">
+                        {finishedMatches.length}
+                      </span>
+                    </h2>
+                    <p className="mt-1 text-sm text-[#555]">
+                      Con pronóstico:{' '}
+                      <strong className="text-[#111]">{finishedResultsSummary.playedWithPred}</strong>
+                      {finishedResultsSummary.playedWithPred > 0 && (
+                        <>
+                          {' '}
+                          · Puntos en estos partidos:{' '}
+                          <strong className="tabular-nums text-[#EB671B]">{finishedResultsSummary.ptsFromFinished}</strong>
+                        </>
+                      )}
+                    </p>
+                  </div>
+                  <p className="max-w-md text-xs font-semibold uppercase tracking-wide text-[#666]">
+                    3 pts marcador exacto · 1 pt acertar ganador o empate
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-3">
+                  {finishedMatches.map((match) => {
+                    const pred = predictions[match.id]
+                    const hasPred = pred && pred.home !== '' && pred.away !== ''
+                    const ph = hasPred ? parseInt(pred.home, 10) : NaN
+                    const pa = hasPred ? parseInt(pred.away, 10) : NaN
+                    const rh = Number(match.home_score)
+                    const ra = Number(match.away_score)
+                    const realOk = Number.isFinite(rh) && Number.isFinite(ra)
+                    const pts = hasPred ? pointsByMatchId[match.id] ?? 0 : null
+
+                    let verdictLabel = 'Sin pronóstico'
+                    let verdictClass = 'border-[#ccc] bg-[#fafafa] text-[#666]'
+                    if (hasPred && realOk) {
+                      if (pts === 3) {
+                        verdictLabel = 'Marcador exacto'
+                        verdictClass = 'border-[#111] bg-[#ccff00] text-[#111]'
+                      } else if (pts === 1) {
+                        verdictLabel = 'Resultado parcial'
+                        verdictClass = 'border-[#111] bg-[#dbeafe] text-[#111]'
+                      } else {
+                        verdictLabel = 'Sin puntos'
+                        verdictClass = 'border-[#ddd] bg-[#f5f5f5] text-[#555]'
+                      }
+                    }
+
+                    return (
+                      <div
+                        key={match.id}
+                        className="relative overflow-hidden rounded-xl border-2 border-[#eee] bg-[#fafafa] p-5 shadow-[3px_3px_0_#ccc]"
+                      >
+                        <div className="mb-4 flex flex-wrap items-start justify-between gap-2">
+                          <span className="rounded border border-[#111] bg-[#111] px-2 py-1 text-[10px] font-black uppercase tracking-widest text-[#ccff00]">
+                            {match.stage}
+                          </span>
+                          <span
+                            className={cn(
+                              'rounded-full border-2 px-3 py-1 text-[10px] font-black uppercase tracking-wide [font-family:var(--font-store-display),sans-serif]',
+                              verdictClass,
+                            )}
+                          >
+                            {verdictLabel}
+                            {pts !== null && typeof pts === 'number' ? ` · ${pts} pts` : ''}
+                          </span>
+                        </div>
+
+                        <div className="mb-4 flex items-center gap-1 text-[10px] font-bold uppercase tracking-wide text-[#666]">
+                          <MapPin className="h-3 w-3 shrink-0 text-[#EB671B]" aria-hidden />
+                          <span className="truncate">{match.venue}</span>
+                          {match.date && (
+                            <span className="ml-auto shrink-0 tabular-nums text-[#999]">
+                              {new Date(match.date).toLocaleDateString('es-AR', { day: 'numeric', month: 'short' })}
+                            </span>
+                          )}
+                        </div>
+
+                        <div className="space-y-3 rounded-lg border-2 border-[#ddd] bg-white p-3">
+                          <div className="flex items-center justify-between gap-2 border-b border-[#eee] pb-2">
+                            <div className="flex min-w-0 flex-1 items-center gap-2">
+                              <div className="relative flex h-6 w-9 shrink-0 items-center justify-center overflow-hidden rounded border-2 border-[#111] bg-white">
+                                {match.homeTeam.code === 'tbd' ? (
+                                  <span className="text-[10px] font-black text-[#999]">?</span>
+                                ) : (
+                                  <Image unoptimized src={`https://flagcdn.com/${match.homeTeam.code}.svg`} alt={match.homeTeam.name} fill className="object-cover" />
+                                )}
+                              </div>
+                              <span className="truncate text-xs font-bold text-[#111]">{match.homeTeam.name}</span>
+                            </div>
+                            <div className="flex shrink-0 items-center gap-3 font-mono text-sm font-black tabular-nums">
+                              {hasPred && !Number.isNaN(ph) ? (
+                                <span className="text-[#5d3fd3]" title="Tu pronóstico">
+                                  {ph}
+                                </span>
+                              ) : (
+                                <span className="text-[#bbb]">—</span>
+                              )}
+                              <span className="text-[#ccc]">|</span>
+                              <span className="text-[#111]" title="Marcador final">
+                                {realOk ? rh : '—'}
+                              </span>
+                            </div>
+                          </div>
+                          <div className="flex items-center justify-between gap-2">
+                            <div className="flex min-w-0 flex-1 items-center gap-2">
+                              <div className="relative flex h-6 w-9 shrink-0 items-center justify-center overflow-hidden rounded border-2 border-[#111] bg-white">
+                                {match.awayTeam.code === 'tbd' ? (
+                                  <span className="text-[10px] font-black text-[#999]">?</span>
+                                ) : (
+                                  <Image unoptimized src={`https://flagcdn.com/${match.awayTeam.code}.svg`} alt={match.awayTeam.name} fill className="object-cover" />
+                                )}
+                              </div>
+                              <span className="truncate text-xs font-bold text-[#111]">{match.awayTeam.name}</span>
+                            </div>
+                            <div className="flex shrink-0 items-center gap-3 font-mono text-sm font-black tabular-nums">
+                              {hasPred && !Number.isNaN(pa) ? (
+                                <span className="text-[#5d3fd3]" title="Tu pronóstico">
+                                  {pa}
+                                </span>
+                              ) : (
+                                <span className="text-[#bbb]">—</span>
+                              )}
+                              <span className="text-[#ccc]">|</span>
+                              <span className="text-[#111]" title="Marcador final">
+                                {realOk ? ra : '—'}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+
+                        <p className="mt-3 text-[10px] font-bold uppercase tracking-wider text-[#888]">
+                          Violeta = tu pronóstico · Negro = resultado final
+                        </p>
+                      </div>
+                    )
+                  })}
+                </div>
+
+                {finishedMatches.length === 0 && (
+                  <p className="py-12 text-center font-semibold text-[#555]">Todavía no hay partidos finalizados.</p>
                 )}
               </section>
             </motion.div>

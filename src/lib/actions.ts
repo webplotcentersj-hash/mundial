@@ -585,6 +585,78 @@ export async function updateMatchScore(matchId: string, homeScore: number, awayS
   return { success: true }
 }
 
+/** Admin: vuelve el partido a pendiente, borra marcador oficial y revierte puntos de pronósticos de ese partido. */
+export async function resetMatchResult(matchId: string) {
+  const isAdmin = await verifyAdmin()
+  if (!isAdmin) {
+    throw new Error('No autorizado')
+  }
+
+  const supabase = await createClient()
+
+  const { data: match, error: matchReadErr } = await supabase.from('matches').select('id, status').eq('id', matchId).maybeSingle()
+
+  if (matchReadErr || !match) {
+    throw new Error('Partido no encontrado')
+  }
+  if (match.status !== 'finished') {
+    throw new Error('Solo se pueden resetear partidos finalizados')
+  }
+
+  const { data: predictions, error: predErr } = await supabase.from('predictions').select('id, user_id, points_earned').eq('match_id', matchId)
+
+  if (predErr) {
+    console.error('resetMatchResult predictions read:', predErr)
+    throw new Error('No se pudieron leer las predicciones')
+  }
+
+  for (const pred of predictions || []) {
+    const earned = toScoreInt(pred.points_earned)
+    if (earned <= 0) continue
+
+    const { data: profile, error: profileReadErr } = await supabase.from('profiles').select('total_points').eq('id', pred.user_id).single()
+
+    if (profileReadErr) {
+      console.error('resetMatchResult profile read:', profileReadErr)
+      continue
+    }
+
+    const newTotal = Math.max(0, (profile?.total_points || 0) - earned)
+    const { error: profileUpdErr } = await supabase.from('profiles').update({ total_points: newTotal }).eq('id', pred.user_id)
+
+    if (profileUpdErr) {
+      console.error('resetMatchResult profile update:', profileUpdErr)
+    }
+  }
+
+  const { error: zeroPredErr } = await supabase.from('predictions').update({ points_earned: 0 }).eq('match_id', matchId)
+
+  if (zeroPredErr) {
+    console.error('resetMatchResult predictions zero:', zeroPredErr)
+    throw new Error('No se pudieron resetear los puntos en las predicciones')
+  }
+
+  const { error: matchUpdErr } = await supabase
+    .from('matches')
+    .update({
+      status: 'pending',
+      home_score: null,
+      away_score: null,
+    })
+    .eq('id', matchId)
+
+  if (matchUpdErr) {
+    console.error('resetMatchResult match update:', matchUpdErr)
+    throw new Error('No se pudo volver el partido a pendiente')
+  }
+
+  revalidatePath('/admin')
+  revalidatePath('/fixture')
+  revalidatePath('/ranking')
+  revalidatePath('/dashboard')
+  return { success: true }
+}
+
 
 // --- LLAVES (BRACKETS) ---
 

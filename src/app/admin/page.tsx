@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Settings, CheckCircle2, Save, ShieldAlert, Users, Trophy, Download, Eye, Loader2, Store, Upload } from 'lucide-react'
+import { Settings, CheckCircle2, Save, ShieldAlert, Users, Trophy, Download, Eye, Loader2, Store, Upload, RotateCcw } from 'lucide-react'
 import Image from 'next/image'
 import { motion, AnimatePresence } from 'framer-motion'
 import { createClient } from '@/lib/supabase/client'
@@ -12,6 +12,7 @@ import {
   listPrintOrdersForAdmin,
   updatePrintOrderAdmin,
   updateMatchScore,
+  resetMatchResult,
   type PrintOrderRow,
   type PrintOrderStatus,
 } from '@/lib/actions'
@@ -37,6 +38,7 @@ export default function AdminPage() {
   const [users, setUsers] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [isSaving, setIsSaving] = useState<string | null>(null)
+  const [resettingId, setResettingId] = useState<string | null>(null)
   const [results, setResults] = useState<Record<string, { home: string, away: string }>>({})
   const [activeTab, setActiveTab] = useState<'results' | 'users' | 'podium' | 'print-orders'>('results')
 
@@ -181,6 +183,42 @@ export default function AdminPage() {
     }
   }
 
+  const handleResetMatch = async (matchId: string) => {
+    const ok = window.confirm(
+      '¿Resetear este resultado? El partido volverá a pendiente, se borrará el marcador oficial y se restarán de cada usuario los puntos ganados solo por este partido.',
+    )
+    if (!ok) return
+
+    setResettingId(matchId)
+    try {
+      await resetMatchResult(matchId)
+      setMatches((prev) =>
+        prev.map((m) =>
+          m.id === matchId
+            ? {
+                ...m,
+                status: 'pending',
+                homeScore: undefined,
+                awayScore: undefined,
+                home_score: null,
+                away_score: null,
+              }
+            : m,
+        ),
+      )
+      setResults((prev) => {
+        const next = { ...prev }
+        delete next[matchId]
+        return next
+      })
+      alert('Resultado reseteado. Podés cargar un marcador nuevo cuando quieras.')
+    } catch (e: any) {
+      alert(e?.message || 'No se pudo resetear el resultado')
+    } finally {
+      setResettingId(null)
+    }
+  }
+
   const handleExportCSV = () => {
     alert('Simulación: Descargando podio_ganadores.csv con los correos electrónicos para entrega de premios.')
   }
@@ -262,7 +300,10 @@ export default function AdminPage() {
                 <CheckCircle2 className="w-6 h-6 text-red-400 shrink-0 mt-0.5" />
                 <div>
                   <h3 className="text-red-400 font-bold text-lg mb-1">Cálculo de Puntos Automático</h3>
-                  <p className="text-white/60 text-sm leading-relaxed">Al cargar un resultado real y guardarlo, el sistema comparará este resultado con las predicciones en Supabase y asignará los puntos correspondientes a todos los usuarios que hayan participado.</p>
+                  <p className="text-white/60 text-sm leading-relaxed">
+                    Al cargar un resultado real y guardarlo, el sistema comparará este resultado con las predicciones en Supabase y asignará los puntos correspondientes a todos los usuarios que hayan participado. En partidos finalizados podés usar{' '}
+                    <strong className="text-white/80">Resetear resultado</strong> para volver el partido a pendiente, borrar el marcador oficial y revertir solo los puntos otorgados por ese partido.
+                  </p>
                 </div>
               </div>
               
@@ -316,7 +357,7 @@ export default function AdminPage() {
 
                     <button 
                       onClick={() => saveResult(match.id)}
-                      disabled={isSaving === match.id || (match.status === 'finished' && (!results[match.id]?.home || !results[match.id]?.away))}
+                      disabled={isSaving === match.id || resettingId === match.id || (match.status === 'finished' && (!results[match.id]?.home || !results[match.id]?.away))}
                       className={`w-full font-bold py-3 rounded-xl transition-all flex items-center justify-center gap-2 text-sm border 
                         ${match.status === 'finished' 
                           ? 'bg-white/5 hover:bg-white/10 text-white/70 border-white/10' 
@@ -327,6 +368,18 @@ export default function AdminPage() {
                       {isSaving === match.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
                       {isSaving === match.id ? 'Guardando...' : match.status === 'finished' ? 'Actualizar Resultado' : 'Cargar Resultado Real'}
                     </button>
+
+                    {match.status === 'finished' && (
+                      <button
+                        type="button"
+                        onClick={() => handleResetMatch(match.id)}
+                        disabled={isSaving === match.id || resettingId === match.id}
+                        className="mt-3 w-full font-bold py-3 rounded-xl transition-all flex items-center justify-center gap-2 text-sm border border-amber-500/40 bg-amber-500/10 text-amber-200 hover:bg-amber-500/20 disabled:opacity-40 disabled:cursor-not-allowed"
+                      >
+                        {resettingId === match.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <RotateCcw className="w-4 h-4" />}
+                        {resettingId === match.id ? 'Reseteando…' : 'Resetear resultado'}
+                      </button>
+                    )}
                   </div>
                 ))}
               </div>
