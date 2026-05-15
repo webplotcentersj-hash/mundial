@@ -61,7 +61,8 @@ function SocialButton({
 
 export default function SiteFooter() {
   const pathname = usePathname()
-  const plotSurface = pathname === "/" || pathname.startsWith("/store")
+  const plotSurface =
+    pathname === "/" || pathname.startsWith("/store") || pathname.startsWith("/figurita")
 
   return (
     <footer
@@ -134,7 +135,9 @@ export default function SiteFooter() {
                 href="/"
                 className={cn(
                   "inline-flex rounded-xl focus:outline-none focus-visible:ring-2",
-                  plotSurface ? "focus-visible:ring-[#111]" : "focus-visible:ring-primary/60",
+                  plotSurface
+                    ? "rounded-lg border border-[#c8c8c8] bg-[#e8e8e8] px-3 py-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.75)] focus-visible:ring-[#111]"
+                    : "focus-visible:ring-primary/60",
                 )}
               >
                 <Image

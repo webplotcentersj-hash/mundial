@@ -10,9 +10,9 @@ import { getPlayerApodo } from '@/lib/figuritaPlayerApodo'
 import { generateFiguritaPortrait } from '@/app/figurita/actions'
 import { createClient } from '@/lib/supabase/client'
 import { STORE_PRINTS_BUCKET, writeFiguritaStoreImageToSession } from '@/lib/storePrints'
+import { cn } from '@/lib/utils'
 
-// Filtramos equipos placeholder (como 'Ganador 74') y ordenamos alfabéticamente
-const countries = mockTeams.filter(t => t.group !== 'KO').sort((a, b) => a.name.localeCompare(b.name))
+const countries = mockTeams.filter((t) => t.group !== 'KO').sort((a, b) => a.name.localeCompare(b.name))
 
 const DEFAULT_CARD_BACKGROUND =
   'linear-gradient(180deg, #262626 0%, #171717 45%, #0a0a0a 100%)'
@@ -25,17 +25,17 @@ export default function FiguritaPage() {
   const [photo, setPhoto] = useState<string | null>(null)
   const [name, setName] = useState<string>('Tu Nombre')
   const [position, setPosition] = useState<string>('Mediocampista')
-  const [selectedTeamCode, setSelectedTeamCode] = useState<string>('ar') // Argentina por defecto
+  const [selectedTeamCode, setSelectedTeamCode] = useState<string>('ar')
   const [isGenerating, setIsGenerating] = useState(false)
   const [aiPortrait, setAiPortrait] = useState<string | null>(null)
   const [aiLoading, setAiLoading] = useState(false)
   const [aiError, setAiError] = useState<string | null>(null)
   const [isSendingStore, setIsSendingStore] = useState(false)
-  
+
   const figuritaRef = useRef<HTMLDivElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
-  const selectedTeam = countries.find(t => t.code === selectedTeamCode) || countries[0]
+  const selectedTeam = countries.find((t) => t.code === selectedTeamCode) || countries[0]
 
   const displayPhoto = mode === 'classic' ? photo : (aiPortrait ?? photo)
 
@@ -74,7 +74,9 @@ export default function FiguritaPage() {
 
   const handleGeminiLook = async () => {
     if (!photo) {
-      setAiError('Subí una foto primero: la IA arma el retrato con tu cara, la camiseta a colores de la selección y un estadio Mundial 2026.')
+      setAiError(
+        'Subí una foto primero: la IA arma el retrato con tu cara, la camiseta a colores de la selección y un estadio Mundial 2026.',
+      )
       return
     }
     setAiLoading(true)
@@ -118,15 +120,14 @@ export default function FiguritaPage() {
 
     try {
       setIsGenerating(true)
-      // Agregamos un pequeño timeout para asegurar que las fuentes/imágenes estén cargadas
-      await new Promise(resolve => setTimeout(resolve, 100))
-      
-      const dataUrl = await toPng(figuritaRef.current, { 
+      await new Promise((resolve) => setTimeout(resolve, 100))
+
+      const dataUrl = await toPng(figuritaRef.current, {
         quality: 0.95,
         pixelRatio: 3,
         cacheBust: true,
       })
-      
+
       const link = document.createElement('a')
       link.download = `figurita-${name.replace(/\s+/g, '-').toLowerCase()}.png`
       link.href = dataUrl
@@ -186,105 +187,122 @@ export default function FiguritaPage() {
   }, [displayPhoto, router])
 
   return (
-    <div className="min-h-screen bg-transparent p-4 md:p-8 pt-24 text-white">
-      <div className="max-w-5xl mx-auto">
-        
-        <div className="text-center mb-10">
-          <h1 className="text-4xl md:text-5xl font-black italic tracking-tight uppercase text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-cyan-400">
-            Tu Figurita Oficial
+    <div className="min-h-[calc(100vh-4rem)] w-full max-w-[100vw] overflow-x-hidden px-4 py-8 text-[#111] md:px-8 md:py-10">
+      <div className="mx-auto max-w-5xl">
+        <div className="mb-10 text-center font-[family-name:var(--font-store-sans)]">
+          <h1 className="text-4xl font-black uppercase tracking-tight text-[#111] md:text-5xl [font-family:var(--font-store-display),sans-serif]">
+            Tu figurita oficial
           </h1>
-          <p className="text-neutral-400 mt-2 text-lg">Creá tu figurita y mandala al Store en alta calidad para imprimir.</p>
+          <p className="mt-2 text-lg font-medium text-[#444]">
+            Creá tu figurita y mandala al Store en alta calidad para imprimir.
+          </p>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-start">
-          
-          {/* EDITOR (Izquierda) */}
-          <div className="bg-neutral-900/50 backdrop-blur-md p-6 rounded-2xl border border-white/5 space-y-6">
-            <h2 className="text-xl font-bold border-b border-white/10 pb-2">Personaliza tu Jugador</h2>
+        <div className="grid grid-cols-1 items-start gap-12 lg:grid-cols-2">
+          <div
+            className={cn(
+              'space-y-6 border-[3px] border-[#111] bg-white p-6 font-[family-name:var(--font-store-sans)]',
+              'shadow-[8px_8px_0_#111]',
+            )}
+          >
+            <h2 className="border-b-2 border-[#111] pb-2 text-lg font-black uppercase tracking-wide text-[#111] [font-family:var(--font-store-display),sans-serif]">
+              Personalizá tu jugador
+            </h2>
 
-            <div className="flex rounded-xl border border-white/10 bg-black/30 p-1">
+            <div className="flex overflow-hidden border-2 border-[#111] p-0">
               <button
                 type="button"
                 onClick={() => setFiguritaMode('classic')}
-                className={`flex-1 rounded-lg py-2.5 text-sm font-bold transition ${
+                className={cn(
+                  'flex-1 py-3 text-sm font-bold transition-all [font-family:var(--font-store-display),sans-serif]',
                   mode === 'classic'
-                    ? 'bg-emerald-600/90 text-white shadow-sm'
-                    : 'text-neutral-400 hover:text-white'
-                }`}
+                    ? 'bg-[#111] text-[#ccff00]'
+                    : 'bg-white text-[#111] hover:bg-[#f5f5f5]',
+                )}
               >
                 Sin IA
               </button>
               <button
                 type="button"
                 onClick={() => setFiguritaMode('ia')}
-                className={`flex-1 rounded-lg py-2.5 text-sm font-bold transition ${
+                className={cn(
+                  'flex-1 border-l-2 border-[#111] py-3 text-sm font-bold transition-all [font-family:var(--font-store-display),sans-serif]',
                   mode === 'ia'
-                    ? 'bg-emerald-600/90 text-white shadow-sm'
-                    : 'text-neutral-400 hover:text-white'
-                }`}
+                    ? 'bg-[#111] text-[#ccff00]'
+                    : 'bg-white text-[#111] hover:bg-[#f5f5f5]',
+                )}
               >
                 Con IA
               </button>
             </div>
-            
-            {/* Foto */}
+
             <div className="space-y-2">
-              <label className="text-sm font-medium text-neutral-300 block">Sube tu foto (Cara/Busto)</label>
+              <label className="store-label">Subí tu foto (cara / busto)</label>
               {mode === 'classic' ? (
-                <p className="text-xs text-neutral-500 leading-snug">
+                <p className="text-xs leading-snug text-[#555]">
                   Subí la foto y completá nombre, posición y selección. La vista previa se actualiza al toque; descargá
                   cuando quieras, sin generar nada con IA.
                 </p>
               ) : (
-                <p className="text-xs text-neutral-500 leading-snug">
+                <p className="text-xs leading-snug text-[#555]">
                   Crear con IA genera un retrato con tu cara, una camiseta genérica a colores de la selección (sin escudos
                   oficiales) y un estadio nocturno estilo Mundial 2026.
                 </p>
               )}
-              <div 
+              <div
+                role="button"
+                tabIndex={0}
                 onClick={() => fileInputRef.current?.click()}
-                className="border-2 border-dashed border-white/20 rounded-xl p-8 text-center cursor-pointer hover:bg-white/5 transition-colors flex flex-col items-center justify-center gap-3"
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') fileInputRef.current?.click()
+                }}
+                className="flex cursor-pointer flex-col items-center justify-center gap-3 border-2 border-dashed border-[#111] bg-[#fafafa] p-8 text-center transition-colors hover:bg-[#f0f0f0]"
               >
                 {photo ? (
-                  <div className="text-emerald-400 flex items-center gap-2">
-                    <RefreshCw className="w-5 h-5" /> Cambiar Foto
+                  <div className="flex items-center gap-2 font-bold text-[#5d3fd3]">
+                    <RefreshCw className="h-5 w-5" /> Cambiar foto
                   </div>
                 ) : (
                   <>
-                    <Upload className="w-8 h-8 text-neutral-400" />
-                    <span className="text-neutral-400 font-medium">Click para seleccionar imagen</span>
+                    <Upload className="h-8 w-8 text-[#666]" />
+                    <span className="font-semibold text-[#444]">Clic para elegir imagen</span>
                   </>
                 )}
-                <input 
-                  type="file" 
-                  ref={fileInputRef} 
-                  accept="image/*" 
-                  className="hidden" 
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  accept="image/*"
+                  className="hidden"
                   onChange={handlePhotoUpload}
                 />
               </div>
             </div>
 
-            {/* Datos */}
             <div className="space-y-4">
               <div>
-                <label className="text-sm font-medium text-neutral-300 block mb-1">Nombre en la figurita</label>
-                <input 
-                  type="text" 
+                <label className="store-label" htmlFor="fig-name">
+                  Nombre en la figurita
+                </label>
+                <input
+                  id="fig-name"
+                  type="text"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   maxLength={20}
-                  className="w-full bg-black/50 border border-white/10 rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all"
+                  className="store-field"
                   placeholder="Ej: L. MESSI"
                 />
               </div>
 
               <div>
-                <label className="text-sm font-medium text-neutral-300 block mb-1">Posición</label>
-                <select 
+                <label className="store-label" htmlFor="fig-position">
+                  Posición
+                </label>
+                <select
+                  id="fig-position"
                   value={position}
                   onChange={(e) => setPosition(e.target.value)}
-                  className="w-full bg-black/50 border border-white/10 rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all appearance-none"
+                  className="store-field"
                 >
                   <option value="Arquero">Arquero</option>
                   <option value="Defensa">Defensa</option>
@@ -295,18 +313,23 @@ export default function FiguritaPage() {
               </div>
 
               <div>
-                <label className="text-sm font-medium text-neutral-300 block mb-1">Selección Nacional</label>
-                <select 
+                <label className="store-label" htmlFor="fig-team">
+                  Selección nacional
+                </label>
+                <select
+                  id="fig-team"
                   value={selectedTeamCode}
                   onChange={(e) => {
                     setSelectedTeamCode(e.target.value)
                     setAiPortrait(null)
                     setAiError(null)
                   }}
-                  className="w-full bg-black/50 border border-white/10 rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all appearance-none"
+                  className="store-field"
                 >
-                  {countries.map(country => (
-                    <option key={country.id} value={country.code}>{country.name}</option>
+                  {countries.map((country) => (
+                    <option key={country.id} value={country.code}>
+                      {country.name}
+                    </option>
                   ))}
                 </select>
               </div>
@@ -317,7 +340,7 @@ export default function FiguritaPage() {
                     type="button"
                     onClick={handleGeminiLook}
                     disabled={aiLoading}
-                    className="flex w-full items-center justify-center gap-2 rounded-lg border border-emerald-400/35 bg-gradient-to-r from-emerald-600/35 to-cyan-600/25 py-3 text-sm font-bold text-white transition hover:border-emerald-300/45 hover:from-emerald-500/45 hover:to-cyan-500/35 disabled:cursor-not-allowed disabled:opacity-60"
+                    className="btn-primary hover-lift flex w-full items-center justify-center gap-2 border-2 border-[#111] py-3 text-center disabled:cursor-not-allowed disabled:opacity-60 [font-family:var(--font-store-display),sans-serif]"
                   >
                     {aiLoading ? (
                       <>
@@ -329,36 +352,33 @@ export default function FiguritaPage() {
                       </>
                     )}
                   </button>
-                  {aiError && (
-                    <p className="rounded-lg border border-red-500/30 bg-red-950/40 px-3 py-2 text-xs leading-snug text-red-200/95">
-                      {aiError}
-                    </p>
-                  )}
+                  {aiError && <p className="store-message err text-sm leading-snug">{aiError}</p>}
                 </>
               )}
             </div>
-            
-            <div className="pt-4 border-t border-white/10">
+
+            <div className="space-y-3 border-t-2 border-[#111] pt-4">
               <button
+                type="button"
                 onClick={handleDownload}
                 disabled={isGenerating || !displayPhoto}
-                className="w-full py-4 bg-gradient-to-r from-emerald-500 to-cyan-600 hover:from-emerald-400 hover:to-cyan-500 text-white font-bold rounded-xl transition-all shadow-[0_0_20px_rgba(16,185,129,0.3)] disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                className="btn-primary hover-lift flex w-full items-center justify-center gap-2 py-4 text-center disabled:cursor-not-allowed disabled:opacity-50 [font-family:var(--font-store-display),sans-serif]"
               >
                 {isGenerating ? (
-                  <RefreshCw className="w-5 h-5 animate-spin" />
+                  <RefreshCw className="h-5 w-5 animate-spin" />
                 ) : (
-                  <Download className="w-5 h-5" />
+                  <Download className="h-5 w-5" />
                 )}
-                {isGenerating ? 'Generando Alta Calidad...' : 'Descargar Figurita'}
+                {isGenerating ? 'Armando PNG…' : 'Descargar figurita'}
               </button>
               {!displayPhoto && (
-                <p className="text-xs text-center text-red-400 mt-2">Sube una foto para poder descargar.</p>
+                <p className="text-center text-xs font-semibold text-[#c00]">Subí una foto para poder descargar.</p>
               )}
               <button
                 type="button"
                 onClick={handleSendToStore}
                 disabled={isSendingStore || isGenerating || !displayPhoto}
-                className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl border border-emerald-500/30 bg-emerald-500/10 py-3 text-sm font-bold text-emerald-200 transition hover:border-emerald-400/50 hover:bg-emerald-500/15 disabled:cursor-not-allowed disabled:opacity-50"
+                className="btn-secondary hover-lift flex w-full items-center justify-center gap-2 py-3 text-center disabled:cursor-not-allowed disabled:opacity-50 [font-family:var(--font-store-display),sans-serif]"
               >
                 {isSendingStore ? (
                   <RefreshCw className="h-4 w-4 shrink-0 animate-spin" aria-hidden />
@@ -368,28 +388,21 @@ export default function FiguritaPage() {
                 {isSendingStore ? 'Subiendo…' : 'Enviar al Store (alta calidad)'}
               </button>
             </div>
-
           </div>
 
-          {/* PREVISUALIZACIÓN (Derecha) */}
-          <div className="flex flex-col items-center justify-center">
-            
-            {/* Contenedor principal que será capturado por html-to-image */}
-            {/* Proporción típica de figurita es ~ 68mm x 99mm (aspect ratio ~ 0.68) */}
-            <div 
+          <div className="flex flex-col items-center justify-center font-[family-name:var(--font-store-sans)]">
+            <div
               ref={figuritaRef}
-              className="relative w-[320px] h-[465px] rounded-sm overflow-hidden shadow-2xl border-[6px] border-white bg-neutral-900"
+              className="relative h-[465px] w-[320px] overflow-hidden rounded-sm border-[6px] border-white bg-neutral-900 shadow-[12px_12px_0_rgba(0,0,0,0.15)] ring-2 ring-[#111]"
               style={{
-                boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.7), 0 0 40px rgba(255,255,255,0.1) inset'
+                boxShadow:
+                  '12px 12px 0 rgba(0,0,0,0.12), 0 25px 50px -12px rgba(0, 0, 0, 0.45), inset 0 0 40px rgba(255,255,255,0.06)',
               }}
             >
-              
-              {/* Fondo base figurita */}
               <div className="absolute inset-0" style={{ background: DEFAULT_CARD_BACKGROUND }} />
               <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_80%_55%_at_50%_-10%,rgba(255,255,255,0.14),transparent_55%)] opacity-40 mix-blend-overlay" />
               <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-white/25 via-neutral-900/80 to-black opacity-25" />
 
-              {/* Foto: original o retrato generado por IA */}
               {displayPhoto ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
@@ -400,7 +413,7 @@ export default function FiguritaPage() {
               ) : (
                 <div className="absolute inset-0 z-0 flex flex-col items-center justify-center gap-2 bg-neutral-800 px-4 text-center">
                   <ImageIcon className="mb-0 h-20 w-20 text-neutral-600" />
-                  <span className="text-sm font-bold uppercase tracking-widest text-neutral-500">Sin Foto</span>
+                  <span className="text-sm font-bold uppercase tracking-widest text-neutral-500">Sin foto</span>
                   {mode === 'classic' ? (
                     <span className="max-w-[260px] text-[10px] leading-tight text-neutral-500">
                       Subí una foto (cara o busto) y cargá nombre, posición y selección a la izquierda. Vista previa al
@@ -420,13 +433,9 @@ export default function FiguritaPage() {
                 </div>
               )}
 
-              {/* Degradado inferior para legibilidad del texto */}
               <div className="pointer-events-none absolute bottom-0 left-0 right-0 z-[1] h-1/2 bg-gradient-to-t from-black via-black/70 to-transparent" />
 
-              {/* Elementos de la UI de la figurita (Marcos, Textos, Bandera) */}
-
-              {/* Logo de la app arriba a la derecha */}
-              <div className="pointer-events-none absolute top-3 right-3 z-20 h-10 w-[104px] rounded-md bg-neutral-800 p-1 shadow-md ring-1 ring-white/15">
+              <div className="pointer-events-none absolute right-3 top-3 z-20 h-10 w-[104px] rounded-md bg-neutral-800 p-1 shadow-md ring-1 ring-white/15">
                 <Image
                   src="/plot%20center%20mundial.png"
                   alt="Plot Mundial"
@@ -437,29 +446,27 @@ export default function FiguritaPage() {
                 />
               </div>
 
-              {/* Bandera del país seleccionado arriba a la izquierda */}
-              <div className="absolute top-4 left-4 z-20 w-12 h-8 overflow-hidden rounded-sm border border-white/20 shadow-lg">
-                  <Image unoptimized 
-                    src={`https://flagcdn.com/w80/${selectedTeamCode === 'gb-eng' ? 'gb' : selectedTeamCode === 'gb-sct' ? 'gb-sct' : selectedTeamCode}.png`}
+              <div className="absolute left-4 top-4 z-20 h-8 w-12 overflow-hidden rounded-sm border border-white/20 shadow-lg">
+                <Image
+                  unoptimized
+                  src={`https://flagcdn.com/w80/${selectedTeamCode === 'gb-eng' ? 'gb' : selectedTeamCode === 'gb-sct' ? 'gb-sct' : selectedTeamCode}.png`}
                   alt={selectedTeam.name}
                   fill
                   className="object-cover"
                 />
               </div>
 
-              {/* Contenedor inferior: nombre, posición, país, apodo (siempre encima de la foto) */}
               <div className="absolute bottom-0 left-0 right-0 z-30 flex flex-col p-5">
-                
-                <div className="flex items-end justify-between border-b-2 border-white/20 pb-2 mb-2">
+                <div className="mb-2 flex items-end justify-between border-b-2 border-white/20 pb-2">
                   <div className="flex flex-col">
-                    <span className="text-emerald-400 font-bold text-xs uppercase tracking-widest mb-1">{position}</span>
-                    <h3 className="text-white font-black text-2xl uppercase tracking-tighter leading-none">
+                    <span className="mb-1 text-xs font-bold uppercase tracking-widest text-[#ccff00]">{position}</span>
+                    <h3 className="text-2xl font-black uppercase leading-none tracking-tighter text-white">
                       {(name || '').trim() || 'Tu Nombre'}
                     </h3>
                   </div>
-                  {/* Escudo secundario redondo (reusando la bandera por ahora) */}
-                  <div className="w-10 h-10 rounded-full border-2 border-white overflow-hidden relative shadow-md shrink-0">
-                    <Image unoptimized 
+                  <div className="relative h-10 w-10 shrink-0 overflow-hidden rounded-full border-2 border-white shadow-md">
+                    <Image
+                      unoptimized
                       src={`https://flagcdn.com/w80/${selectedTeamCode === 'gb-eng' ? 'gb' : selectedTeamCode === 'gb-sct' ? 'gb-sct' : selectedTeamCode}.png`}
                       alt={selectedTeam.name}
                       fill
@@ -468,42 +475,38 @@ export default function FiguritaPage() {
                   </div>
                 </div>
 
-                <div className="flex justify-between items-end gap-2 text-xs text-neutral-300 font-medium">
+                <div className="flex items-end justify-between gap-2 text-xs font-medium text-neutral-300">
                   <span className="min-w-0 truncate uppercase tracking-wider">{selectedTeam.name}</span>
                   <div
-                    className="min-w-0 max-w-[58%] text-right text-[11px] font-black uppercase tracking-tight text-emerald-300/95 truncate"
+                    className="max-w-[58%] min-w-0 truncate text-right text-[11px] font-black uppercase tracking-tight text-[#ccff00]/95"
                     title={getPlayerApodo((name || '').trim() || 'Tu Nombre')}
                   >
                     {getPlayerApodo((name || '').trim() || 'Tu Nombre')}
                   </div>
                 </div>
-
               </div>
 
-              {/* Efecto Brilloso Superior (Glossy Overlay) */}
               <div className="pointer-events-none absolute inset-0 z-[24] bg-gradient-to-tr from-transparent via-white/5 to-white/20" />
-
             </div>
 
-            <p className="text-neutral-500 text-sm mt-6 flex flex-wrap items-center justify-center gap-x-2 gap-y-1 text-center">
+            <p className="mt-6 flex flex-wrap items-center justify-center gap-x-2 gap-y-1 text-center text-sm text-[#555]">
               <span className="inline-flex items-center gap-2">
-                <span className="inline-block w-2 h-2 shrink-0 rounded-full bg-emerald-500 animate-pulse" />
+                <span className="inline-block h-2 w-2 shrink-0 animate-pulse rounded-full bg-[#111]" />
                 Vista previa en tiempo real
               </span>
               {mode === 'ia' && (aiPortrait || aiLoading) && (
-                <span className="text-emerald-400/80">· Look IA</span>
+                <span className="font-semibold text-[#5d3fd3]">· Look IA</span>
               )}
             </p>
             {mode === 'ia' && aiPortrait && (
               <button
                 type="button"
                 onClick={() => setAiPortrait(null)}
-                className="mt-3 text-xs font-medium text-neutral-400 underline decoration-white/20 underline-offset-2 hover:text-white"
+                className="mt-3 text-xs font-bold text-[#111] underline decoration-[#111]/35 underline-offset-4 transition-colors hover:text-[#5d3fd3] hover:decoration-[#5d3fd3]/50"
               >
                 Volver a la foto subida
               </button>
             )}
-
           </div>
         </div>
       </div>

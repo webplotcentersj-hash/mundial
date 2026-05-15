@@ -45,7 +45,8 @@ const navCtaPlotStore =
 
 export default function Navbar() {
   const pathname = usePathname()
-  const plotStoreChrome = pathname === '/' || pathname.startsWith('/store')
+  const plotStoreChrome =
+    pathname === '/' || pathname.startsWith('/store') || pathname.startsWith('/figurita')
   const [mobileOpen, setMobileOpen] = useState(false)
   const [user, setUser] = useState<SupabaseUser | null>(null)
   const [authReady, setAuthReady] = useState(false)
@@ -99,13 +100,20 @@ export default function Navbar() {
       <div className={SITE_CONTENT_OUTER}>
         <div className="flex items-center justify-between h-16">
           <div className="flex items-center min-w-0">
-            <Link href="/" className="flex items-center relative group py-2 shrink-0">
-              <div
-                className={cn(
-                  'absolute inset-0 rounded-full blur-2xl transition-opacity',
-                  plotStoreChrome ? 'bg-[#ccff00]/20 opacity-0 group-hover:opacity-100' : 'bg-white/5 opacity-70 group-hover:opacity-100',
-                )}
-              />
+            <Link
+              href="/"
+              className={cn(
+                'relative flex items-center group shrink-0',
+                plotStoreChrome
+                  ? 'rounded-lg border border-[#c8c8c8] bg-[#e8e8e8] px-2.5 py-1.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.75)]'
+                  : 'py-2',
+              )}
+            >
+              {!plotStoreChrome ? (
+                <div className="pointer-events-none absolute inset-0 rounded-full bg-white/5 blur-2xl opacity-70 transition-opacity group-hover:opacity-100" />
+              ) : (
+                <div className="pointer-events-none absolute inset-0 rounded-lg bg-[#ccff00]/20 opacity-0 blur-xl transition-opacity group-hover:opacity-100" />
+              )}
               <Image
                 src="/plot%20center%20mundial.png"
                 alt="Plot Mundial Logo"
