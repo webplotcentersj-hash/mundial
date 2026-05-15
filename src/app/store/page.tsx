@@ -277,20 +277,6 @@ export default function StorePage() {
           />
         )}
       </div>
-
-      <footer className="footer">
-        <div className="footer-content">
-          <Link href="/" className="footer-logo">
-            PLOT MUNDIAL
-          </Link>
-          <div className="footer-copyright">© {new Date().getFullYear()} Plot Mundial · Store de impresión</div>
-          <div className="footer-links">
-            <Link href="/figurita">Mi Figurita</Link>
-            <Link href="/pedidos">Mis pedidos</Link>
-            <Link href="/terminos">Términos</Link>
-          </div>
-        </div>
-      </footer>
     </>
   )
 }
