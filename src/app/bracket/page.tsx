@@ -9,6 +9,7 @@ import { Trophy, Save, Zap, Loader2, RotateCcw } from 'lucide-react'
 import { getTeams, getUserBracket, saveUserBracket, getOfficialBracket, saveOfficialBracket } from '@/lib/actions'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
+import { cn } from '@/lib/utils'
 
 // --- Types & Constants ---
 type GroupSlot = { id: string; label: string; allowedGroups: string[] }
@@ -34,6 +35,10 @@ const R32_RIGHT: GroupSlot[][] = [
   [ { id: 'm85_h', label: '1B', allowedGroups: ['B'] }, { id: 'm85_a', label: '3 EFGIJ', allowedGroups: ['E','F','G','I','J'] } ],
   [ { id: 'm87_h', label: '1K', allowedGroups: ['K'] }, { id: 'm87_a', label: '3 DEIJL', allowedGroups: ['D','E','I','J','L'] } ],
 ]
+
+/** Canvas lógico del bracket (escala en viewport angosta). Más grande = mejor lectura tipo FIFA Bracket Challenge */
+const BRACKET_W = 1320
+const BRACKET_H = 860
 
 const KO_STRUCTURE = {
   R16_LEFT: [
@@ -66,7 +71,7 @@ const GroupBox = ({ groupName, teams }: { groupName: string, teams: Team[] }) =>
   const color = groupColors[groupName] || 'from-gray-500 to-gray-700'
   return (
     <div
-      className={`rounded-lg sm:rounded-xl bg-black/60 backdrop-blur-xl border border-white/10 shadow-[0_0_20px_rgba(0,0,0,0.5)] relative overflow-hidden group flex flex-col justify-between hover:border-white/30 transition-colors p-1.5 sm:p-2 w-[92px] h-[58px] sm:w-[130px] sm:h-[82px] md:w-[160px] md:h-[95px]`}
+      className={`rounded-lg sm:rounded-xl bg-black/60 backdrop-blur-xl border border-white/10 shadow-[0_0_20px_rgba(0,0,0,0.5)] relative overflow-hidden group flex flex-col justify-between hover:border-white/30 transition-colors p-1.5 sm:p-2 w-[98px] h-[62px] sm:w-[138px] sm:h-[88px] md:w-[172px] md:h-[102px]`}
     >
       <div className={`absolute top-0 left-0 w-1 sm:w-1.5 h-full bg-gradient-to-b ${color}`} />
       <div className="grid grid-cols-2 gap-0.5 sm:gap-1.5 h-full content-start ml-0.5 sm:ml-1">
@@ -215,15 +220,14 @@ export default function BracketPage() {
   useLayoutEffect(() => {
     const el = bracketViewportRef.current
     if (!el || typeof window === 'undefined') return
-    const BRACKET_W = 1100
-    const MIN_SCALE = 0.34
+    const MIN_SCALE = 0.28
     const update = () => {
       const w = el.getBoundingClientRect().width
       if (w >= BRACKET_W - 1) {
         setBracketScale(1)
         return
       }
-      setBracketScale(Math.max(MIN_SCALE, (w - 6) / BRACKET_W))
+      setBracketScale(Math.max(MIN_SCALE, (w - 8) / BRACKET_W))
     }
     update()
     const ro = new ResizeObserver(update)
@@ -283,64 +287,112 @@ export default function BracketPage() {
   }
 
   // Ultra-premium unified match card
-  const UnifiedMatchCard = ({ 
-    matchId, 
-    homeTeamId, 
-    awayTeamId, 
-    homeFallback, 
+  const UnifiedMatchCard = ({
+    matchId,
+    homeTeamId,
+    awayTeamId,
+    homeFallback,
     awayFallback,
     onHomeClick,
-    onAwayClick
+    onAwayClick,
+    emptySlotCaption = 'Ganador del cruce anterior',
   }: {
-    matchId: string, homeTeamId: string | null, awayTeamId: string | null, 
-    homeFallback: string, awayFallback: string,
-    onHomeClick: () => void, onAwayClick: () => void
+    matchId: string
+    homeTeamId: string | null
+    awayTeamId: string | null
+    homeFallback: string
+    awayFallback: string
+    onHomeClick: () => void
+    onAwayClick: () => void
+    /** Texto bajo el código tipo W74 / 1E (dieciseisavos vs KO) */
+    emptySlotCaption?: string
   }) => {
     const homeTeam = getTeam(homeTeamId)
     const awayTeam = getTeam(awayTeamId)
     const winnerId = matchWinners[matchId]
 
-    const TeamRow = ({ team, fallback, onClick, isWinner, isSelectable }: any) => (
-      <div 
-        onClick={onClick}
-        className={`flex items-center px-1.5 py-1 transition-all relative overflow-hidden h-[26px] w-full
-          ${onClick && isSelectable ? 'cursor-pointer hover:bg-white/10' : 'cursor-default'}
-          ${isWinner ? 'bg-gradient-to-r from-amber-500/20 to-transparent' : ''}
-        `}
-      >
-        {isWinner && <div className="absolute left-0 top-0 bottom-0 w-0.5 bg-amber-400 shadow-[0_0_10px_rgba(245,158,11,1)]" />}
-        {team ? (
-          <>
-            <div className="w-[18px] h-[12px] rounded-[2px] relative overflow-hidden border border-white/20 mr-1.5 flex-shrink-0 shadow-md">
-              <Image unoptimized src={`https://flagcdn.com/${team.code}.svg`} alt={team.name} fill className="object-cover object-center" />
+    const TeamRow = ({ team, fallback, onClick, isWinner, isSelectable }: any) => {
+      const interactive = onClick && isSelectable
+      return (
+        <div
+          onClick={onClick}
+          className={cn(
+            'relative flex min-h-[38px] w-full items-center overflow-hidden px-2 py-1.5 transition-all sm:min-h-[42px]',
+            interactive ? 'cursor-pointer hover:bg-white/[0.09]' : 'cursor-default',
+            isWinner ? 'bg-gradient-to-r from-amber-500/25 to-transparent' : '',
+            !team ? 'bg-black/35' : '',
+          )}
+        >
+          {isWinner && (
+            <div className="absolute bottom-0 left-0 top-0 w-1 bg-amber-400 shadow-[0_0_12px_rgba(245,158,11,0.9)]" />
+          )}
+          {team ? (
+            <>
+              <div className="relative mr-2 h-[15px] w-[22px] shrink-0 overflow-hidden rounded-[3px] border border-white/25 shadow-md sm:h-[17px] sm:w-[26px]">
+                <Image
+                  unoptimized
+                  src={`https://flagcdn.com/${team.code}.svg`}
+                  alt={team.name}
+                  fill
+                  className="object-cover object-center"
+                />
+              </div>
+              <span
+                className={cn(
+                  'truncate text-[11px] font-bold leading-tight sm:text-[12px]',
+                  isWinner ? 'text-amber-300 drop-shadow-md' : 'text-white',
+                )}
+              >
+                {team.name}
+              </span>
+            </>
+          ) : (
+            <div className="flex w-full flex-col items-stretch gap-0.5 px-0.5">
+              <span className="text-[8px] font-semibold uppercase tracking-[0.2em] text-amber-400/80">Pendiente</span>
+              <div
+                className={cn(
+                  'rounded-md border border-dashed px-2 py-1 text-center',
+                  'border-amber-400/55 bg-gradient-to-b from-amber-500/15 to-white/[0.04]',
+                  'shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]',
+                  interactive && 'ring-1 ring-amber-400/20 hover:border-amber-300/80 hover:bg-amber-500/10',
+                )}
+              >
+                <span className="font-mono text-[11px] font-black tracking-wide text-amber-100 sm:text-[12px]">
+                  {fallback}
+                </span>
+              </div>
+              <span className="text-center text-[7px] font-medium uppercase tracking-wider text-white/35">
+                {emptySlotCaption}
+              </span>
             </div>
-            <span className={`text-[9px] sm:text-[10px] font-bold truncate ${isWinner ? 'text-amber-400 drop-shadow-md' : 'text-white'}`}>{team.name}</span>
-          </>
-        ) : (
-          <span className="text-[8px] font-mono text-white/30 font-bold m-auto leading-tight text-center tracking-wider">{fallback}</span>
-        )}
-      </div>
-    )
+          )}
+        </div>
+      )
+    }
 
     return (
-      <div className={`flex flex-col w-full min-w-[70px] max-w-[130px] bg-[#060913]/80 backdrop-blur-xl rounded-lg border relative overflow-hidden shadow-[0_8px_30px_rgb(0,0,0,0.5)] transition-all duration-300
-        ${winnerId ? 'border-amber-500/50 shadow-[0_0_15px_rgba(245,158,11,0.15)]' : 'border-white/10 hover:border-primary/50'}
-      `}>
-        {/* Glow effect inside card if resolved */}
-        {winnerId && <div className="absolute inset-0 bg-amber-500/5 blur-xl pointer-events-none" />}
-        
-        <TeamRow 
-          team={homeTeam} 
-          fallback={homeFallback} 
-          onClick={onHomeClick} 
+      <div
+        className={cn(
+          'relative flex w-full min-w-[92px] max-w-[168px] flex-col overflow-hidden rounded-xl border-2 bg-[#0a1628]/95 shadow-[0_12px_40px_rgba(0,0,0,0.55)] backdrop-blur-xl transition-all duration-300 sm:min-w-[104px] sm:max-w-[182px]',
+          winnerId
+            ? 'border-amber-400/55 shadow-[0_0_22px_rgba(245,158,11,0.22)]'
+            : 'border-white/18 hover:border-primary/55',
+        )}
+      >
+        {winnerId && <div className="pointer-events-none absolute inset-0 bg-amber-500/[0.06] blur-2xl" />}
+
+        <TeamRow
+          team={homeTeam}
+          fallback={homeFallback}
+          onClick={onHomeClick}
           isWinner={winnerId === homeTeamId && !!winnerId}
-          isSelectable={!!homeTeamId || !winnerId} 
+          isSelectable={!!homeTeamId || !winnerId}
         />
-        <div className="h-[1px] w-full bg-gradient-to-r from-transparent via-white/10 to-transparent" />
-        <TeamRow 
-          team={awayTeam} 
-          fallback={awayFallback} 
-          onClick={onAwayClick} 
+        <div className="h-px w-full bg-gradient-to-r from-transparent via-white/25 to-transparent" />
+        <TeamRow
+          team={awayTeam}
+          fallback={awayFallback}
+          onClick={onAwayClick}
           isWinner={winnerId === awayTeamId && !!winnerId}
           isSelectable={!!awayTeamId || !winnerId}
         />
@@ -357,6 +409,7 @@ export default function BracketPage() {
         awayTeamId={r32Slots[slots[1].id] || null}
         homeFallback={slots[0].label}
         awayFallback={slots[1].label}
+        emptySlotCaption="Clasificado · tocá para elegir"
         onHomeClick={() => r32Slots[slots[0].id] ? advanceTeam(matchId, r32Slots[slots[0].id]) : handleSlotClick(slots[0])}
         onAwayClick={() => r32Slots[slots[1].id] ? advanceTeam(matchId, r32Slots[slots[1].id]) : handleSlotClick(slots[1])}
       />
@@ -371,8 +424,9 @@ export default function BracketPage() {
         matchId={matchConfig.matchId}
         homeTeamId={homeTeamId}
         awayTeamId={awayTeamId}
-        homeFallback={`W${matchConfig.homeSource.replace('m','')}`}
-        awayFallback={`W${matchConfig.awaySource.replace('m','')}`}
+        homeFallback={`W${matchConfig.homeSource.replace('m', '')}`}
+        awayFallback={`W${matchConfig.awaySource.replace('m', '')}`}
+        emptySlotCaption="Ganador del cruce anterior"
         onHomeClick={() => advanceTeam(matchConfig.matchId, homeTeamId)}
         onAwayClick={() => advanceTeam(matchConfig.matchId, awayTeamId)}
       />
@@ -480,24 +534,25 @@ export default function BracketPage() {
           <div
             className="mx-auto flex justify-center"
             style={{
-              minHeight: bracketScale < 0.999 ? Math.ceil(750 * bracketScale) + 8 : 750,
+              minHeight: bracketScale < 0.999 ? Math.ceil(BRACKET_H * bracketScale) + 12 : BRACKET_H,
             }}
           >
             <div
               style={{
-                width: 1100,
-                height: 750,
+                width: BRACKET_W,
+                height: BRACKET_H,
                 transform: bracketScale < 0.999 ? `scale(${bracketScale})` : undefined,
                 transformOrigin: 'top center',
               }}
             >
               <div
                 ref={bracketRef}
-                className="relative flex h-[750px] w-[1100px] shrink-0 items-stretch justify-between gap-0.5 sm:gap-1 md:gap-2"
+                className="relative flex shrink-0 items-stretch justify-between gap-1 sm:gap-1.5 md:gap-2.5"
+                style={{ width: BRACKET_W, height: BRACKET_H }}
               >
           
           {/* LEFT GROUPS */}
-          <div className="flex flex-col justify-around h-full w-[60px] sm:w-[90px] shrink-0">
+          <div className="flex h-full w-[68px] shrink-0 flex-col justify-around sm:w-[100px]">
             {['A','B','C','D','E','F'].map(g => (
               <div key={g} className="flex-1 flex items-center justify-start pr-1">
                 <GroupBox groupName={g} teams={teams.filter(t => t.group === g)} />
@@ -542,7 +597,7 @@ export default function BracketPage() {
         </div>
 
         {/* CENTER (Trophy) */}
-        <div className="flex flex-col items-center justify-center relative w-[130px] sm:w-[180px] shrink-0 px-1">
+        <div className="flex flex-col items-center justify-center relative w-[148px] sm:w-[200px] shrink-0 px-1">
           <motion.div 
             initial={{ scale: 0.8, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
@@ -561,6 +616,7 @@ export default function BracketPage() {
               awayTeamId={matchWinners[KO_STRUCTURE.FINAL.awaySource] || null}
               homeFallback="Semi 1"
               awayFallback="Semi 2"
+              emptySlotCaption="Ganador de semifinal"
               onHomeClick={() => advanceTeam(KO_STRUCTURE.FINAL.matchId, matchWinners[KO_STRUCTURE.FINAL.homeSource])}
               onAwayClick={() => advanceTeam(KO_STRUCTURE.FINAL.matchId, matchWinners[KO_STRUCTURE.FINAL.awaySource])}
             />
@@ -614,7 +670,7 @@ export default function BracketPage() {
         </div>
 
         {/* RIGHT GROUPS */}
-        <div className="flex flex-col justify-around h-full w-[60px] sm:w-[90px] shrink-0">
+        <div className="flex h-full w-[68px] shrink-0 flex-col justify-around sm:w-[100px]">
           {['G','H','I','J','K','L'].map(g => (
             <div key={g} className="flex-1 flex items-center justify-end pl-1">
               <GroupBox groupName={g} teams={teams.filter(t => t.group === g)} />
