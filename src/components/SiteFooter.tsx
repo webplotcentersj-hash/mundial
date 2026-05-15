@@ -1,6 +1,9 @@
+'use client'
+
 import type { ReactNode } from "react"
 import Link from "next/link"
 import Image from "next/image"
+import { usePathname } from "next/navigation"
 import { Mail, Phone, FileText, Shield, MapPin, ExternalLink } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { SITE_CONTENT_OUTER } from "@/lib/siteContentLayout"
@@ -24,10 +27,12 @@ function SocialButton({
   href,
   label,
   children,
+  plotSurface,
 }: {
   href: string
   label: string
   children: ReactNode
+  plotSurface?: boolean
 }) {
   return (
     <a
@@ -36,11 +41,17 @@ function SocialButton({
       rel="noopener noreferrer"
       aria-label={label}
       className={cn(
-        "group flex h-12 w-12 items-center justify-center rounded-xl sm:h-14 sm:w-14",
-        "border border-white/12 bg-gradient-to-b from-white/[0.12] to-white/[0.03]",
-        "shadow-[0_12px_32px_-12px_rgba(0,0,0,0.55),inset_0_1px_0_rgba(255,255,255,0.12)]",
-        "text-white/75 transition-all duration-300",
-        "hover:border-primary/45 hover:text-primary hover:shadow-[0_0_32px_-4px_rgba(235,103,27,0.5)] hover:-translate-y-0.5"
+        "group flex h-12 w-12 items-center justify-center rounded-xl sm:h-14 sm:w-14 transition-all duration-300",
+        plotSurface
+          ? cn(
+              "border-2 border-[#111] bg-white text-[#111] shadow-[3px_3px_0_#999]",
+              "hover:-translate-x-0.5 hover:-translate-y-0.5 hover:shadow-[6px_6px_0_#111] hover:text-[#5d3fd3]",
+            )
+          : cn(
+              "border border-white/12 bg-gradient-to-b from-white/[0.12] to-white/[0.03]",
+              "shadow-[0_12px_32px_-12px_rgba(0,0,0,0.55),inset_0_1px_0_rgba(255,255,255,0.12)]",
+              "text-white/75 hover:border-primary/45 hover:text-primary hover:shadow-[0_0_32px_-4px_rgba(235,103,27,0.5)] hover:-translate-y-0.5",
+            ),
       )}
     >
       {children}
@@ -49,9 +60,20 @@ function SocialButton({
 }
 
 export default function SiteFooter() {
+  const pathname = usePathname()
+  const plotSurface = pathname === "/" || pathname.startsWith("/store")
+
   return (
-    <footer className="relative z-10 mt-auto w-full overflow-hidden border-t border-white/[0.08] bg-transparent text-white/80">
-      {/* Línea superior tipo Plot Center */}
+    <footer
+      className={cn(
+        "relative z-10 mt-auto w-full overflow-hidden",
+        plotSurface
+          ? "border-t-2 border-[#111] bg-[#f8f8f8] text-[#111]"
+          : "border-t border-white/[0.08] bg-transparent text-white/80",
+      )}
+    >
+      {!plotSurface && (
+        <>
       <div
         className="absolute inset-x-0 top-0 h-[2px] bg-gradient-to-r from-transparent via-primary to-amber-500/90 opacity-90"
         aria-hidden
@@ -60,7 +82,6 @@ export default function SiteFooter() {
         className="pointer-events-none absolute left-1/2 top-0 h-48 w-[min(100%,80rem)] -translate-x-1/2 bg-[radial-gradient(ellipse_at_top,rgba(235,103,27,0.22),transparent_60%)]"
         aria-hidden
       />
-      {/* Grilla sutil */}
       <div
         className="pointer-events-none absolute inset-0 opacity-[0.35]"
         style={{
@@ -70,16 +91,28 @@ export default function SiteFooter() {
         }}
         aria-hidden
       />
+        </>
+      )}
 
-      <div className={cn("relative py-14 sm:py-16 lg:py-20", SITE_CONTENT_OUTER)}>
+      <div className={cn("relative py-14 sm:py-16 lg:py-20", SITE_CONTENT_OUTER, plotSurface && "font-[family-name:var(--font-plot-store-ui)]")}>
         <div
           className={cn(
-            "relative overflow-hidden rounded-3xl border border-white/[0.12]",
-            "bg-gradient-to-br from-white/[0.1] via-[#0b1428]/90 to-[#050a16]",
-            "shadow-[0_32px_80px_-28px_rgba(0,0,0,0.85),inset_0_1px_0_rgba(255,255,255,0.08)]",
-            "ring-1 ring-white/[0.06] backdrop-blur-xl"
+            "relative overflow-hidden rounded-3xl",
+            plotSurface
+              ? cn(
+                  "border-[3px] border-[#111] bg-white",
+                  "shadow-[8px_8px_0_#111]",
+                )
+              : cn(
+                  "border border-white/[0.12]",
+                  "bg-gradient-to-br from-white/[0.1] via-[#0b1428]/90 to-[#050a16]",
+                  "shadow-[0_32px_80px_-28px_rgba(0,0,0,0.85),inset_0_1px_0_rgba(255,255,255,0.08)]",
+                  "ring-1 ring-white/[0.06] backdrop-blur-xl",
+                ),
           )}
         >
+          {!plotSurface && (
+            <>
           <div
             className="pointer-events-none absolute -right-24 -top-28 h-[22rem] w-[22rem] rounded-full bg-primary/20 blur-3xl"
             aria-hidden
@@ -92,33 +125,55 @@ export default function SiteFooter() {
             className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/25 to-transparent"
             aria-hidden
           />
+            </>
+          )}
 
           <div className="relative grid gap-10 p-6 sm:p-8 lg:grid-cols-12 lg:gap-12 lg:p-10 xl:gap-14 xl:p-12">
             <div className="min-w-0 lg:col-span-5">
               <Link
                 href="/"
-                className="inline-flex rounded-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/60"
+                className={cn(
+                  "inline-flex rounded-xl focus:outline-none focus-visible:ring-2",
+                  plotSurface ? "focus-visible:ring-[#111]" : "focus-visible:ring-primary/60",
+                )}
               >
                 <Image
                   src="/plot%20center%20mundial.png"
                   alt="Plot Center · Plot Mundial"
                   width={220}
                   height={62}
-                  className="h-12 w-auto object-contain drop-shadow-[0_8px_28px_rgba(0,0,0,0.55)] sm:h-14"
+                  className={cn(
+                    "h-12 w-auto object-contain sm:h-14",
+                    plotSurface
+                      ? "drop-shadow-[0_2px_8px_rgba(0,0,0,0.12)]"
+                      : "drop-shadow-[0_8px_28px_rgba(0,0,0,0.55)]",
+                  )}
                 />
               </Link>
-              <p className="mt-6 font-outfit text-2xl font-bold tracking-tight text-white sm:text-3xl">
-                <span className="inline-block bg-gradient-to-r from-white via-white to-white/70 bg-clip-text pb-1 text-transparent">
+              <p className="mt-6 text-2xl font-bold tracking-tight sm:text-3xl">
+                <span
+                  className={cn(
+                    "inline-block pb-1",
+                    plotSurface ? "text-[#111]" : "bg-gradient-to-r from-white via-white to-white/70 bg-clip-text text-transparent",
+                  )}
+                >
                   Plot Mundial
                 </span>
-                <span className="mt-2 block text-base font-normal leading-relaxed text-white/55 sm:text-lg">
+                <span
+                  className={cn(
+                    "mt-2 block text-base font-normal leading-relaxed sm:text-lg",
+                    plotSurface ? "text-[#444]" : "text-white/55",
+                  )}
+                >
                   Pronósticos, ranking y comunidad para la Copa Mundial 2026.
                 </span>
               </p>
               <p
                 className={cn(
-                  "mt-6 rounded-2xl border border-primary/25 bg-primary/[0.08] px-4 py-3.5",
-                  "font-outfit text-sm italic leading-relaxed text-white/70 sm:px-5 sm:text-[0.95rem]"
+                  "mt-6 rounded-2xl border px-4 py-3.5 text-sm italic leading-relaxed sm:px-5 sm:text-[0.95rem]",
+                  plotSurface
+                    ? "border-[#111] bg-[#ccff00]/90 font-semibold not-italic text-[#111]"
+                    : "border-primary/25 bg-primary/[0.08] font-outfit text-white/70",
                 )}
               >
                 &ldquo;Ecosistema de Comunicación de Alto Impacto&rdquo;
@@ -126,22 +181,45 @@ export default function SiteFooter() {
             </div>
 
             <div className="lg:col-span-4">
-              <h3 className="text-[11px] font-bold uppercase tracking-[0.28em] text-primary/80">Contacto</h3>
+              <h3
+                className={cn(
+                  "text-[11px] font-bold uppercase tracking-[0.28em]",
+                  plotSurface ? "text-[#5d3fd3]" : "text-primary/80",
+                )}
+              >
+                Contacto
+              </h3>
               <ul className="mt-4 grid gap-3 sm:grid-cols-2 sm:gap-3 lg:grid-cols-1">
                 <li>
                   <a
                     href={PHONE_HREF}
                     className={cn(
-                      "flex items-start gap-3 rounded-2xl border border-white/[0.08] bg-white/[0.04] p-4",
-                      "text-white/85 transition-all duration-300",
-                      "hover:border-primary/35 hover:bg-white/[0.07] hover:text-white hover:shadow-[0_0_0_1px_rgba(235,103,27,0.15)]"
+                      "flex items-start gap-3 rounded-2xl p-4 transition-all duration-300",
+                      plotSurface
+                        ? "border-2 border-[#eee] bg-[#fafafa] text-[#111] hover:border-[#111] hover:shadow-[3px_3px_0_#111]"
+                        : cn(
+                            "border border-white/[0.08] bg-white/[0.04] text-white/85",
+                            "hover:border-primary/35 hover:bg-white/[0.07] hover:text-white hover:shadow-[0_0_0_1px_rgba(235,103,27,0.15)]",
+                          ),
                     )}
                   >
-                    <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/20 text-primary ring-1 ring-primary/30">
+                    <span
+                      className={cn(
+                        "flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ring-1",
+                        plotSurface
+                          ? "bg-[#ccff00] text-[#111] ring-[#111]"
+                          : "bg-primary/20 text-primary ring-primary/30",
+                      )}
+                    >
                       <Phone className="h-4 w-4" aria-hidden />
                     </span>
                     <span className="min-w-0">
-                      <span className="block text-[10px] font-semibold uppercase tracking-wider text-white/40">
+                      <span
+                        className={cn(
+                          "block text-[10px] font-semibold uppercase tracking-wider",
+                          plotSurface ? "text-[#666]" : "text-white/40",
+                        )}
+                      >
                         Teléfono
                       </span>
                       <span className="mt-0.5 block text-sm font-medium tabular-nums">{PHONE_DISPLAY}</span>
@@ -152,16 +230,32 @@ export default function SiteFooter() {
                   <a
                     href={`mailto:${EMAIL}`}
                     className={cn(
-                      "flex items-start gap-3 rounded-2xl border border-white/[0.08] bg-white/[0.04] p-4",
-                      "text-white/85 transition-all duration-300",
-                      "hover:border-primary/35 hover:bg-white/[0.07] hover:text-white hover:shadow-[0_0_0_1px_rgba(235,103,27,0.15)]"
+                      "flex items-start gap-3 rounded-2xl p-4 transition-all duration-300",
+                      plotSurface
+                        ? "border-2 border-[#eee] bg-[#fafafa] text-[#111] hover:border-[#111] hover:shadow-[3px_3px_0_#111]"
+                        : cn(
+                            "border border-white/[0.08] bg-white/[0.04] text-white/85",
+                            "hover:border-primary/35 hover:bg-white/[0.07] hover:text-white hover:shadow-[0_0_0_1px_rgba(235,103,27,0.15)]",
+                          ),
                     )}
                   >
-                    <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/20 text-primary ring-1 ring-primary/30">
+                    <span
+                      className={cn(
+                        "flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ring-1",
+                        plotSurface
+                          ? "bg-[#ccff00] text-[#111] ring-[#111]"
+                          : "bg-primary/20 text-primary ring-primary/30",
+                      )}
+                    >
                       <Mail className="h-4 w-4" aria-hidden />
                     </span>
                     <span className="min-w-0 break-all">
-                      <span className="block text-[10px] font-semibold uppercase tracking-wider text-white/40">
+                      <span
+                        className={cn(
+                          "block text-[10px] font-semibold uppercase tracking-wider",
+                          plotSurface ? "text-[#666]" : "text-white/40",
+                        )}
+                      >
                         Email
                       </span>
                       <span className="mt-0.5 block text-sm font-medium">{EMAIL}</span>
@@ -171,15 +265,29 @@ export default function SiteFooter() {
                 <li className="sm:col-span-2 lg:col-span-1">
                   <div
                     className={cn(
-                      "flex items-start gap-3 rounded-2xl border border-white/[0.08] bg-white/[0.03] p-4",
-                      "text-white/80"
+                      "flex items-start gap-3 rounded-2xl p-4",
+                      plotSurface
+                        ? "border-2 border-dashed border-[#ccc] bg-[#fafafa] text-[#333]"
+                        : cn("border border-white/[0.08] bg-white/[0.03] text-white/80"),
                     )}
                   >
-                    <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white/[0.08] text-white/55 ring-1 ring-white/12">
+                    <span
+                      className={cn(
+                        "flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ring-1",
+                        plotSurface
+                          ? "bg-white text-[#111] ring-[#111]"
+                          : "bg-white/[0.08] text-white/55 ring-white/12",
+                      )}
+                    >
                       <MapPin className="h-4 w-4" aria-hidden />
                     </span>
                     <span>
-                      <span className="block text-[10px] font-semibold uppercase tracking-wider text-white/40">
+                      <span
+                        className={cn(
+                          "block text-[10px] font-semibold uppercase tracking-wider",
+                          plotSurface ? "text-[#666]" : "text-white/40",
+                        )}
+                      >
                         Dirección
                       </span>
                       <span className="mt-0.5 block text-sm font-medium leading-snug">{ADDRESS}</span>
@@ -191,18 +299,32 @@ export default function SiteFooter() {
 
             <div className="flex flex-col gap-8 lg:col-span-3">
               <div>
-                <h3 className="text-[11px] font-bold uppercase tracking-[0.28em] text-primary/80">Legal</h3>
+                <h3
+                  className={cn(
+                    "text-[11px] font-bold uppercase tracking-[0.28em]",
+                    plotSurface ? "text-[#5d3fd3]" : "text-primary/80",
+                  )}
+                >
+                  Legal
+                </h3>
                 <ul className="mt-4 space-y-2">
                   <li>
                     <Link
                       href="/terminos"
                       className={cn(
-                        "flex items-center gap-3 rounded-2xl border border-white/[0.08] bg-white/[0.04] px-4 py-3 text-sm",
-                        "text-white/80 transition-all duration-300",
-                        "hover:border-primary/35 hover:bg-white/[0.07] hover:text-primary"
+                        "flex items-center gap-3 rounded-2xl px-4 py-3 text-sm transition-all duration-300",
+                        plotSurface
+                          ? "border-2 border-[#eee] bg-white font-semibold text-[#111] hover:border-[#111] hover:text-[#5d3fd3]"
+                          : cn(
+                              "border border-white/[0.08] bg-white/[0.04] text-white/80",
+                              "hover:border-primary/35 hover:bg-white/[0.07] hover:text-primary",
+                            ),
                       )}
                     >
-                      <FileText className="h-4 w-4 shrink-0 text-primary/70" aria-hidden />
+                      <FileText
+                        className={cn("h-4 w-4 shrink-0", plotSurface ? "text-[#5d3fd3]" : "text-primary/70")}
+                        aria-hidden
+                      />
                       Términos y condiciones
                     </Link>
                   </li>
@@ -210,36 +332,62 @@ export default function SiteFooter() {
                     <Link
                       href="/privacidad"
                       className={cn(
-                        "flex items-center gap-3 rounded-2xl border border-white/[0.08] bg-white/[0.04] px-4 py-3 text-sm",
-                        "text-white/80 transition-all duration-300",
-                        "hover:border-primary/35 hover:bg-white/[0.07] hover:text-primary"
+                        "flex items-center gap-3 rounded-2xl px-4 py-3 text-sm transition-all duration-300",
+                        plotSurface
+                          ? "border-2 border-[#eee] bg-white font-semibold text-[#111] hover:border-[#111] hover:text-[#5d3fd3]"
+                          : cn(
+                              "border border-white/[0.08] bg-white/[0.04] text-white/80",
+                              "hover:border-primary/35 hover:bg-white/[0.07] hover:text-primary",
+                            ),
                       )}
                     >
-                      <Shield className="h-4 w-4 shrink-0 text-primary/70" aria-hidden />
+                      <Shield
+                        className={cn("h-4 w-4 shrink-0", plotSurface ? "text-[#5d3fd3]" : "text-primary/70")}
+                        aria-hidden
+                      />
                       Política de privacidad
                     </Link>
                   </li>
                 </ul>
               </div>
 
-              <div className="rounded-2xl border border-white/[0.08] bg-white/[0.03] p-4 sm:p-5">
-                <p className="text-[11px] font-bold uppercase tracking-[0.28em] text-white/40">Seguinos</p>
-                <p className="mt-2 text-sm leading-relaxed text-white/50">
+              <div
+                className={cn(
+                  "rounded-2xl p-4 sm:p-5",
+                  plotSurface
+                    ? "border-2 border-[#111] bg-[#f8f8f8]"
+                    : "border border-white/[0.08] bg-white/[0.03]",
+                )}
+              >
+                <p
+                  className={cn(
+                    "text-[11px] font-bold uppercase tracking-[0.28em]",
+                    plotSurface ? "text-[#666]" : "text-white/40",
+                  )}
+                >
+                  Seguinos
+                </p>
+                <p className={cn("mt-2 text-sm leading-relaxed", plotSurface ? "text-[#444]" : "text-white/50")}>
                   Novedades del estudio en{" "}
                   <a
                     href={PLOT_CENTER_WEB}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="font-medium text-white/75 underline decoration-white/15 underline-offset-4 transition-colors hover:text-primary hover:decoration-primary/50"
+                    className={cn(
+                      "font-medium underline underline-offset-4 transition-colors",
+                      plotSurface
+                        ? "text-[#111] decoration-[#111]/30 hover:text-[#5d3fd3]"
+                        : "text-white/75 decoration-white/15 hover:text-primary hover:decoration-primary/50",
+                    )}
                   >
                     plotcenter.com.ar
                   </a>
                 </p>
                 <div className="mt-4 flex flex-wrap items-center gap-3">
-                  <SocialButton href={PLOT_CENTER_WEB} label="Sitio web Plot Center">
+                  <SocialButton href={PLOT_CENTER_WEB} label="Sitio web Plot Center" plotSurface={plotSurface}>
                     <ExternalLink className="h-5 w-5 sm:h-[1.35rem] sm:w-[1.35rem]" />
                   </SocialButton>
-                  <SocialButton href={INSTAGRAM} label="Instagram @plotcentersj">
+                  <SocialButton href={INSTAGRAM} label="Instagram @plotcentersj" plotSurface={plotSurface}>
                     <InstagramIcon className="h-5 w-5 sm:h-[1.35rem] sm:w-[1.35rem]" />
                   </SocialButton>
                 </div>
@@ -247,13 +395,21 @@ export default function SiteFooter() {
             </div>
           </div>
 
-          <p className="relative border-t border-white/10 px-6 py-5 text-center text-[11px] text-white/40 sm:px-8 sm:py-6 lg:px-10">
+          <p
+            className={cn(
+              "relative border-t px-6 py-5 text-center text-[11px] sm:px-8 sm:py-6 lg:px-10",
+              plotSurface ? "border-[#111] text-[#555]" : "border-white/10 text-white/40",
+            )}
+          >
             © {new Date().getFullYear()}{" "}
             <a
               href={PLOT_CENTER_WEB}
               target="_blank"
               rel="noopener noreferrer"
-              className="text-white/60 transition-colors hover:text-primary"
+              className={cn(
+                "transition-colors",
+                plotSurface ? "font-semibold text-[#111] hover:text-[#5d3fd3]" : "text-white/60 hover:text-primary",
+              )}
             >
               Plot Center
             </a>

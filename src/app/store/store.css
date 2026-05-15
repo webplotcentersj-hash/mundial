@@ -1158,6 +1158,23 @@
   padding: 24px 20px 48px;
 }
 
+/* Home: bloque “Cómo funciona” con tres tarjetas */
+.plot-home-store .product-grid {
+  grid-template-columns: repeat(3, 1fr);
+}
+
+@media (max-width: 900px) {
+  .plot-home-store .product-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 520px) {
+  .plot-home-store .product-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
 .plot-store .store-field,
 .plot-store .store-textarea {
   width: 100%;
