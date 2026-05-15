@@ -32,20 +32,34 @@ export async function login(formData: FormData) {
 export async function signup(formData: FormData) {
   const supabase = await createClient()
 
-  const data = {
+  const payload = {
     email: formData.get('email') as string,
     password: formData.get('password') as string,
     options: {
       data: {
         username: formData.get('username') as string,
-      }
-    }
+      },
+    },
   }
 
-  const { error } = await supabase.auth.signUp(data)
+  const { data, error } = await supabase.auth.signUp(payload)
 
   if (error) {
-    redirect('/login?message=No se pudo crear la cuenta')
+    redirect(
+      `/login?message=${encodeURIComponent(error.message || 'No se pudo crear la cuenta')}`,
+    )
+  }
+
+  // Si "Confirmar email" está activo en Supabase, no hay sesión hasta confirmar.
+  if (!data.session) {
+    revalidatePath('/', 'layout')
+    redirect('/login?pendingConfirmation=1')
+  }
+
+  const user = data.user
+  if (user) {
+    const pr = await ensureUserProfile(supabase, user)
+    if (pr.error) console.error('ensureUserProfile after signup:', pr.error)
   }
 
   revalidatePath('/', 'layout')

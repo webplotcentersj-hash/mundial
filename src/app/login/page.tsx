@@ -2,7 +2,6 @@
 
 import { Suspense, useState } from 'react'
 import { login, signup } from './actions'
-import { Trophy } from 'lucide-react'
 import { useSearchParams } from 'next/navigation'
 import Image from 'next/image'
 
@@ -10,6 +9,7 @@ function LoginContent() {
   const [isLogin, setIsLogin] = useState(true)
   const searchParams = useSearchParams()
   const message = searchParams.get('message')
+  const pendingConfirmation = searchParams.get('pendingConfirmation') === '1'
 
   return (
     <div className="flex flex-col items-center justify-center min-h-[calc(100vh-4rem)] p-4">
@@ -27,11 +27,26 @@ function LoginContent() {
             {isLogin ? 'Bienvenido de nuevo' : 'Crea tu cuenta'}
           </h2>
           <p className="text-muted-foreground mt-2">
-            {isLogin ? 'Ingresa para continuar jugando' : 'Únete al prode más grande del Mundial'}
+            {isLogin
+              ? 'Ingresa para continuar jugando'
+              : 'Únete al prode más grande del Mundial. Te pediremos que confirmes tu correo antes de entrar.'}
           </p>
         </div>
 
-        {message && (
+        {pendingConfirmation && (
+          <div
+            role="status"
+            className="bg-sky-500/10 border border-sky-400/45 text-sky-100 p-3 rounded-lg mb-6 text-sm text-center space-y-1"
+          >
+            <p className="font-medium">Revisá tu correo</p>
+            <p className="text-sky-100/90 text-[13px] leading-snug">
+              Te enviamos un enlace para confirmar tu cuenta. Cuando lo hagas, volvé aquí e iniciá
+              sesión con tu correo y contraseña. Revisá también spam o promociones.
+            </p>
+          </div>
+        )}
+
+        {message && !pendingConfirmation && (
           <div className="bg-red-500/10 border border-red-500/50 text-red-500 p-3 rounded-lg mb-6 text-sm text-center">
             {message}
           </div>
