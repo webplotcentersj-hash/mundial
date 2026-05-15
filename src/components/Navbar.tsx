@@ -46,7 +46,10 @@ const navCtaPlotStore =
 export default function Navbar() {
   const pathname = usePathname()
   const plotStoreChrome =
-    pathname === '/' || pathname.startsWith('/store') || pathname.startsWith('/figurita')
+    pathname === '/' ||
+    pathname.startsWith('/store') ||
+    pathname.startsWith('/figurita') ||
+    pathname.startsWith('/fixture')
   const [mobileOpen, setMobileOpen] = useState(false)
   const [user, setUser] = useState<SupabaseUser | null>(null)
   const [authReady, setAuthReady] = useState(false)

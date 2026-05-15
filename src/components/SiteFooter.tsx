@@ -62,7 +62,10 @@ function SocialButton({
 export default function SiteFooter() {
   const pathname = usePathname()
   const plotSurface =
-    pathname === "/" || pathname.startsWith("/store") || pathname.startsWith("/figurita")
+    pathname === "/" ||
+    pathname.startsWith("/store") ||
+    pathname.startsWith("/figurita") ||
+    pathname.startsWith("/fixture")
 
   return (
     <footer
