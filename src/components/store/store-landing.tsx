@@ -1,7 +1,10 @@
 'use client'
 
+import { useRef } from 'react'
 import Link from 'next/link'
+import { motion } from 'framer-motion'
 import type { PrintProductType } from '@/lib/actions'
+import { InteractiveTravelCard } from '@/components/store/interactive-figurita-card'
 
 const MARQUEE =
   'ENVÍO A COORDINAR • FIGURITAS DESDE MI FIGURITA • IMPRESIÓN PREMIUM • PLOT MUNDIAL STORE • SIN PAGO ONLINE • '
@@ -45,6 +48,8 @@ type StoreLandingProps = {
 }
 
 export function StoreLanding({ cartItemCount, selectedProduct, onSelectProduct }: StoreLandingProps) {
+  const heroCardRef = useRef<HTMLDivElement>(null)
+
   function scrollToArmado() {
     document.getElementById('store-armado')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
   }
@@ -112,13 +117,18 @@ export function StoreLanding({ cartItemCount, selectedProduct, onSelectProduct }
               transform="translate(100 100)"
             />
           </svg>
-          <div className="main-image-container">
-            <img
-              src="https://images.unsplash.com/photo-1574629810360-7efbbe195018?w=800&q=80"
-              alt="Figurita coleccionable estilo Mundial"
-            />
+          <motion.div ref={heroCardRef} className="main-image-container main-image-container--interactive">
+            <motion.div
+              drag
+              dragConstraints={heroCardRef}
+              dragElastic={0.2}
+              style={{ perspective: '1000px' }}
+              className="hero-figurita-drag-host"
+            >
+              <InteractiveTravelCard alt="Figurita coleccionable Lionel Messi" />
+            </motion.div>
             <div className="price-tag">PREMIUM</div>
-          </div>
+          </motion.div>
           <div className="secondary-image">
             <img
               src="https://images.unsplash.com/photo-1431324155629-1a6deb1dec8d?w=600&q=80"
