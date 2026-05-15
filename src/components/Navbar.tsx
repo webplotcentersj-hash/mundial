@@ -23,34 +23,17 @@ import { SITE_CONTENT_OUTER } from '@/lib/siteContentLayout'
 import { signout } from '@/app/login/actions'
 import type { User as SupabaseUser } from '@supabase/supabase-js'
 
-const navLinks: {
-  href: string
-  label: string
-  icon: LucideIcon
-  variant?: 'primary' | 'emerald' | 'amber'
-}[] = [
-  { href: '/bracket', label: 'Llaves', icon: GitBranch, variant: 'primary' },
+const navLinks: { href: string; label: string; icon: LucideIcon }[] = [
+  { href: '/bracket', label: 'Llaves', icon: GitBranch },
   { href: '/fixture', label: 'Fixture', icon: CalendarDays },
   { href: '/ranking', label: 'Ranking', icon: Medal },
-  { href: '/figurita', label: 'Mi Figurita', icon: Sparkles, variant: 'emerald' },
+  { href: '/figurita', label: 'Mi Figurita', icon: Sparkles },
   { href: '/store', label: 'Store', icon: Store },
-  { href: '/dashboard', label: 'Mi Prode', icon: LayoutDashboard, variant: 'amber' },
+  { href: '/dashboard', label: 'Mi Prode', icon: LayoutDashboard },
 ]
 
-function linkClasses(variant?: 'primary' | 'emerald' | 'amber') {
-  const base =
-    'group relative flex items-center gap-2 rounded-full px-3.5 py-2 text-sm font-semibold transition-all duration-200 outline-none focus-visible:ring-2 focus-visible:ring-primary/60 focus-visible:ring-offset-2 focus-visible:ring-offset-[#060913]'
-  if (variant === 'primary') {
-    return `${base} border border-primary/40 bg-gradient-to-b from-primary/25 via-primary/10 to-primary/5 text-primary shadow-[inset_0_1px_0_rgba(255,255,255,0.12),0_4px_20px_-8px_rgba(235,103,27,0.55)] hover:from-primary/35 hover:border-primary/60 hover:text-white`
-  }
-  if (variant === 'emerald') {
-    return `${base} border border-emerald-400/35 bg-gradient-to-b from-emerald-500/20 to-emerald-500/5 text-emerald-300 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] hover:border-emerald-400/55 hover:text-white`
-  }
-  if (variant === 'amber') {
-    return `${base} border border-amber-500/35 bg-gradient-to-b from-amber-500/15 to-amber-500/5 text-amber-400 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] hover:border-amber-400/55 hover:text-amber-100`
-  }
-  return `${base} text-white/75 hover:text-white hover:bg-white/10 border border-transparent`
-}
+const navItemClass =
+  'group relative flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.06] px-3.5 py-2 text-sm font-semibold text-white/85 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] transition-all duration-200 outline-none hover:border-white/20 hover:bg-white/10 hover:text-white focus-visible:ring-2 focus-visible:ring-primary/60 focus-visible:ring-offset-2 focus-visible:ring-offset-[#060913]'
 
 export default function Navbar() {
   const [mobileOpen, setMobileOpen] = useState(false)
@@ -113,8 +96,8 @@ export default function Navbar() {
 
           <div className="hidden md:flex flex-1 items-center justify-end gap-4 min-w-0">
             <div className="flex flex-wrap items-center justify-end gap-1 rounded-full border border-white/12 bg-black/25 p-1 pl-1.5 backdrop-blur-xl shadow-[inset_0_1px_0_rgba(255,255,255,0.06),0_12px_40px_-12px_rgba(0,0,0,0.5)] ring-1 ring-white/[0.05]">
-              {navLinks.map(({ href, label, icon: Icon, variant }) => (
-                <Link key={href} href={href} className={linkClasses(variant)}>
+              {navLinks.map(({ href, label, icon: Icon }) => (
+                <Link key={href} href={href} className={navItemClass}>
                   <Icon className="h-4 w-4 shrink-0 opacity-90 group-hover:scale-110 transition-transform" aria-hidden />
                   <span className="whitespace-nowrap">{label}</span>
                 </Link>
@@ -128,27 +111,21 @@ export default function Navbar() {
                 <>
                   <Link
                     href="/dashboard"
-                    className="hidden lg:inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-3 py-2 text-xs font-semibold text-white/90 hover:bg-white/10 transition-colors max-w-[140px]"
+                    className={`${navItemClass} hidden max-w-[140px] lg:inline-flex`}
                     title={user.email ?? ''}
                   >
-                    <UserRound className="h-4 w-4 text-primary shrink-0" aria-hidden />
+                    <UserRound className="h-4 w-4 shrink-0 opacity-90" aria-hidden />
                     <span className="truncate">{displayName}</span>
                   </Link>
                   <form action={signout}>
-                    <button
-                      type="submit"
-                      className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/[0.07] px-4 py-2 text-sm font-semibold text-white/90 hover:bg-white/15 hover:border-white/25 transition-all"
-                    >
+                    <button type="submit" className={navItemClass}>
                       <LogOut className="h-4 w-4" aria-hidden />
                       Salir
                     </button>
                   </form>
                 </>
               ) : (
-                <Link
-                  href="/login"
-                  className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-primary to-amber-600 px-5 py-2.5 text-sm font-bold text-white shadow-[0_0_24px_-4px_rgba(235,103,27,0.75),inset_0_1px_0_rgba(255,255,255,0.2)] hover:brightness-110 hover:shadow-[0_0_28px_-2px_rgba(245,158,11,0.55)] transition-all"
-                >
+                <Link href="/login" className={navItemClass}>
                   <LogIn className="h-4 w-4" aria-hidden />
                   Ingresar
                 </Link>
@@ -180,12 +157,12 @@ export default function Navbar() {
             className="md:hidden overflow-hidden border-t border-white/10 bg-[#0a0f1c]/95 backdrop-blur-xl"
           >
             <div className="px-4 py-4 flex flex-col gap-2">
-              {navLinks.map(({ href, label, icon: Icon, variant }) => (
+              {navLinks.map(({ href, label, icon: Icon }) => (
                 <Link
                   key={href}
                   href={href}
                   onClick={() => setMobileOpen(false)}
-                  className={`${linkClasses(variant)} justify-center py-3`}
+                  className={`${navItemClass} justify-center py-3`}
                 >
                   <Icon className="h-4 w-4" aria-hidden />
                   {label}
@@ -196,16 +173,13 @@ export default function Navbar() {
                   <Link
                     href="/dashboard"
                     onClick={() => setMobileOpen(false)}
-                    className="flex items-center justify-center gap-2 rounded-xl border border-white/15 bg-white/5 px-4 py-3 text-sm font-semibold text-white"
+                    className={`${navItemClass} justify-center py-3`}
                   >
-                    <UserRound className="h-4 w-4 text-primary" />
+                    <UserRound className="h-4 w-4 opacity-90" aria-hidden />
                     {displayName}
                   </Link>
                   <form action={signout}>
-                    <button
-                      type="submit"
-                      className="w-full flex items-center justify-center gap-2 rounded-xl border border-white/15 bg-white/5 px-4 py-3 text-sm font-semibold text-white hover:bg-white/10"
-                    >
+                    <button type="submit" className={`${navItemClass} w-full justify-center py-3`}>
                       <LogOut className="h-4 w-4" />
                       Salir
                     </button>
@@ -215,7 +189,7 @@ export default function Navbar() {
                 <Link
                   href="/login"
                   onClick={() => setMobileOpen(false)}
-                  className="mt-2 flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-primary to-amber-600 px-4 py-3 text-sm font-bold text-white shadow-lg"
+                  className={`${navItemClass} mt-2 justify-center py-3`}
                 >
                   <LogIn className="h-4 w-4" />
                   Ingresar
