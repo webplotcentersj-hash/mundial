@@ -13,6 +13,7 @@ import {
   updatePrintOrderAdmin,
   updateMatchScore,
   resetMatchResult,
+  adminSyncRankingTotalsFromPredictions,
   type PrintOrderRow,
   type PrintOrderStatus,
 } from '@/lib/actions'
@@ -39,6 +40,7 @@ export default function AdminPage() {
   const [loading, setLoading] = useState(true)
   const [isSaving, setIsSaving] = useState<string | null>(null)
   const [resettingId, setResettingId] = useState<string | null>(null)
+  const [syncRankingBusy, setSyncRankingBusy] = useState(false)
   const [results, setResults] = useState<Record<string, { home: string, away: string }>>({})
   const [activeTab, setActiveTab] = useState<'results' | 'users' | 'podium' | 'print-orders'>('results')
 
@@ -219,6 +221,26 @@ export default function AdminPage() {
     }
   }
 
+  const handleSyncRankingTotals = async () => {
+    if (
+      !window.confirm(
+        'Se va a recalcular el puntaje de cada perfil como la suma de todos los points_earned en pronósticos. ¿Continuar?',
+      )
+    )
+      return
+    setSyncRankingBusy(true)
+    try {
+      const res = await adminSyncRankingTotalsFromPredictions()
+      alert(`Ranking sincronizado. Perfiles actualizados: ${res.profilesUpdated}.`)
+      const fetchedUsers = await getAdminProfiles()
+      setUsers(fetchedUsers || [])
+    } catch (e: any) {
+      alert(e?.message || 'No se pudo sincronizar el ranking')
+    } finally {
+      setSyncRankingBusy(false)
+    }
+  }
+
   const handleExportCSV = () => {
     alert('Simulación: Descargando podio_ganadores.csv con los correos electrónicos para entrega de premios.')
   }
@@ -296,13 +318,29 @@ export default function AdminPage() {
           {/* TAB 1: RESULTADOS */}
           {activeTab === 'results' && (
             <motion.div key="results" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} className="space-y-6">
-              <div className="bg-red-500/5 border border-red-500/20 rounded-2xl p-6 mb-8 flex items-start gap-4 backdrop-blur-sm shadow-xl">
+              <div className="bg-red-500/5 border border-red-500/20 rounded-2xl p-6 mb-8 flex flex-col gap-4 backdrop-blur-sm shadow-xl sm:flex-row sm:items-start">
                 <CheckCircle2 className="w-6 h-6 text-red-400 shrink-0 mt-0.5" />
-                <div>
+                <div className="min-w-0 flex-1">
                   <h3 className="text-red-400 font-bold text-lg mb-1">Cálculo de Puntos Automático</h3>
                   <p className="text-white/60 text-sm leading-relaxed">
                     Al cargar un resultado real y guardarlo, el sistema comparará este resultado con las predicciones en Supabase y asignará los puntos correspondientes a todos los usuarios que hayan participado. En partidos finalizados podés usar{' '}
                     <strong className="text-white/80">Resetear resultado</strong> para volver el partido a pendiente, borrar el marcador oficial y revertir solo los puntos otorgados por ese partido.
+                  </p>
+                  <p className="mt-3 text-amber-200/90 text-xs leading-relaxed border border-amber-500/25 rounded-lg px-3 py-2 bg-amber-500/10">
+                    <strong className="text-amber-300">Importante (Supabase):</strong> hace falta que existan políticas RLS que permitan al administrador actualizar las predicciones y los puntos de otros usuarios. Si el ranking no sube al cargar resultados, ejecutá el SQL del archivo{' '}
+                    <code className="text-amber-100/95 font-mono text-[11px]">supabase/migrations/20260516_admin_fixture_points_rls.sql</code> en el SQL Editor del proyecto.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={handleSyncRankingTotals}
+                    disabled={syncRankingBusy}
+                    className="mt-4 inline-flex items-center justify-center gap-2 rounded-xl border border-white/15 bg-white/10 px-4 py-2.5 text-sm font-bold text-white hover:bg-white/15 disabled:opacity-50"
+                  >
+                    {syncRankingBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trophy className="h-4 w-4 text-amber-400" />}
+                    {syncRankingBusy ? 'Sincronizando…' : 'Sincronizar ranking con pronósticos'}
+                  </button>
+                  <p className="mt-2 text-[11px] text-white/40">
+                    Usá este botón después de aplicar el SQL si ya habías cargado resultados y los puntos del ranking quedaron en cero.
                   </p>
                 </div>
               </div>

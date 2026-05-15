@@ -552,7 +552,9 @@ export async function updateMatchScore(matchId: string, homeScore: number, awayS
           .eq('id', pred.id)
         if (predUpdErr) {
           console.error('Error updating prediction points:', predUpdErr)
-          continue
+          throw new Error(
+            `No se pudieron guardar los puntos del pronóstico (${predUpdErr.message}). ¿Corriste la migración SQL que permite a admins actualizar predicciones y perfiles? Ver supabase/migrations/20260516_admin_fixture_points_rls.sql`,
+          )
         }
 
         const pointDelta = points - prevEarned
@@ -564,7 +566,7 @@ export async function updateMatchScore(matchId: string, homeScore: number, awayS
             .single()
           if (profileReadErr) {
             console.error('Error reading profile for ranking:', profileReadErr)
-            continue
+            throw new Error(`No se pudo leer el perfil para el ranking: ${profileReadErr.message}`)
           }
           const newTotal = (profile?.total_points || 0) + pointDelta
           const { error: profileUpdErr } = await supabase
@@ -573,6 +575,9 @@ export async function updateMatchScore(matchId: string, homeScore: number, awayS
             .eq('id', pred.user_id)
           if (profileUpdErr) {
             console.error('Error updating profile total_points:', profileUpdErr)
+            throw new Error(
+              `No se pudo actualizar los puntos en el ranking (${profileUpdErr.message}). ¿Corriste la migración supabase/migrations/20260516_admin_fixture_points_rls.sql?`,
+            )
           }
         }
       }
@@ -618,7 +623,7 @@ export async function resetMatchResult(matchId: string) {
 
     if (profileReadErr) {
       console.error('resetMatchResult profile read:', profileReadErr)
-      continue
+      throw new Error(`No se pudo leer el perfil al resetear: ${profileReadErr.message}`)
     }
 
     const newTotal = Math.max(0, (profile?.total_points || 0) - earned)
@@ -626,6 +631,9 @@ export async function resetMatchResult(matchId: string) {
 
     if (profileUpdErr) {
       console.error('resetMatchResult profile update:', profileUpdErr)
+      throw new Error(
+        `No se pudo revertir puntos del ranking (${profileUpdErr.message}). ¿Corriste la migración supabase/migrations/20260516_admin_fixture_points_rls.sql?`,
+      )
     }
   }
 
@@ -655,6 +663,46 @@ export async function resetMatchResult(matchId: string) {
   revalidatePath('/ranking')
   revalidatePath('/dashboard')
   return { success: true }
+}
+
+/**
+ * Admin: iguala `profiles.total_points` con la suma de `predictions.points_earned` por usuario.
+ * Útil tras corregir políticas RLS o si el ranking quedó desfasado.
+ */
+export async function adminSyncRankingTotalsFromPredictions() {
+  const isAdmin = await verifyAdmin()
+  if (!isAdmin) {
+    throw new Error('No autorizado')
+  }
+
+  const supabase = await createClient()
+  const { data: preds, error: predErr } = await supabase.from('predictions').select('user_id, points_earned')
+  if (predErr) {
+    throw new Error(predErr.message)
+  }
+
+  const byUser = new Map<string, number>()
+  for (const row of preds || []) {
+    const uid = row.user_id as string
+    byUser.set(uid, (byUser.get(uid) || 0) + toScoreInt(row.points_earned))
+  }
+
+  const { data: profiles, error: profErr } = await supabase.from('profiles').select('id')
+  if (profErr) {
+    throw new Error(profErr.message)
+  }
+
+  for (const p of profiles || []) {
+    const pts = byUser.get(p.id) ?? 0
+    const { error: updErr } = await supabase.from('profiles').update({ total_points: pts }).eq('id', p.id)
+    if (updErr) {
+      throw new Error(updErr.message)
+    }
+  }
+
+  revalidatePath('/ranking')
+  revalidatePath('/admin')
+  return { success: true as const, profilesUpdated: profiles?.length ?? 0 }
 }
 
 
