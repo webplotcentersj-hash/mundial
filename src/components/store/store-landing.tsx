@@ -3,43 +3,17 @@
 import { useRef } from 'react'
 import Link from 'next/link'
 import { motion } from 'framer-motion'
-import type { PrintProductType } from '@/lib/actions'
+import type { PrintProductType } from '@/lib/store/catalog'
+import {
+  STORE_CATALOG,
+  STORE_COMBO_SEPARATE_TOTAL_ARS,
+  STORE_PRICES_ARS,
+  formatPriceARS,
+} from '@/lib/store/catalog'
 import { InteractiveTravelCard } from '@/components/store/interactive-figurita-card'
 
 const MARQUEE =
   'ENVÍO A COORDINAR • FIGURITAS DESDE MI FIGURITA • IMPRESIÓN PREMIUM • PLOT MUNDIAL STORE • SIN PAGO ONLINE • '
-
-export const STORE_CATALOG: {
-  type: PrintProductType
-  label: string
-  hint: string
-  badge?: 'new' | 'sale'
-  image: string
-}[] = [
-  {
-    type: 'figurita',
-    label: 'Figurita',
-    hint: 'Carta coleccionable · papel premium',
-    badge: 'new',
-    image:
-      'https://images.unsplash.com/photo-1596870230751-ebdfce98ec42?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80',
-  },
-  {
-    type: 'sticker',
-    label: 'Stickers',
-    hint: 'Hoja troquelada · vinilo o mate',
-    image:
-      'https://images.unsplash.com/photo-1560769629-975ec94e6a86?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80',
-  },
-  {
-    type: 'poster',
-    label: 'Poster',
-    hint: 'Gran formato · para el living',
-    badge: 'sale',
-    image:
-      'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&q=80',
-  },
-]
 
 type StoreLandingProps = {
   cartItemCount: number
@@ -152,6 +126,9 @@ export function StoreLanding({ cartItemCount, selectedProduct, onSelectProduct }
           <div className="product-grid">
             {STORE_CATALOG.map((item) => {
               const selected = selectedProduct === item.type
+              const price = STORE_PRICES_ARS[item.type]
+              const savings =
+                item.type === 'combo' ? STORE_COMBO_SEPARATE_TOTAL_ARS - STORE_PRICES_ARS.combo : 0
               return (
                 <button
                   key={item.type}
@@ -166,11 +143,19 @@ export function StoreLanding({ cartItemCount, selectedProduct, onSelectProduct }
                 >
                   <div className="product-image">
                     {item.badge === 'new' && <span className="product-badge new">NUEVO</span>}
-                    {item.badge === 'sale' && <span className="product-badge sale">POPULAR</span>}
+                    {item.badge === 'sale' && <span className="product-badge sale">COMBO</span>}
                     <img src={item.image} alt={item.label} />
                   </div>
                   <h4>{item.label}</h4>
                   <p>{item.hint}</p>
+                  <p className="cart-item-price" style={{ marginTop: 8 }}>
+                    {formatPriceARS(price)}
+                  </p>
+                  {savings > 0 ? (
+                    <p className="text-xs font-semibold" style={{ color: '#5d3fd3', marginTop: 4 }}>
+                      Ahorrás {formatPriceARS(savings)} vs por separado
+                    </p>
+                  ) : null}
                 </button>
               )
             })}

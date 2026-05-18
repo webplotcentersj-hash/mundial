@@ -3,6 +3,7 @@
 import { motion, AnimatePresence } from 'framer-motion'
 import { Loader2, X } from 'lucide-react'
 import type { AdminUserDetail } from '@/lib/actions'
+import { getProductLabel } from '@/lib/store/catalog'
 
 function formatAdminDate(iso: string | null | undefined) {
   if (!iso) return '—'
@@ -14,10 +15,7 @@ function formatAdminDate(iso: string | null | undefined) {
 }
 
 function productTypeLabel(t: string) {
-  if (t === 'figurita') return 'Figurita'
-  if (t === 'sticker') return 'Stickers'
-  if (t === 'poster') return 'Poster'
-  return t
+  return getProductLabel(t)
 }
 
 type Props = {

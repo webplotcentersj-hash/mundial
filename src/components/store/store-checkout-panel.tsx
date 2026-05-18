@@ -8,13 +8,23 @@ import {
   Sparkles,
   Layers,
   Maximize2,
+  Package,
   Truck,
   ShieldCheck,
   ShoppingCart,
   Plus,
 } from 'lucide-react'
 import { clearFiguritaStoreImageFromSession } from '@/lib/storePrints'
-import type { PrintOrderRow, PrintProductType } from '@/lib/actions'
+import type { PrintOrderRow } from '@/lib/actions'
+import type { PrintProductType } from '@/lib/store/catalog'
+import {
+  STORE_CATALOG,
+  STORE_PRICES_ARS,
+  formatPriceARS,
+  getCartTotal,
+  getLineSubtotal,
+  getProductLabel,
+} from '@/lib/store/catalog'
 
 export type StoreCartLine = {
   id: string
@@ -24,16 +34,19 @@ export type StoreCartLine = {
   customer_image_url: string | null
 }
 
-const PRODUCT_OPTIONS: {
-  value: PrintProductType
-  label: string
-  hint: string
-  icon: typeof Sparkles
-}[] = [
-  { value: 'figurita', label: 'Figurita', hint: 'Carta coleccionable · papel premium', icon: Sparkles },
-  { value: 'sticker', label: 'Stickers', hint: 'Hoja troquelada · vinilo o mate', icon: Layers },
-  { value: 'poster', label: 'Poster', hint: 'Gran formato · para el living', icon: Maximize2 },
-]
+const PRODUCT_ICONS: Record<PrintProductType, typeof Sparkles> = {
+  combo: Package,
+  figurita: Sparkles,
+  sticker: Layers,
+  poster: Maximize2,
+}
+
+const PRODUCT_OPTIONS = STORE_CATALOG.map((item) => ({
+  value: item.type,
+  label: item.label,
+  hint: item.hint,
+  icon: PRODUCT_ICONS[item.type],
+}))
 
 const STATUS_ES: Record<string, string> = {
   pending: 'Pendiente',
@@ -42,13 +55,6 @@ const STATUS_ES: Record<string, string> = {
   ready: 'Listo',
   shipped: 'Enviado',
   cancelled: 'Cancelado',
-}
-
-function productTypeShort(t: PrintProductType) {
-  if (t === 'figurita') return 'Figurita'
-  if (t === 'sticker') return 'Stickers'
-  if (t === 'poster') return 'Poster'
-  return t
 }
 
 function orderStatusClass(status: string): string {
@@ -114,6 +120,9 @@ export function StoreCheckoutPanel({
   loadingOrders,
 }: StoreCheckoutPanelProps) {
   const cartUnits = cart.reduce((s, l) => s + l.quantity, 0)
+  const cartTotal = getCartTotal(cart)
+  const unitPrice = STORE_PRICES_ARS[productType]
+  const linePreviewTotal = getLineSubtotal(productType, quantity)
 
   return (
     <div className="space-y-12">
@@ -205,7 +214,7 @@ export function StoreCheckoutPanel({
 
                 <div className="size-selection" style={{ marginTop: 24 }}>
                   <span className="size-label">Producto</span>
-                  <div className="grid gap-3 sm:grid-cols-3">
+                  <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
                     {PRODUCT_OPTIONS.map((opt) => {
                       const Icon = opt.icon
                       const selected = productType === opt.value
@@ -219,10 +228,18 @@ export function StoreCheckoutPanel({
                           <Icon className="mb-2 h-6 w-6" aria-hidden />
                           <h4>{opt.label}</h4>
                           <p>{opt.hint}</p>
+                          <p className="mt-2 text-sm font-bold">{formatPriceARS(STORE_PRICES_ARS[opt.value])}</p>
                         </button>
                       )
                     })}
                   </div>
+                </div>
+
+                <div className="summary-line" style={{ marginTop: 16 }}>
+                  <span>Subtotal (esta línea)</span>
+                  <span>
+                    {formatPriceARS(unitPrice)} × {quantity} = {formatPriceARS(linePreviewTotal)}
+                  </span>
                 </div>
 
                 <div className="quantity-selection">
@@ -317,13 +334,19 @@ export function StoreCheckoutPanel({
                       </div>
                     )}
                     <div className="cart-item-details">
-                      <h3 className="capitalize">{productTypeShort(line.product_type)}</h3>
+                      <h3>{getProductLabel(line.product_type)}</h3>
                       {line.notes ? (
                         <p className="mt-1">{line.notes}</p>
                       ) : (
                         <p className="mt-1 text-[#888]">Sin notas</p>
                       )}
-                      <p className="cart-item-price">Cantidad: {line.quantity}</p>
+                      <p className="cart-item-price">
+                        {formatPriceARS(getLineSubtotal(line.product_type, line.quantity))}
+                        <span className="text-sm font-normal text-[#666]">
+                          {' '}
+                          ({line.quantity} × {formatPriceARS(STORE_PRICES_ARS[line.product_type])})
+                        </span>
+                      </p>
                     </div>
                     <div className="cart-item-controls">
                       <div className="quantity-controls">
@@ -370,8 +393,11 @@ export function StoreCheckoutPanel({
                 <p className="shipping-note">Te contactamos por mail cuando el pedido esté en producción o listo.</p>
                 <div className="summary-total">
                   <span>Total</span>
-                  <span>A coordinar</span>
+                  <span>{formatPriceARS(cartTotal)}</span>
                 </div>
+                <p className="shipping-note text-sm" style={{ marginTop: 8 }}>
+                  Precios en pesos argentinos. El pago se coordina por mail o al retirar.
+                </p>
 
                 <form onSubmit={onCheckout} className="space-y-4 border-t-2 border-[#111] pt-6">
                   <p className="size-label">Datos de contacto</p>
@@ -471,7 +497,7 @@ export function StoreCheckoutPanel({
                 >
                   <div className="order-header">
                     <div>
-                      <h3 className="capitalize">{o.product_type}</h3>
+                      <h3>{getProductLabel(o.product_type)}</h3>
                       <p className="order-date">
                         {new Date(o.created_at).toLocaleString('es-AR', {
                           dateStyle: 'short',

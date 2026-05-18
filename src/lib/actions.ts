@@ -3,6 +3,10 @@
 import { createClient } from './supabase/server'
 import { ensureUserProfile } from './ensureUserProfile'
 import { revalidatePath } from 'next/cache'
+import type { PrintProductType } from '@/lib/store/catalog'
+import { isPrintProductType } from '@/lib/store/catalog'
+
+export type { PrintProductType } from '@/lib/store/catalog'
 
 // --- OBTENER DATOS PÚBLICOS ---
 
@@ -47,7 +51,6 @@ export async function getRanking() {
   return profiles
 }
 
-export type PrintProductType = 'figurita' | 'sticker' | 'poster'
 export type PrintOrderStatus =
   | 'pending'
   | 'in_review'
@@ -451,8 +454,7 @@ export async function createPrintOrder(input: {
     return { error: profileCheck.error }
   }
 
-  const allowed: PrintProductType[] = ['figurita', 'sticker', 'poster']
-  if (!allowed.includes(input.product_type)) {
+  if (!isPrintProductType(input.product_type)) {
     return { error: 'Tipo de producto inválido' }
   }
 
@@ -535,8 +537,6 @@ export async function createPrintOrdersFromCart(input: {
 
   const baseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL?.replace(/\/$/, '')
   const prefix = baseUrl ? `${baseUrl}/storage/v1/object/public/store-prints/` : null
-  const allowed: PrintProductType[] = ['figurita', 'sticker', 'poster']
-
   const rows: {
     user_id: string
     product_type: PrintProductType
@@ -550,7 +550,7 @@ export async function createPrintOrdersFromCart(input: {
   }[] = []
 
   for (const line of input.lines) {
-    if (!allowed.includes(line.product_type)) {
+    if (!isPrintProductType(line.product_type)) {
       return { error: 'Tipo de producto inválido en el carrito' }
     }
     const qty = Math.min(99, Math.max(1, Math.floor(Number(line.quantity)) || 1))

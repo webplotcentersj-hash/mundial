@@ -20,6 +20,7 @@ import {
   type PrintOrderRow,
   type PrintOrderStatus,
 } from '@/lib/actions'
+import { getProductLabel } from '@/lib/store/catalog'
 import { AdminUserFichaModal } from '@/components/admin/AdminUserFichaModal'
 
 const PRINT_STATUS_OPTIONS: { value: PrintOrderStatus; label: string }[] = [
@@ -32,10 +33,7 @@ const PRINT_STATUS_OPTIONS: { value: PrintOrderStatus; label: string }[] = [
 ]
 
 function productTypeLabel(t: string) {
-  if (t === 'figurita') return 'Figurita'
-  if (t === 'sticker') return 'Stickers'
-  if (t === 'poster') return 'Poster'
-  return t
+  return getProductLabel(t)
 }
 
 function formatAdminDate(iso: string | null | undefined) {

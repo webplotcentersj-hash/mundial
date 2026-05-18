@@ -8,8 +8,9 @@ import {
   createPrintOrdersFromCart,
   listMyPrintOrders,
   type PrintOrderRow,
-  type PrintProductType,
 } from '@/lib/actions'
+import type { PrintProductType } from '@/lib/store/catalog'
+import { isPrintProductType } from '@/lib/store/catalog'
 import { readFiguritaStoreImageFromSession, clearFiguritaStoreImageFromSession } from '@/lib/storePrints'
 import { StoreLanding } from '@/components/store/store-landing'
 import { StoreCheckoutPanel } from '@/components/store/store-checkout-panel'
@@ -113,7 +114,7 @@ export default function StorePage() {
         if (!row || typeof row !== 'object') continue
         const r = row as Partial<CartLine>
         if (!r.id || !r.product_type) continue
-        if (!['figurita', 'sticker', 'poster'].includes(r.product_type)) continue
+        if (!isPrintProductType(r.product_type)) continue
         cleaned.push({
           id: String(r.id),
           product_type: r.product_type as PrintProductType,
@@ -140,7 +141,10 @@ export default function StorePage() {
   }, [cart, loggedIn, cartReady])
 
   function addToCart() {
-    const img = productType === 'figurita' && customerImageUrl ? customerImageUrl : null
+    const img =
+      (productType === 'figurita' || productType === 'combo') && customerImageUrl
+        ? customerImageUrl
+        : null
     const noteCombined = lineNotes.trim()
     setCart((prev) => [
       ...prev,
