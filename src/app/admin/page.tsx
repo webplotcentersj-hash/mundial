@@ -24,6 +24,7 @@ import { getProductLabel } from '@/lib/store/catalog'
 import { AdminUserFichaModal } from '@/components/admin/AdminUserFichaModal'
 
 const PRINT_STATUS_OPTIONS: { value: PrintOrderStatus; label: string }[] = [
+  { value: 'awaiting_payment', label: 'Esperando pago' },
   { value: 'pending', label: 'Pendiente' },
   { value: 'in_review', label: 'En revisión' },
   { value: 'printing', label: 'Producción' },

@@ -16,7 +16,8 @@ export const metadata: Metadata = {
   title: "PLOT MUNDIAL | Copa Mundial 2026",
   description: "Pronostica los resultados del Mundial 2026, suma puntos y gana premios.",
   icons: {
-    icon: "/plot center mundial.png",
+    icon: [{ url: "/FAVICON-03-03.png", type: "image/png" }],
+    apple: "/FAVICON-03-03.png",
   },
 };
 

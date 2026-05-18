@@ -4,7 +4,7 @@ import { createClient } from './supabase/server'
 import { ensureUserProfile } from './ensureUserProfile'
 import { revalidatePath } from 'next/cache'
 import type { PrintProductType } from '@/lib/store/catalog'
-import { isPrintProductType } from '@/lib/store/catalog'
+import { buildComboOrderNotes, isPrintProductType, validateComboLine } from '@/lib/store/catalog'
 
 export type { PrintProductType } from '@/lib/store/catalog'
 
@@ -52,6 +52,7 @@ export async function getRanking() {
 }
 
 export type PrintOrderStatus =
+  | 'awaiting_payment'
   | 'pending'
   | 'in_review'
   | 'printing'
@@ -500,8 +501,10 @@ export async function createPrintOrder(input: {
 
 export async function createPrintOrdersFromCart(input: {
   lines: {
-    product_type: PrintProductType
+    product_type: 'combo'
     quantity: number
+    combo_sticker_id: string
+    combo_poster_id: string
     notes?: string
     customer_image_url?: string | null
   }[]
@@ -550,28 +553,25 @@ export async function createPrintOrdersFromCart(input: {
   }[] = []
 
   for (const line of input.lines) {
-    if (!isPrintProductType(line.product_type)) {
-      return { error: 'Tipo de producto inválido en el carrito' }
-    }
+    const comboCheck = validateComboLine(line)
+    if (!comboCheck.ok) return { error: comboCheck.error }
     const qty = Math.min(99, Math.max(1, Math.floor(Number(line.quantity)) || 1))
-    let customerImageUrl: string | null = null
-    if (line.customer_image_url?.trim()) {
-      const u = line.customer_image_url.trim()
-      if (!prefix || !u.startsWith(prefix) || u.length > 2048) {
-        return { error: 'Hay una imagen adjunta inválida. Volvé a cargar desde Mi Figurita.' }
-      }
-      customerImageUrl = u
+    const u = line.customer_image_url!.trim()
+    if (!prefix || !u.startsWith(prefix) || u.length > 2048) {
+      return { error: 'Hay una imagen adjunta inválida. Volvé a cargar desde Mi Figurita.' }
     }
+    const orderNotes =
+      line.notes?.trim() || buildComboOrderNotes(comboCheck.selection)
     rows.push({
       user_id: user.id,
-      product_type: line.product_type,
+      product_type: 'combo',
       quantity: qty,
-      notes: line.notes?.trim() || null,
+      notes: orderNotes,
       contact_name: name,
       contact_email: email,
       contact_phone: input.contact_phone?.trim() || null,
       status: 'pending',
-      customer_image_url: customerImageUrl,
+      customer_image_url: u,
     })
   }
 
@@ -594,6 +594,7 @@ export async function updatePrintOrderAdmin(
   if (!isAdmin) throw new Error('No autorizado')
 
   const allowedStatus: PrintOrderStatus[] = [
+    'awaiting_payment',
     'pending',
     'in_review',
     'printing',

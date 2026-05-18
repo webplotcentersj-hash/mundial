@@ -5,10 +5,8 @@ import { motion, AnimatePresence } from 'framer-motion'
 import {
   Loader2,
   CheckCircle2,
-  Sparkles,
   Layers,
   Maximize2,
-  Package,
   Truck,
   ShieldCheck,
   ShoppingCart,
@@ -16,39 +14,30 @@ import {
 } from 'lucide-react'
 import { clearFiguritaStoreImageFromSession } from '@/lib/storePrints'
 import type { PrintOrderRow } from '@/lib/actions'
-import type { PrintProductType } from '@/lib/store/catalog'
+import type { ComboPosterId, ComboStickerId } from '@/lib/store/catalog'
 import {
-  STORE_CATALOG,
-  STORE_PRICES_ARS,
+  COMBO_POSTER_OPTIONS,
+  COMBO_STICKER_OPTIONS,
+  STORE_COMBO_PRICE_ARS,
   formatPriceARS,
   getCartTotal,
+  getComboLineLabel,
   getLineSubtotal,
   getProductLabel,
 } from '@/lib/store/catalog'
 
 export type StoreCartLine = {
   id: string
-  product_type: PrintProductType
+  product_type: 'combo'
   quantity: number
+  combo_sticker_id: ComboStickerId
+  combo_poster_id: ComboPosterId
   notes: string
   customer_image_url: string | null
 }
 
-const PRODUCT_ICONS: Record<PrintProductType, typeof Sparkles> = {
-  combo: Package,
-  figurita: Sparkles,
-  sticker: Layers,
-  poster: Maximize2,
-}
-
-const PRODUCT_OPTIONS = STORE_CATALOG.map((item) => ({
-  value: item.type,
-  label: item.label,
-  hint: item.hint,
-  icon: PRODUCT_ICONS[item.type],
-}))
-
 const STATUS_ES: Record<string, string> = {
+  awaiting_payment: 'Esperando pago',
   pending: 'Pendiente',
   in_review: 'En revisión',
   printing: 'En producción',
@@ -70,12 +59,15 @@ export type StoreCheckoutPanelProps = {
   message: { type: 'ok' | 'err'; text: string } | null
   customerImageUrl: string | null
   setCustomerImageUrl: (url: string | null) => void
-  productType: PrintProductType
-  setProductType: (t: PrintProductType) => void
+  comboStickerId: ComboStickerId
+  setComboStickerId: (id: ComboStickerId) => void
+  comboPosterId: ComboPosterId
+  setComboPosterId: (id: ComboPosterId) => void
   quantity: number
   setQuantity: (n: number) => void
   lineNotes: string
   setLineNotes: (s: string) => void
+  canAddCombo: boolean
   cart: StoreCartLine[]
   addToCart: () => void
   removeCartLine: (id: string) => void
@@ -88,7 +80,9 @@ export type StoreCheckoutPanelProps = {
   contactPhone: string
   setContactPhone: (s: string) => void
   submitting: boolean
+  mercadoPagoEnabled: boolean
   onCheckout: (e: React.FormEvent) => void
+  onMercadoPagoPay: (e: React.FormEvent) => void
   orders: PrintOrderRow[]
   loadingOrders: boolean
 }
@@ -97,12 +91,15 @@ export function StoreCheckoutPanel({
   message,
   customerImageUrl,
   setCustomerImageUrl,
-  productType,
-  setProductType,
+  comboStickerId,
+  setComboStickerId,
+  comboPosterId,
+  setComboPosterId,
   quantity,
   setQuantity,
   lineNotes,
   setLineNotes,
+  canAddCombo,
   cart,
   addToCart,
   removeCartLine,
@@ -115,14 +112,15 @@ export function StoreCheckoutPanel({
   contactPhone,
   setContactPhone,
   submitting,
+  mercadoPagoEnabled,
   onCheckout,
+  onMercadoPagoPay,
   orders,
   loadingOrders,
 }: StoreCheckoutPanelProps) {
   const cartUnits = cart.reduce((s, l) => s + l.quantity, 0)
   const cartTotal = getCartTotal(cart)
-  const unitPrice = STORE_PRICES_ARS[productType]
-  const linePreviewTotal = getLineSubtotal(productType, quantity)
+  const linePreviewTotal = getLineSubtotal('combo', quantity)
 
   return (
     <div className="space-y-12">
@@ -193,7 +191,7 @@ export function StoreCheckoutPanel({
                     <strong>Arte nítido</strong> — figuritas desde el editor en PNG listo para imprenta.
                   </li>
                   <li>
-                    <strong>Carrito</strong> — varios productos en un solo pedido y un solo contacto.
+                    <strong>Combo único</strong> — figurita + plancha de stickers + poster en un solo pedido.
                   </li>
                   <li>
                     <strong>Equipo Plot</strong> — estados actualizados; el historial está más abajo.
@@ -206,29 +204,61 @@ export function StoreCheckoutPanel({
               <div className="product-detail-info" style={{ paddingTop: 0 }}>
                 <span className="product-badge new">Paso 1</span>
                 <h2 className="product-detail-title" style={{ fontSize: '2rem' }}>
-                  Elegí producto y cantidad
+                  Armá tu combo
                 </h2>
                 <p className="product-detail-description">
-                  Ya marcaste uno arriba en la grilla; podés cambiarlo acá antes de agregar al carrito.
+                  Incluye tu figurita (desde Mi Figurita), una plancha de stickers en vinilo y un poster a elección.
                 </p>
 
+                {!customerImageUrl ? (
+                  <p
+                    className="store-message err mt-4"
+                    style={{ display: 'block', padding: '12px 14px', fontSize: '14px' }}
+                  >
+                    Primero creá tu figurita en{' '}
+                    <Link href="/figurita" className="font-bold underline">
+                      Mi Figurita
+                    </Link>{' '}
+                    para poder agregar el combo al carrito.
+                  </p>
+                ) : null}
+
                 <div className="size-selection" style={{ marginTop: 24 }}>
-                  <span className="size-label">Producto</span>
-                  <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-                    {PRODUCT_OPTIONS.map((opt) => {
-                      const Icon = opt.icon
-                      const selected = productType === opt.value
+                  <span className="size-label">Plancha de stickers</span>
+                  <div className="grid gap-3 sm:grid-cols-3">
+                    {COMBO_STICKER_OPTIONS.map((opt) => {
+                      const selected = comboStickerId === opt.id
                       return (
                         <button
-                          key={opt.value}
+                          key={opt.id}
                           type="button"
-                          onClick={() => setProductType(opt.value)}
+                          onClick={() => setComboStickerId(opt.id)}
                           className={`product-type-btn ${selected ? 'selected' : ''}`}
                         >
-                          <Icon className="mb-2 h-6 w-6" aria-hidden />
+                          <Layers className="mb-2 h-6 w-6" aria-hidden />
                           <h4>{opt.label}</h4>
                           <p>{opt.hint}</p>
-                          <p className="mt-2 text-sm font-bold">{formatPriceARS(STORE_PRICES_ARS[opt.value])}</p>
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
+
+                <div className="size-selection" style={{ marginTop: 20 }}>
+                  <span className="size-label">Poster</span>
+                  <div className="grid gap-3 sm:grid-cols-3">
+                    {COMBO_POSTER_OPTIONS.map((opt) => {
+                      const selected = comboPosterId === opt.id
+                      return (
+                        <button
+                          key={opt.id}
+                          type="button"
+                          onClick={() => setComboPosterId(opt.id)}
+                          className={`product-type-btn ${selected ? 'selected' : ''}`}
+                        >
+                          <Maximize2 className="mb-2 h-6 w-6" aria-hidden />
+                          <h4>{opt.label}</h4>
+                          <p>{opt.hint}</p>
                         </button>
                       )
                     })}
@@ -236,9 +266,9 @@ export function StoreCheckoutPanel({
                 </div>
 
                 <div className="summary-line" style={{ marginTop: 16 }}>
-                  <span>Subtotal (esta línea)</span>
+                  <span>Combo (figurita + stickers + poster)</span>
                   <span>
-                    {formatPriceARS(unitPrice)} × {quantity} = {formatPriceARS(linePreviewTotal)}
+                    {formatPriceARS(STORE_COMBO_PRICE_ARS)} × {quantity} = {formatPriceARS(linePreviewTotal)}
                   </span>
                 </div>
 
@@ -284,11 +314,12 @@ export function StoreCheckoutPanel({
                 <button
                   type="button"
                   onClick={addToCart}
-                  className="btn-primary hover-lift"
-                  style={{ display: 'block', width: '100%', textAlign: 'center', border: 'none', cursor: 'pointer' }}
+                  disabled={!canAddCombo}
+                  className="btn-primary hover-lift disabled:cursor-not-allowed disabled:opacity-50"
+                  style={{ display: 'block', width: '100%', textAlign: 'center', border: 'none', cursor: canAddCombo ? 'pointer' : 'not-allowed' }}
                 >
                   <Plus className="mr-2 inline h-5 w-5" aria-hidden />
-                  Agregar al carrito
+                  {canAddCombo ? 'Agregar combo al carrito' : 'Falta tu figurita (Mi Figurita)'}
                 </button>
               </div>
             </div>
@@ -334,17 +365,20 @@ export function StoreCheckoutPanel({
                       </div>
                     )}
                     <div className="cart-item-details">
-                      <h3>{getProductLabel(line.product_type)}</h3>
+                      <h3>
+                        {getComboLineLabel({
+                          stickerId: line.combo_sticker_id,
+                          posterId: line.combo_poster_id,
+                        })}
+                      </h3>
                       {line.notes ? (
-                        <p className="mt-1">{line.notes}</p>
-                      ) : (
-                        <p className="mt-1 text-[#888]">Sin notas</p>
-                      )}
+                        <p className="mt-1 whitespace-pre-line text-sm">{line.notes}</p>
+                      ) : null}
                       <p className="cart-item-price">
-                        {formatPriceARS(getLineSubtotal(line.product_type, line.quantity))}
+                        {formatPriceARS(getLineSubtotal('combo', line.quantity))}
                         <span className="text-sm font-normal text-[#666]">
                           {' '}
-                          ({line.quantity} × {formatPriceARS(STORE_PRICES_ARS[line.product_type])})
+                          ({line.quantity} × {formatPriceARS(STORE_COMBO_PRICE_ARS)})
                         </span>
                       </p>
                     </div>
@@ -388,7 +422,7 @@ export function StoreCheckoutPanel({
                 </div>
                 <div className="summary-line">
                   <span>Pago</span>
-                  <span>Sin pago online</span>
+                  <span>{mercadoPagoEnabled ? 'Mercado Pago' : 'A coordinar'}</span>
                 </div>
                 <p className="shipping-note">Te contactamos por mail cuando el pedido esté en producción o listo.</p>
                 <div className="summary-total">
@@ -396,10 +430,15 @@ export function StoreCheckoutPanel({
                   <span>{formatPriceARS(cartTotal)}</span>
                 </div>
                 <p className="shipping-note text-sm" style={{ marginTop: 8 }}>
-                  Precios en pesos argentinos. El pago se coordina por mail o al retirar.
+                  {mercadoPagoEnabled
+                    ? 'Pagá con Mercado Pago (tarjeta, dinero en cuenta o cuotas según tu medio).'
+                    : 'Precios en pesos argentinos. El pago se coordina por mail o al retirar.'}
                 </p>
 
-                <form onSubmit={onCheckout} className="space-y-4 border-t-2 border-[#111] pt-6">
+                <form
+                  onSubmit={mercadoPagoEnabled ? onMercadoPagoPay : onCheckout}
+                  className="space-y-4 border-t-2 border-[#111] pt-6"
+                >
                   <p className="size-label">Datos de contacto</p>
                   <div>
                     <label htmlFor="cname" className="store-label">
@@ -447,15 +486,32 @@ export function StoreCheckoutPanel({
                   >
                     {submitting ? (
                       <Loader2 className="h-5 w-5 animate-spin" aria-hidden />
+                    ) : mercadoPagoEnabled ? (
+                      <span className="text-lg font-bold" aria-hidden>
+                        MP
+                      </span>
                     ) : (
                       <ShoppingCart className="h-5 w-5" aria-hidden />
                     )}
                     {submitting
-                      ? 'Enviando…'
+                      ? 'Redirigiendo…'
                       : cart.length === 0
                         ? 'Agregá productos'
-                        : `Confirmar ${cart.length} pedido${cart.length === 1 ? '' : 's'}`}
+                        : mercadoPagoEnabled
+                          ? `Pagar ${formatPriceARS(cartTotal)}`
+                          : `Confirmar ${cart.length} pedido${cart.length === 1 ? '' : 's'}`}
                   </button>
+                  {mercadoPagoEnabled ? (
+                    <button
+                      type="button"
+                      disabled={submitting || cart.length === 0}
+                      onClick={onCheckout}
+                      className="btn-secondary hover-lift w-full text-center text-sm disabled:opacity-50"
+                      style={{ border: 'none', cursor: submitting ? 'wait' : 'pointer' }}
+                    >
+                      Pedir sin pago online (coordinar después)
+                    </button>
+                  ) : null}
                 </form>
               </div>
             </div>

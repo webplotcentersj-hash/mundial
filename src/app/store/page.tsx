@@ -9,21 +9,25 @@ import {
   listMyPrintOrders,
   type PrintOrderRow,
 } from '@/lib/actions'
-import type { PrintProductType } from '@/lib/store/catalog'
-import { isPrintProductType } from '@/lib/store/catalog'
+import {
+  createMercadoPagoCheckoutFromCart,
+  isStoreMercadoPagoEnabled,
+} from '@/lib/actions/store-payment'
+import {
+  DEFAULT_COMBO_POSTER_ID,
+  DEFAULT_COMBO_STICKER_ID,
+  buildComboOrderNotes,
+  isComboPosterId,
+  isComboStickerId,
+  isSellableProductType,
+  type ComboPosterId,
+  type ComboStickerId,
+} from '@/lib/store/catalog'
 import { readFiguritaStoreImageFromSession, clearFiguritaStoreImageFromSession } from '@/lib/storePrints'
 import { StoreLanding } from '@/components/store/store-landing'
-import { StoreCheckoutPanel } from '@/components/store/store-checkout-panel'
+import { StoreCheckoutPanel, type StoreCartLine } from '@/components/store/store-checkout-panel'
 
-const CART_STORAGE_KEY = 'plotmundial_store_cart_v1'
-
-type CartLine = {
-  id: string
-  product_type: PrintProductType
-  quantity: number
-  notes: string
-  customer_image_url: string | null
-}
+const CART_STORAGE_KEY = 'plotmundial_store_cart_v2'
 
 export default function StorePage() {
   const [userReady, setUserReady] = useState(false)
@@ -33,21 +37,28 @@ export default function StorePage() {
   const [submitting, setSubmitting] = useState(false)
   const [message, setMessage] = useState<{ type: 'ok' | 'err'; text: string } | null>(null)
 
-  const [productType, setProductType] = useState<PrintProductType>('figurita')
+  const [comboStickerId, setComboStickerId] = useState<ComboStickerId>(DEFAULT_COMBO_STICKER_ID)
+  const [comboPosterId, setComboPosterId] = useState<ComboPosterId>(DEFAULT_COMBO_POSTER_ID)
   const [quantity, setQuantity] = useState(1)
   const [lineNotes, setLineNotes] = useState('')
   const [contactName, setContactName] = useState('')
   const [contactEmail, setContactEmail] = useState('')
   const [contactPhone, setContactPhone] = useState('')
   const [customerImageUrl, setCustomerImageUrl] = useState<string | null>(null)
-  const [cart, setCart] = useState<CartLine[]>([])
+  const [cart, setCart] = useState<StoreCartLine[]>([])
   const [cartReady, setCartReady] = useState(false)
+  const [mercadoPagoEnabled, setMercadoPagoEnabled] = useState(false)
+
+  const canAddCombo = Boolean(customerImageUrl?.trim())
+
+  useEffect(() => {
+    isStoreMercadoPagoEnabled().then(setMercadoPagoEnabled)
+  }, [])
 
   useEffect(() => {
     const fromFigurita = readFiguritaStoreImageFromSession()
     if (fromFigurita) {
       setCustomerImageUrl(fromFigurita)
-      setProductType('figurita')
       setLineNotes((prev) =>
         prev.trim()
           ? prev
@@ -109,16 +120,19 @@ export default function StorePage() {
         setCartReady(true)
         return
       }
-      const cleaned: CartLine[] = []
+      const cleaned: StoreCartLine[] = []
       for (const row of parsed) {
         if (!row || typeof row !== 'object') continue
-        const r = row as Partial<CartLine>
-        if (!r.id || !r.product_type) continue
-        if (!isPrintProductType(r.product_type)) continue
+        const r = row as Partial<StoreCartLine>
+        if (!r.id || !isSellableProductType(r.product_type ?? '')) continue
+        if (!r.combo_sticker_id || !isComboStickerId(r.combo_sticker_id)) continue
+        if (!r.combo_poster_id || !isComboPosterId(r.combo_poster_id)) continue
         cleaned.push({
           id: String(r.id),
-          product_type: r.product_type as PrintProductType,
+          product_type: 'combo',
           quantity: Math.min(99, Math.max(1, Math.floor(Number(r.quantity)) || 1)),
+          combo_sticker_id: r.combo_sticker_id,
+          combo_poster_id: r.combo_poster_id,
           notes: typeof r.notes === 'string' ? r.notes : '',
           customer_image_url: typeof r.customer_image_url === 'string' ? r.customer_image_url : null,
         })
@@ -140,28 +154,46 @@ export default function StorePage() {
     }
   }, [cart, loggedIn, cartReady])
 
+  function cartPayload() {
+    return cart.map((c) => ({
+      product_type: 'combo' as const,
+      quantity: c.quantity,
+      combo_sticker_id: c.combo_sticker_id,
+      combo_poster_id: c.combo_poster_id,
+      notes: c.notes || undefined,
+      customer_image_url: c.customer_image_url,
+    }))
+  }
+
   function addToCart() {
-    const img =
-      (productType === 'figurita' || productType === 'combo') && customerImageUrl
-        ? customerImageUrl
-        : null
-    const noteCombined = lineNotes.trim()
+    if (!canAddCombo) {
+      setMessage({
+        type: 'err',
+        text: 'El combo incluye tu figurita: creala en Mi Figurita y volvé al Store.',
+      })
+      return
+    }
+    const notes = buildComboOrderNotes(
+      { stickerId: comboStickerId, posterId: comboPosterId },
+      lineNotes,
+    )
     setCart((prev) => [
       ...prev,
       {
         id: crypto.randomUUID(),
-        product_type: productType,
+        product_type: 'combo',
         quantity,
-        notes: noteCombined,
-        customer_image_url: img,
+        combo_sticker_id: comboStickerId,
+        combo_poster_id: comboPosterId,
+        notes,
+        customer_image_url: customerImageUrl,
       },
     ])
-    if (img) {
-      setCustomerImageUrl(null)
-      clearFiguritaStoreImageFromSession()
-    }
+    setCustomerImageUrl(null)
+    clearFiguritaStoreImageFromSession()
     setLineNotes('')
     setQuantity(1)
+    setMessage(null)
   }
 
   function removeCartLine(id: string) {
@@ -191,21 +223,42 @@ export default function StorePage() {
     clearCartStorage()
   }
 
+  async function handleMercadoPagoPay(e: React.FormEvent) {
+    e.preventDefault()
+    setMessage(null)
+    if (cart.length === 0) {
+      setMessage({ type: 'err', text: 'Agregá al menos un combo al carrito.' })
+      return
+    }
+    setSubmitting(true)
+    const res = await createMercadoPagoCheckoutFromCart({
+      lines: cartPayload(),
+      contact_name: contactName,
+      contact_email: contactEmail,
+      contact_phone: contactPhone || undefined,
+    })
+    setSubmitting(false)
+    if ('error' in res && res.error) {
+      setMessage({ type: 'err', text: res.error })
+      return
+    }
+    if ('initPoint' in res && res.initPoint) {
+      setCart([])
+      clearCartStorage()
+      window.location.href = res.initPoint
+    }
+  }
+
   async function handleCheckout(e: React.FormEvent) {
     e.preventDefault()
     setMessage(null)
     if (cart.length === 0) {
-      setMessage({ type: 'err', text: 'Agregá al menos un producto al carrito.' })
+      setMessage({ type: 'err', text: 'Agregá al menos un combo al carrito.' })
       return
     }
     setSubmitting(true)
     const res = await createPrintOrdersFromCart({
-      lines: cart.map((c) => ({
-        product_type: c.product_type,
-        quantity: c.quantity,
-        notes: c.notes || undefined,
-        customer_image_url: c.customer_image_url,
-      })),
+      lines: cartPayload(),
       contact_name: contactName,
       contact_email: contactEmail,
       contact_phone: contactPhone || undefined,
@@ -218,7 +271,7 @@ export default function StorePage() {
     const n = 'count' in res ? res.count : cart.length
     setMessage({
       type: 'ok',
-      text: `Listo: se registraron ${n} pedido${n === 1 ? '' : 's'}. Te escribimos al mail que dejaste.`,
+      text: `Listo: se registraron ${n} combo${n === 1 ? '' : 's'}. Te escribimos al mail que dejaste.`,
     })
     setCart([])
     clearCartStorage()
@@ -227,11 +280,7 @@ export default function StorePage() {
 
   return (
     <>
-      <StoreLanding
-        cartItemCount={cart.reduce((s, line) => s + line.quantity, 0)}
-        selectedProduct={productType}
-        onSelectProduct={setProductType}
-      />
+      <StoreLanding cartItemCount={cart.reduce((s, line) => s + line.quantity, 0)} />
 
       <div className="store-panel">
         {!userReady ? (
@@ -257,12 +306,15 @@ export default function StorePage() {
             message={message}
             customerImageUrl={customerImageUrl}
             setCustomerImageUrl={setCustomerImageUrl}
-            productType={productType}
-            setProductType={setProductType}
+            comboStickerId={comboStickerId}
+            setComboStickerId={setComboStickerId}
+            comboPosterId={comboPosterId}
+            setComboPosterId={setComboPosterId}
             quantity={quantity}
             setQuantity={setQuantity}
             lineNotes={lineNotes}
             setLineNotes={setLineNotes}
+            canAddCombo={canAddCombo}
             cart={cart}
             addToCart={addToCart}
             removeCartLine={removeCartLine}
@@ -275,7 +327,9 @@ export default function StorePage() {
             contactPhone={contactPhone}
             setContactPhone={setContactPhone}
             submitting={submitting}
+            mercadoPagoEnabled={mercadoPagoEnabled}
             onCheckout={handleCheckout}
+            onMercadoPagoPay={handleMercadoPagoPay}
             orders={orders}
             loadingOrders={loadingOrders}
           />
