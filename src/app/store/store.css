@@ -1152,6 +1152,199 @@
   font: inherit;
 }
 
+/* Combo destacado (único producto) */
+.plot-store .combo-showcase-section .container {
+  max-width: 1100px;
+}
+
+.plot-store .combo-showcase {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.05fr);
+  gap: 0;
+  border: 3px solid #111;
+  background: #fff;
+  box-shadow: 8px 8px 0 #111;
+  overflow: hidden;
+}
+
+.plot-store .combo-showcase__media {
+  position: relative;
+  min-height: 320px;
+  background: linear-gradient(145deg, #5d3fd3 0%, #3d2a9e 55%, #111 100%);
+}
+
+.plot-store .combo-showcase__img {
+  width: 100%;
+  height: 100%;
+  min-height: 320px;
+  object-fit: cover;
+  opacity: 0.92;
+  mix-blend-mode: luminosity;
+}
+
+.plot-store .combo-showcase__badge {
+  position: absolute;
+  top: 16px;
+  left: 16px;
+  z-index: 2;
+  background: #ccff00;
+  color: #111;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  padding: 6px 10px;
+  border: 2px solid #111;
+}
+
+.plot-store .combo-showcase__price-tag {
+  position: absolute;
+  bottom: 16px;
+  right: 16px;
+  z-index: 2;
+  background: #fff;
+  color: #111;
+  border: 3px solid #111;
+  padding: 10px 16px;
+  font-family: "Archivo Black", sans-serif;
+  font-size: 1.35rem;
+  line-height: 1;
+  box-shadow: 4px 4px 0 #111;
+}
+
+.plot-store .combo-showcase__body {
+  padding: 28px 32px 32px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.plot-store .combo-showcase__eyebrow {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #5d3fd3;
+  margin-bottom: 8px;
+}
+
+.plot-store .combo-showcase__title {
+  font-family: "Archivo Black", sans-serif;
+  font-size: clamp(1.5rem, 3vw, 2rem);
+  line-height: 1.05;
+  text-transform: uppercase;
+  margin-bottom: 10px;
+}
+
+.plot-store .combo-showcase__lead {
+  color: #555;
+  font-size: 15px;
+  line-height: 1.45;
+  margin-bottom: 24px;
+  max-width: 42ch;
+}
+
+.plot-store .combo-showcase__includes {
+  list-style: none;
+  margin: 0 0 28px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.plot-store .combo-showcase__includes li {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+}
+
+.plot-store .combo-showcase__icon {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border: 2px solid #111;
+  background: #ccff00;
+  color: #111;
+}
+
+.plot-store .combo-showcase__icon--poster {
+  background: #ff3366;
+  color: #fff;
+}
+
+.plot-store .combo-showcase__includes strong {
+  display: block;
+  font-size: 15px;
+  margin-bottom: 2px;
+}
+
+.plot-store .combo-showcase__item-hint {
+  display: block;
+  font-size: 13px;
+  color: #666;
+  font-weight: 500;
+  line-height: 1.35;
+}
+
+.plot-store .combo-showcase__footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 16px 24px;
+}
+
+.plot-store .combo-showcase__cta {
+  display: inline-flex;
+  align-items: center;
+  border: none;
+  cursor: pointer;
+}
+
+.plot-store .combo-showcase__link {
+  font-size: 14px;
+  font-weight: 700;
+  color: #111;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.plot-store .combo-showcase__link:hover {
+  color: #5d3fd3;
+}
+
+@media (max-width: 900px) {
+  .plot-store .combo-showcase {
+    grid-template-columns: 1fr;
+    box-shadow: 6px 6px 0 #111;
+  }
+
+  .plot-store .combo-showcase__media {
+    min-height: 240px;
+  }
+
+  .plot-store .combo-showcase__img {
+    min-height: 240px;
+  }
+
+  .plot-store .combo-showcase__body {
+    padding: 24px 20px 28px;
+  }
+
+  .plot-store .combo-showcase__footer {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .plot-store .combo-showcase__cta {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
 .plot-store .store-panel {
   max-width: 1200px;
   margin: 0 auto;

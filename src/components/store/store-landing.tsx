@@ -3,6 +3,7 @@
 import { useRef } from 'react'
 import Link from 'next/link'
 import { motion } from 'framer-motion'
+import { Sparkles, Layers, Maximize2, ArrowRight } from 'lucide-react'
 import { STORE_CATALOG, STORE_COMBO_PRICE_ARS, formatPriceARS } from '@/lib/store/catalog'
 import { InteractiveTravelCard } from '@/components/store/interactive-figurita-card'
 
@@ -97,35 +98,66 @@ export function StoreLanding({ cartItemCount }: StoreLandingProps) {
         </div>
       </main>
 
-      <section className="trending-section" id="productos">
+      <section className="trending-section combo-showcase-section" id="productos">
         <div className="container">
           <div className="trending-header">
             <h3>El combo Plot Mundial</h3>
             <Link href="#store-armado">Armar pedido</Link>
           </div>
-          <div className="product-grid" style={{ maxWidth: 420, margin: '0 auto' }}>
-            <button
-              type="button"
-              onClick={scrollToArmado}
-              className="product-card hover-lift"
-              style={{ borderColor: '#5d3fd3', boxShadow: '4px 4px 0 #111', outline: '2px solid #5d3fd3' }}
-            >
-              <div className="product-image">
-                <span className="product-badge sale">ÚNICO PRODUCTO</span>
-                <img src={COMBO.image} alt={COMBO.label} />
-              </div>
-              <h4>{COMBO.label}</h4>
-              <p>{COMBO.hint}</p>
-              <ul className="mt-3 space-y-1 text-left text-sm text-[#555]">
-                {COMBO.includes.map((line) => (
-                  <li key={line}>• {line}</li>
-                ))}
+
+          <article className="combo-showcase hover-lift">
+            <div className="combo-showcase__media">
+              <span className="combo-showcase__badge">Único producto</span>
+              <img src={COMBO.image} alt="" className="combo-showcase__img" />
+              <div className="combo-showcase__price-tag">{formatPriceARS(STORE_COMBO_PRICE_ARS)}</div>
+            </div>
+
+            <div className="combo-showcase__body">
+              <p className="combo-showcase__eyebrow">Figurita + stickers + poster</p>
+              <h4 className="combo-showcase__title">{COMBO.label}</h4>
+              <p className="combo-showcase__lead">{COMBO.hint}</p>
+
+              <ul className="combo-showcase__includes">
+                <li>
+                  <span className="combo-showcase__icon" aria-hidden>
+                    <Sparkles size={20} />
+                  </span>
+                  <span>
+                    <strong>Tu figurita</strong>
+                    <span className="combo-showcase__item-hint">Creala en Mi Figurita · PNG listo para imprenta</span>
+                  </span>
+                </li>
+                <li>
+                  <span className="combo-showcase__icon" aria-hidden>
+                    <Layers size={20} />
+                  </span>
+                  <span>
+                    <strong>Plancha de stickers</strong>
+                    <span className="combo-showcase__item-hint">Elegís el diseño al armar el pedido</span>
+                  </span>
+                </li>
+                <li>
+                  <span className="combo-showcase__icon combo-showcase__icon--poster" aria-hidden>
+                    <Maximize2 size={20} />
+                  </span>
+                  <span>
+                    <strong>Poster</strong>
+                    <span className="combo-showcase__item-hint">Elegís formato y variante en el checkout</span>
+                  </span>
+                </li>
               </ul>
-              <p className="cart-item-price" style={{ marginTop: 12 }}>
-                {formatPriceARS(STORE_COMBO_PRICE_ARS)}
-              </p>
-            </button>
-          </div>
+
+              <div className="combo-showcase__footer">
+                <button type="button" onClick={scrollToArmado} className="btn-primary hover-lift combo-showcase__cta">
+                  ARMAR MI COMBO
+                  <ArrowRight className="ml-2 inline h-5 w-5" aria-hidden />
+                </button>
+                <Link href="/figurita" className="combo-showcase__link">
+                  Todavía no tengo mi figurita →
+                </Link>
+              </div>
+            </div>
+          </article>
         </div>
       </section>
     </>
