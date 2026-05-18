@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef, useLayoutEffect } from 'react'
+import { useState, useEffect, useRef, useLayoutEffect, type ReactNode } from 'react'
 import { toPng } from 'html-to-image'
 import { motion, AnimatePresence } from 'framer-motion'
 import { groupColors, Team } from '@/lib/mockData'
@@ -66,12 +66,36 @@ const KO_STRUCTURE = {
   FINAL: { matchId: 'm104', homeSource: 'm101', awaySource: 'm102' },
 }
 
+const MOBILE_BRACKET_PARTS = [
+  { id: 'grupos', label: 'Grupos' },
+  { id: 'dieciseisavos', label: '16vos' },
+  { id: 'octavos', label: '8vos' },
+  { id: 'cuartos', label: '4tos' },
+  { id: 'semis', label: 'Semis' },
+] as const
 
-const GroupBox = ({ groupName, teams }: { groupName: string, teams: Team[] }) => {
+type MobileBracketPart = (typeof MOBILE_BRACKET_PARTS)[number]['id']
+
+const GroupBox = ({
+  groupName,
+  teams,
+  size = 'default',
+}: {
+  groupName: string
+  teams: Team[]
+  size?: 'default' | 'large'
+}) => {
   const color = groupColors[groupName] || 'from-gray-500 to-gray-700'
+  const sizeClass =
+    size === 'large'
+      ? 'w-full min-h-[92px] p-2.5'
+      : 'w-[98px] h-[62px] p-1.5 sm:w-[138px] sm:h-[88px] md:w-[172px] md:h-[102px] sm:p-2'
   return (
     <div
-      className={`rounded-lg sm:rounded-xl bg-black/60 backdrop-blur-xl border border-white/10 shadow-[0_0_20px_rgba(0,0,0,0.5)] relative overflow-hidden group flex flex-col justify-between hover:border-white/30 transition-colors p-1.5 sm:p-2 w-[98px] h-[62px] sm:w-[138px] sm:h-[88px] md:w-[172px] md:h-[102px]`}
+      className={cn(
+        'rounded-xl bg-black/60 backdrop-blur-xl border border-white/10 shadow-[0_0_20px_rgba(0,0,0,0.5)] relative overflow-hidden group flex flex-col justify-between hover:border-white/30 transition-colors',
+        sizeClass,
+      )}
     >
       <div className={`absolute top-0 left-0 w-1 sm:w-1.5 h-full bg-gradient-to-b ${color}`} />
       <div className="grid grid-cols-2 gap-0.5 sm:gap-1.5 h-full content-start ml-0.5 sm:ml-1">
@@ -104,6 +128,7 @@ export default function BracketPage() {
   const router = useRouter()
   const [isSaving, setIsSaving] = useState(false)
   const [bracketScale, setBracketScale] = useState(1)
+  const [mobilePart, setMobilePart] = useState<MobileBracketPart>('grupos')
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
   const getTeam = (id: string | null) => id ? teams.find(t => t.id === id) || null : null
@@ -221,7 +246,12 @@ export default function BracketPage() {
     const el = bracketViewportRef.current
     if (!el || typeof window === 'undefined') return
     const MIN_SCALE = 0.28
+    const mq = window.matchMedia('(min-width: 768px)')
     const update = () => {
+      if (!mq.matches) {
+        setBracketScale(1)
+        return
+      }
       const w = el.getBoundingClientRect().width
       if (w >= BRACKET_W - 1) {
         setBracketScale(1)
@@ -232,9 +262,11 @@ export default function BracketPage() {
     update()
     const ro = new ResizeObserver(update)
     ro.observe(el)
+    mq.addEventListener('change', update)
     window.addEventListener('orientationchange', update)
     return () => {
       ro.disconnect()
+      mq.removeEventListener('change', update)
       window.removeEventListener('orientationchange', update)
     }
   }, [isLoaded, loadingTeams])
@@ -247,6 +279,12 @@ export default function BracketPage() {
   }
 
   const captureAndShare = async () => {
+    if (typeof window !== 'undefined' && window.matchMedia('(max-width: 767px)').matches) {
+      alert(
+        'Para compartir la imagen del bracket completo usá una computadora o tablet en horizontal. En el celular podés hacer captura de cada parte.',
+      )
+      return
+    }
     if (!bracketRef.current) return
     try {
       setIsCapturing(true)
@@ -296,6 +334,7 @@ export default function BracketPage() {
     onHomeClick,
     onAwayClick,
     emptySlotCaption = 'Ganador del cruce anterior',
+    layout = 'compact',
   }: {
     matchId: string
     homeTeamId: string | null
@@ -306,7 +345,9 @@ export default function BracketPage() {
     onAwayClick: () => void
     /** Texto bajo el código tipo W74 / 1E (dieciseisavos vs KO) */
     emptySlotCaption?: string
+    layout?: 'compact' | 'comfortable'
   }) => {
+    const comfortable = layout === 'comfortable'
     const homeTeam = getTeam(homeTeamId)
     const awayTeam = getTeam(awayTeamId)
     const winnerId = matchWinners[matchId]
@@ -317,7 +358,7 @@ export default function BracketPage() {
         <div
           onClick={onClick}
           className={cn(
-            'relative flex min-h-[38px] w-full items-center overflow-hidden px-2 py-1.5 transition-all sm:min-h-[42px]',
+            comfortable ? 'relative flex min-h-[52px] w-full items-center overflow-hidden px-3 py-2.5 transition-all' : 'relative flex min-h-[38px] w-full items-center overflow-hidden px-2 py-1.5 transition-all sm:min-h-[42px]',
             interactive ? 'cursor-pointer hover:bg-white/[0.09]' : 'cursor-default',
             isWinner ? 'bg-gradient-to-r from-amber-500/25 to-transparent' : '',
             !team ? 'bg-black/35' : '',
@@ -328,7 +369,12 @@ export default function BracketPage() {
           )}
           {team ? (
             <>
-              <div className="relative mr-2 h-[15px] w-[22px] shrink-0 overflow-hidden rounded-[3px] border border-white/25 shadow-md sm:h-[17px] sm:w-[26px]">
+              <div
+                className={cn(
+                  'relative mr-2 shrink-0 overflow-hidden rounded-[3px] border border-white/25 shadow-md',
+                  comfortable ? 'h-5 w-8' : 'h-[15px] w-[22px] sm:h-[17px] sm:w-[26px]',
+                )}
+              >
                 <Image
                   unoptimized
                   src={`https://flagcdn.com/${team.code}.svg`}
@@ -339,7 +385,8 @@ export default function BracketPage() {
               </div>
               <span
                 className={cn(
-                  'truncate text-[11px] font-bold leading-tight sm:text-[12px]',
+                  'truncate font-bold leading-tight',
+                  comfortable ? 'text-sm' : 'text-[11px] sm:text-[12px]',
                   isWinner ? 'text-amber-300 drop-shadow-md' : 'text-white',
                 )}
               >
@@ -357,7 +404,12 @@ export default function BracketPage() {
                   interactive && 'ring-1 ring-amber-400/20 hover:border-amber-300/80 hover:bg-amber-500/10',
                 )}
               >
-                <span className="font-mono text-[11px] font-black tracking-wide text-amber-100 sm:text-[12px]">
+                <span
+                  className={cn(
+                    'font-mono font-black tracking-wide text-amber-100',
+                    comfortable ? 'text-sm' : 'text-[11px] sm:text-[12px]',
+                  )}
+                >
                   {fallback}
                 </span>
               </div>
@@ -373,7 +425,10 @@ export default function BracketPage() {
     return (
       <div
         className={cn(
-          'relative flex w-full min-w-[92px] max-w-[168px] flex-col overflow-hidden rounded-xl border-2 bg-[#0a1628]/95 shadow-[0_12px_40px_rgba(0,0,0,0.55)] backdrop-blur-xl transition-all duration-300 sm:min-w-[104px] sm:max-w-[182px]',
+          'relative flex w-full flex-col overflow-hidden rounded-xl border-2 bg-[#0a1628]/95 shadow-[0_12px_40px_rgba(0,0,0,0.55)] backdrop-blur-xl transition-all duration-300',
+          comfortable
+            ? 'min-w-0 max-w-md rounded-2xl'
+            : 'min-w-[92px] max-w-[168px] sm:min-w-[104px] sm:max-w-[182px]',
           winnerId
             ? 'border-amber-400/55 shadow-[0_0_22px_rgba(245,158,11,0.22)]'
             : 'border-white/18 hover:border-primary/55',
@@ -400,10 +455,14 @@ export default function BracketPage() {
     )
   }
 
-  const renderR32Match = (slots: GroupSlot[]) => {
+  const matchLayout = (mode: 'desktop' | 'mobile'): 'compact' | 'comfortable' =>
+    mode === 'mobile' ? 'comfortable' : 'compact'
+
+  const renderR32Match = (slots: GroupSlot[], mode: 'desktop' | 'mobile' = 'desktop') => {
     const matchId = slots[0].id.split('_')[0]
     return (
       <UnifiedMatchCard
+        layout={matchLayout(mode)}
         matchId={matchId}
         homeTeamId={r32Slots[slots[0].id] || null}
         awayTeamId={r32Slots[slots[1].id] || null}
@@ -416,11 +475,12 @@ export default function BracketPage() {
     )
   }
 
-  const renderKOMatch = (matchConfig: { matchId: string, homeSource: string, awaySource: string }) => {
+  const renderKOMatch = (matchConfig: { matchId: string, homeSource: string, awaySource: string }, mode: 'desktop' | 'mobile' = 'desktop') => {
     const homeTeamId = matchWinners[matchConfig.homeSource] || null
     const awayTeamId = matchWinners[matchConfig.awaySource] || null
     return (
       <UnifiedMatchCard
+        layout={matchLayout(mode)}
         matchId={matchConfig.matchId}
         homeTeamId={homeTeamId}
         awayTeamId={awayTeamId}
@@ -432,6 +492,23 @@ export default function BracketPage() {
       />
     )
   }
+
+  const MobileSectionTitle = ({ children }: { children: ReactNode }) => (
+    <h2 className="mb-3 text-xs font-black uppercase tracking-[0.2em] text-primary/90">{children}</h2>
+  )
+
+  const MobileMatchList = ({
+    title,
+    children,
+  }: {
+    title: string
+    children: ReactNode
+  }) => (
+    <section className="mb-8">
+      <MobileSectionTitle>{title}</MobileSectionTitle>
+      <div className="mx-auto flex max-w-md flex-col gap-3">{children}</div>
+    </section>
+  )
 
   return (
     <div className="min-h-[calc(100vh-4rem)] w-full overflow-x-auto bg-transparent relative font-outfit p-4 lg:p-6 flex flex-col">
@@ -523,13 +600,137 @@ export default function BracketPage() {
         <div className="mb-2 sm:mb-4">
           <h1 className="text-lg font-black tracking-tight text-white sm:text-2xl">Llaves eliminatorias</h1>
           <p className="mt-1 max-w-xl text-[11px] leading-snug text-white/50 sm:text-sm">
-            En el celu el cuadro se achica para entrar en pantalla; la imagen al compartir sigue en alta resolución.
+            <span className="md:hidden">En el celular navegá por partes con las pestañas. En pantallas grandes ves el cuadro completo.</span>
+            <span className="hidden md:inline">Armá tu llave completa; la imagen al compartir se genera en alta resolución.</span>
           </p>
+        </div>
+
+        <div className="md:hidden">
+          <div
+            role="tablist"
+            aria-label="Partes de la llave"
+            className="mb-4 flex gap-2 overflow-x-auto pb-1 [-webkit-overflow-scrolling:touch]"
+          >
+            {MOBILE_BRACKET_PARTS.map((part) => (
+              <button
+                key={part.id}
+                type="button"
+                role="tab"
+                aria-selected={mobilePart === part.id}
+                onClick={() => setMobilePart(part.id)}
+                className={cn(
+                  'shrink-0 rounded-full border-2 px-4 py-2 text-xs font-black uppercase tracking-wide transition-all',
+                  mobilePart === part.id
+                    ? 'border-primary bg-primary text-white shadow-[0_0_16px_rgba(235,103,27,0.45)]'
+                    : 'border-white/15 bg-white/5 text-white/60 hover:border-white/30 hover:text-white',
+                )}
+              >
+                {part.label}
+              </button>
+            ))}
+          </div>
+
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={mobilePart}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.2 }}
+              className="pb-4"
+            >
+              {mobilePart === 'grupos' && (
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                  {['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L'].map((g) => (
+                    <GroupBox key={g} groupName={g} teams={teams.filter((t) => t.group === g)} size="large" />
+                  ))}
+                </div>
+              )}
+
+              {mobilePart === 'dieciseisavos' && (
+                <>
+                  <MobileMatchList title="Lado izquierdo">
+                    {R32_LEFT.map((slots, i) => (
+                      <div key={i}>{renderR32Match(slots, 'mobile')}</div>
+                    ))}
+                  </MobileMatchList>
+                  <MobileMatchList title="Lado derecho">
+                    {R32_RIGHT.map((slots, i) => (
+                      <div key={i}>{renderR32Match(slots, 'mobile')}</div>
+                    ))}
+                  </MobileMatchList>
+                </>
+              )}
+
+              {mobilePart === 'octavos' && (
+                <>
+                  <MobileMatchList title="Octavos · izquierda">
+                    {KO_STRUCTURE.R16_LEFT.map((match) => (
+                      <div key={match.matchId}>{renderKOMatch(match, 'mobile')}</div>
+                    ))}
+                  </MobileMatchList>
+                  <MobileMatchList title="Octavos · derecha">
+                    {KO_STRUCTURE.R16_RIGHT.map((match) => (
+                      <div key={match.matchId}>{renderKOMatch(match, 'mobile')}</div>
+                    ))}
+                  </MobileMatchList>
+                </>
+              )}
+
+              {mobilePart === 'cuartos' && (
+                <>
+                  <MobileMatchList title="Cuartos · izquierda">
+                    {KO_STRUCTURE.Q_LEFT.map((match) => (
+                      <div key={match.matchId}>{renderKOMatch(match, 'mobile')}</div>
+                    ))}
+                  </MobileMatchList>
+                  <MobileMatchList title="Cuartos · derecha">
+                    {KO_STRUCTURE.Q_RIGHT.map((match) => (
+                      <div key={match.matchId}>{renderKOMatch(match, 'mobile')}</div>
+                    ))}
+                  </MobileMatchList>
+                </>
+              )}
+
+              {mobilePart === 'semis' && (
+                <>
+                  <MobileMatchList title="Semifinal · izquierda">
+                    {KO_STRUCTURE.S_LEFT.map((match) => (
+                      <div key={match.matchId}>{renderKOMatch(match, 'mobile')}</div>
+                    ))}
+                  </MobileMatchList>
+                  <div className="mx-auto mb-8 max-w-md">
+                    <MobileSectionTitle>Final</MobileSectionTitle>
+                    <div className="mb-4 flex justify-center">
+                      <span className="text-6xl drop-shadow-[0_0_30px_rgba(245,158,11,0.7)]" aria-hidden>
+                        🏆
+                      </span>
+                    </div>
+                    {renderKOMatch(KO_STRUCTURE.FINAL, 'mobile')}
+                    {matchWinners[KO_STRUCTURE.FINAL.matchId] && (
+                      <motion.p
+                        initial={{ opacity: 0, y: 8 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="mt-4 rounded-xl border-2 border-amber-400/50 bg-gradient-to-b from-amber-400/20 to-amber-600/10 px-4 py-3 text-center text-sm font-black uppercase tracking-wide text-amber-200"
+                      >
+                        Campeón: {getTeam(matchWinners[KO_STRUCTURE.FINAL.matchId])?.name}
+                      </motion.p>
+                    )}
+                  </div>
+                  <MobileMatchList title="Semifinal · derecha">
+                    {KO_STRUCTURE.S_RIGHT.map((match) => (
+                      <div key={match.matchId}>{renderKOMatch(match, 'mobile')}</div>
+                    ))}
+                  </MobileMatchList>
+                </>
+              )}
+            </motion.div>
+          </AnimatePresence>
         </div>
 
         <div
           ref={bracketViewportRef}
-          className="w-full overflow-x-auto overflow-y-hidden pb-2 [-webkit-overflow-scrolling:touch] [scrollbar-width:thin] touch-pan-x"
+          className="hidden w-full overflow-x-auto overflow-y-hidden pb-2 md:block [-webkit-overflow-scrolling:touch] [scrollbar-width:thin] touch-pan-x"
         >
           <div
             className="mx-auto flex justify-center"

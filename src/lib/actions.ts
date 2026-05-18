@@ -32,8 +32,7 @@ export async function getMatches() {
 
 export async function getRanking() {
   const supabase = await createClient()
-  // Ranking global = solo puntos de pronósticos del fixture (profiles.total_points).
-  // El dashboard puede mostrar fixture + llaves; eso no entra en total_points salvo que se integre en backend.
+  // Ranking global = profiles.total_points (pronósticos del fixture + puntos de trivia).
   const { data: profiles, error } = await supabase
     .from('profiles')
     .select('id, username, avatar_url, total_points, last_active')
@@ -666,8 +665,7 @@ export async function resetMatchResult(matchId: string) {
 }
 
 /**
- * Admin: iguala `profiles.total_points` con la suma de `predictions.points_earned` por usuario.
- * Útil tras corregir políticas RLS o si el ranking quedó desfasado.
+ * Admin: recalcula `profiles.total_points` = pronósticos + trivia por usuario.
  */
 export async function adminSyncRankingTotalsFromPredictions() {
   const isAdmin = await verifyAdmin()
@@ -681,8 +679,19 @@ export async function adminSyncRankingTotalsFromPredictions() {
     throw new Error(predErr.message)
   }
 
+  const { data: triviaRows, error: triviaErr } = await supabase
+    .from('trivia_user_answers')
+    .select('user_id, points_earned')
+  if (triviaErr) {
+    throw new Error(triviaErr.message)
+  }
+
   const byUser = new Map<string, number>()
   for (const row of preds || []) {
+    const uid = row.user_id as string
+    byUser.set(uid, (byUser.get(uid) || 0) + toScoreInt(row.points_earned))
+  }
+  for (const row of triviaRows || []) {
     const uid = row.user_id as string
     byUser.set(uid, (byUser.get(uid) || 0) + toScoreInt(row.points_earned))
   }
@@ -702,6 +711,7 @@ export async function adminSyncRankingTotalsFromPredictions() {
 
   revalidatePath('/ranking')
   revalidatePath('/admin')
+  revalidatePath('/trivia')
   return { success: true as const, profilesUpdated: profiles?.length ?? 0 }
 }
 

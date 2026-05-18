@@ -9,6 +9,7 @@ import {
   X,
   GitBranch,
   CalendarDays,
+  HelpCircle,
   Medal,
   Sparkles,
   LayoutDashboard,
@@ -29,6 +30,7 @@ const navLinks: { href: string; label: string; icon: LucideIcon }[] = [
   { href: '/bracket', label: 'Llaves', icon: GitBranch },
   { href: '/fixture', label: 'Fixture', icon: CalendarDays },
   { href: '/ranking', label: 'Ranking', icon: Medal },
+  { href: '/trivia', label: 'Trivia', icon: HelpCircle },
   { href: '/figurita', label: 'Mi Figurita', icon: Sparkles },
   { href: '/store', label: 'Store', icon: Store },
   { href: '/dashboard', label: 'Mi Prode', icon: LayoutDashboard },
@@ -50,7 +52,8 @@ export default function Navbar() {
     pathname.startsWith('/store') ||
     pathname.startsWith('/figurita') ||
     pathname.startsWith('/fixture') ||
-    pathname.startsWith('/dashboard')
+    pathname.startsWith('/dashboard') ||
+    pathname.startsWith('/trivia')
   const [mobileOpen, setMobileOpen] = useState(false)
   const [user, setUser] = useState<SupabaseUser | null>(null)
   const [authReady, setAuthReady] = useState(false)
@@ -109,7 +112,7 @@ export default function Navbar() {
               className={cn(
                 'relative flex items-center group shrink-0',
                 plotStoreChrome
-                  ? 'rounded-lg border border-[#c8c8c8] bg-[#e8e8e8] px-2.5 py-1.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.75)]'
+                  ? 'rounded-lg border border-[#b8b8b8] bg-[#d4d4d4] px-2.5 py-1.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.55)]'
                   : 'py-2',
               )}
             >

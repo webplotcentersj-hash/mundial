@@ -54,7 +54,7 @@ export default function RankingPage() {
             RANKING GLOBAL
           </h1>
           <p className="text-amber-500/60 font-bold tracking-widest uppercase text-sm">
-            Los mejores pronosticadores del mundo
+            Pronósticos del fixture + puntos de trivia mundialista
           </p>
         </motion.div>
 

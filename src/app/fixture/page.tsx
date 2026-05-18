@@ -185,7 +185,7 @@ export default function FixtureCalendarPage() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-end bg-[#111]/40 backdrop-blur-[2px] sm:p-4"
+            className="fixed inset-x-0 bottom-0 top-16 z-[60] flex justify-end bg-[#111]/40 backdrop-blur-[2px] sm:p-4"
             onClick={() => setSelectedDate(null)}
           >
             <motion.div
@@ -195,7 +195,7 @@ export default function FixtureCalendarPage() {
               transition={{ type: 'spring', damping: 28, stiffness: 220 }}
               className={cn(
                 'relative flex h-full w-full flex-col overflow-hidden border-[#111] bg-white font-[family-name:var(--font-store-sans)]',
-                'shadow-[-12px_0_40px_rgba(0,0,0,0.12)] sm:h-[min(100dvh,920px)] sm:w-[min(100vw,500px)] sm:rounded-2xl sm:border-[3px] sm:shadow-[8px_8px_0_#111]',
+                'shadow-[-12px_0_40px_rgba(0,0,0,0.12)] sm:max-h-full sm:w-[min(100vw,500px)] sm:rounded-2xl sm:border-[3px] sm:shadow-[8px_8px_0_#111]',
               )}
               onClick={(e) => e.stopPropagation()}
             >

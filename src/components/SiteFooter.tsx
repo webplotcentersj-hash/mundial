@@ -66,7 +66,8 @@ export default function SiteFooter() {
     pathname.startsWith("/store") ||
     pathname.startsWith("/figurita") ||
     pathname.startsWith("/fixture") ||
-    pathname.startsWith("/dashboard")
+    pathname.startsWith("/dashboard") ||
+    pathname.startsWith("/trivia")
 
   return (
     <footer
