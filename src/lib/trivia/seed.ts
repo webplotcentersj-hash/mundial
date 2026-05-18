@@ -18,10 +18,6 @@ export async function ensureTriviaQuestionsSeeded(): Promise<{ count: number }> 
       return { count: 0 }
     }
 
-    if ((count ?? 0) >= 80) {
-      return { count: count ?? 0 }
-    }
-
     const rows = TRIVIA_QUESTIONS_BANK.map((item) => ({
       id: item.id,
       question: item.question,

@@ -1,9 +1,9 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Brain, CheckCircle2, Loader2, Medal, RotateCcw, XCircle } from 'lucide-react'
+import { Brain, CheckCircle2, Clock, Loader2, Medal, RotateCcw, XCircle } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import {
   getTriviaSession,
@@ -12,9 +12,18 @@ import {
   type TriviaQuestionPublic,
   type TriviaStats,
 } from '@/lib/actions/trivia'
-import { TRIVIA_POINTS } from '@/lib/trivia/constants'
+import { TRIVIA_POINTS, TRIVIA_TIME_LIMIT_SEC } from '@/lib/trivia/constants'
 
 type Phase = 'intro' | 'playing' | 'feedback' | 'summary'
+
+type FeedbackState = {
+  correct: boolean
+  correctIndex: number
+  points: number
+  basePoints: number
+  timeBonus: number
+  timedOut?: boolean
+}
 
 export default function TriviaPage() {
   const [phase, setPhase] = useState<Phase>('intro')
@@ -25,13 +34,15 @@ export default function TriviaPage() {
   const [index, setIndex] = useState(0)
   const [sessionCorrect, setSessionCorrect] = useState(0)
   const [sessionPoints, setSessionPoints] = useState(0)
+  const [sessionTimeBonus, setSessionTimeBonus] = useState(0)
   const [selected, setSelected] = useState<number | null>(null)
-  const [feedback, setFeedback] = useState<{
-    correct: boolean
-    correctIndex: number
-    points: number
-  } | null>(null)
+  const [secondsLeft, setSecondsLeft] = useState(TRIVIA_TIME_LIMIT_SEC)
+  const [feedback, setFeedback] = useState<FeedbackState | null>(null)
   const [error, setError] = useState<string | null>(null)
+
+  const questionStartedAt = useRef(0)
+  const timedOutRef = useRef(false)
+  const submittingRef = useRef(false)
 
   const refreshStats = useCallback(async () => {
     const s = await getTriviaStats()
@@ -41,6 +52,69 @@ export default function TriviaPage() {
   useEffect(() => {
     refreshStats().finally(() => setLoading(false))
   }, [refreshStats])
+
+  const current = questions[index]
+
+  const applyAnswerResult = useCallback(
+    (res: Awaited<ReturnType<typeof submitTriviaAnswer>>) => {
+      if (res.error) {
+        setError(res.error)
+        return
+      }
+      setFeedback({
+        correct: res.correct,
+        correctIndex: res.correctIndex,
+        points: res.pointsEarned,
+        basePoints: res.basePoints,
+        timeBonus: res.timeBonus,
+        timedOut: res.timedOut,
+      })
+      if (res.correct && !res.alreadyAnswered) {
+        setSessionCorrect((c) => c + 1)
+        setSessionPoints((p) => p + res.pointsEarned)
+        setSessionTimeBonus((t) => t + res.timeBonus)
+      }
+      setPhase('feedback')
+    },
+    [],
+  )
+
+  const submitAnswer = useCallback(
+    async (choice: number, forcedMs?: number) => {
+      if (!current || submittingRef.current) return
+      submittingRef.current = true
+      setSubmitting(true)
+      const responseTimeMs =
+        forcedMs ?? Math.min(TRIVIA_TIME_LIMIT_SEC * 1000, Math.max(0, Date.now() - questionStartedAt.current))
+      const res = await submitTriviaAnswer(current.id, choice, responseTimeMs)
+      submittingRef.current = false
+      setSubmitting(false)
+      await refreshStats()
+      applyAnswerResult(res)
+    },
+    [applyAnswerResult, current, refreshStats],
+  )
+
+  useEffect(() => {
+    if (phase !== 'playing' || !current) return
+
+    questionStartedAt.current = Date.now()
+    timedOutRef.current = false
+    setSecondsLeft(TRIVIA_TIME_LIMIT_SEC)
+
+    const tick = window.setInterval(() => {
+      const elapsed = Date.now() - questionStartedAt.current
+      const left = Math.max(0, TRIVIA_TIME_LIMIT_SEC - elapsed / 1000)
+      setSecondsLeft(left)
+      if (left <= 0 && !timedOutRef.current) {
+        timedOutRef.current = true
+        const choice = selected ?? -1
+        void submitAnswer(choice, TRIVIA_TIME_LIMIT_SEC * 1000)
+      }
+    }, 100)
+
+    return () => window.clearInterval(tick)
+  }, [phase, index, current?.id, selected, submitAnswer])
 
   const startSession = async () => {
     setLoading(true)
@@ -60,33 +134,15 @@ export default function TriviaPage() {
     setIndex(0)
     setSessionCorrect(0)
     setSessionPoints(0)
+    setSessionTimeBonus(0)
     setSelected(null)
     setFeedback(null)
     setPhase('playing')
   }
 
-  const current = questions[index]
-
-  const confirmAnswer = async () => {
-    if (!current || selected === null || submitting) return
-    setSubmitting(true)
-    const res = await submitTriviaAnswer(current.id, selected)
-    setSubmitting(false)
-    if (res.error) {
-      setError(res.error)
-      return
-    }
-    setFeedback({
-      correct: res.correct,
-      correctIndex: res.correctIndex,
-      points: res.pointsEarned,
-    })
-    if (res.correct && !res.alreadyAnswered) {
-      setSessionCorrect((c) => c + 1)
-      setSessionPoints((p) => p + res.pointsEarned)
-    }
-    await refreshStats()
-    setPhase('feedback')
+  const confirmAnswer = () => {
+    if (selected === null || submitting) return
+    void submitAnswer(selected)
   }
 
   const nextQuestion = () => {
@@ -100,6 +156,9 @@ export default function TriviaPage() {
     setPhase('playing')
   }
 
+  const timerPct = (secondsLeft / TRIVIA_TIME_LIMIT_SEC) * 100
+  const timerUrgent = secondsLeft <= 3 && phase === 'playing'
+
   if (loading && !stats) {
     return (
       <div className="flex min-h-[50vh] items-center justify-center font-[family-name:var(--font-store-sans)]">
@@ -109,53 +168,55 @@ export default function TriviaPage() {
   }
 
   return (
-    <div className="min-h-[calc(100vh-4rem)] w-full px-4 py-8 pb-28 font-[family-name:var(--font-store-sans)] text-[#111] md:px-8 md:py-10">
+    <motion.div className="min-h-[calc(100vh-4rem)] w-full px-4 py-8 pb-28 font-[family-name:var(--font-store-sans)] text-[#111] md:px-8 md:py-10">
       <motion.div className="mx-auto max-w-2xl">
-        <div className="mb-8 border-b-2 border-[#111] pb-6">
+        <motion.div className="mb-8 border-b-2 border-[#111] pb-6">
           <p className="text-xs font-bold uppercase tracking-[0.2em] text-[#5d3fd3]">Plot Mundial</p>
           <h1 className="mt-1 flex items-center gap-3 text-3xl font-black uppercase tracking-tight [font-family:var(--font-store-display),sans-serif] md:text-4xl">
             <Brain className="h-9 w-9 text-[#EB671B]" aria-hidden />
             Trivia mundialista
           </h1>
           <p className="mt-2 text-sm text-[#444]">
-            Respondé preguntas de Copas del Mundo. Los puntos suman al{' '}
+            Tenés <strong>{TRIVIA_TIME_LIMIT_SEC} segundos</strong> por pregunta. Puntos = acierto (
+            {TRIVIA_POINTS.easy}/{TRIVIA_POINTS.medium}/{TRIVIA_POINTS.hard} según dificultad) +{' '}
+            <strong>bonus por velocidad</strong> (hasta el mismo valor). Todo suma al{' '}
             <Link href="/ranking" className="font-bold text-[#5d3fd3] underline underline-offset-2">
-              ranking global
+              ranking
             </Link>
-            : fácil {TRIVIA_POINTS.easy} · media {TRIVIA_POINTS.medium} · difícil {TRIVIA_POINTS.hard} pts por acierto.
+            .
           </p>
-        </div>
+        </motion.div>
 
         {stats && (
-          <div className="mb-8 grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <motion.div className="mb-8 grid grid-cols-2 gap-3 sm:grid-cols-4">
             {[
               { label: 'Banco', value: stats.totalInBank },
               { label: 'Respondidas', value: stats.answered },
               { label: 'Aciertos', value: stats.correct },
               { label: 'Pts trivia', value: stats.triviaPoints },
             ].map((box) => (
-              <div
+              <motion.div
                 key={box.label}
                 className="rounded-xl border-2 border-[#111] bg-white px-3 py-3 text-center shadow-[3px_3px_0_#bbb]"
               >
-                <div className="text-[10px] font-bold uppercase tracking-widest text-[#666]">{box.label}</div>
-                <div className="text-xl font-black tabular-nums [font-family:var(--font-store-display),sans-serif]">
+                <p className="text-[10px] font-bold uppercase tracking-widest text-[#666]">{box.label}</p>
+                <p className="text-xl font-black tabular-nums [font-family:var(--font-store-display),sans-serif]">
                   {box.value}
-                </div>
-              </div>
+                </p>
+              </motion.div>
             ))}
-          </div>
+          </motion.div>
         )}
 
         {error && (
-          <div className="store-message err mb-6" role="alert">
+          <motion.div className="store-message err mb-6" role="alert">
             {error}
             {error.includes('sesión') && (
               <Link href="/login?next=/trivia" className="mt-2 block font-bold underline">
                 Iniciar sesión
               </Link>
             )}
-          </div>
+          </motion.div>
         )}
 
         <AnimatePresence mode="wait">
@@ -171,8 +232,8 @@ export default function TriviaPage() {
                 Partida de 10 preguntas
               </h2>
               <p className="mt-2 text-sm text-[#555]">
-                Cada pregunta se cuenta una sola vez. Si ya la respondiste, puede volver a salir en modo repaso pero no
-                suma puntos extra.
+                Respondé rápido para sumar bonus. Si se acaba el tiempo, la pregunta cuenta como incorrecta. Cada
+                pregunta del banco solo otorga puntos la primera vez que la acertás.
               </p>
               <button
                 type="button"
@@ -204,11 +265,42 @@ export default function TriviaPage() {
                 </span>
               </motion.div>
 
+              {phase === 'playing' && (
+                <motion.div
+                  className={cn(
+                    'mb-4 flex items-center gap-3 rounded-xl border-2 px-3 py-2',
+                    timerUrgent ? 'border-red-600 bg-red-50' : 'border-[#111] bg-[#fafafa]',
+                  )}
+                  role="timer"
+                  aria-live="polite"
+                  aria-label={`Tiempo restante ${Math.ceil(secondsLeft)} segundos`}
+                >
+                  <Clock className={cn('h-5 w-5 shrink-0', timerUrgent ? 'text-red-600' : 'text-[#111]')} />
+                  <motion.div className="min-w-0 flex-1">
+                    <motion.div className="mb-1 flex justify-between text-[10px] font-bold uppercase tracking-wider text-[#666]">
+                      <span>Tiempo</span>
+                      <span className={cn('tabular-nums', timerUrgent && 'text-red-600')}>
+                        {Math.ceil(secondsLeft)}s
+                      </span>
+                    </motion.div>
+                    <motion.div className="h-2 overflow-hidden rounded-full border border-[#111] bg-white">
+                      <motion.div
+                        className={cn(
+                          'h-full transition-[width] duration-100 ease-linear',
+                          timerUrgent ? 'bg-red-500' : 'bg-[#ccff00]',
+                        )}
+                        style={{ width: `${timerPct}%` }}
+                      />
+                    </motion.div>
+                  </motion.div>
+                </motion.div>
+              )}
+
               <h2 className="text-lg font-black leading-snug sm:text-xl [font-family:var(--font-store-display),sans-serif]">
                 {current.question}
               </h2>
 
-              <div className="mt-6 space-y-3">
+              <motion.div className="mt-6 space-y-3">
                 {current.options.map((opt, i) => {
                   const isSelected = selected === i
                   const showResult = phase === 'feedback' && feedback
@@ -232,31 +324,42 @@ export default function TriviaPage() {
                     </button>
                   )
                 })}
-              </div>
+              </motion.div>
 
               {phase === 'feedback' && feedback && (
                 <motion.div
                   initial={{ opacity: 0, y: 8 }}
                   animate={{ opacity: 1, y: 0 }}
                   className={cn(
-                    'mt-6 flex items-center gap-3 rounded-xl border-2 px-4 py-3',
+                    'mt-6 rounded-xl border-2 px-4 py-3',
                     feedback.correct ? 'border-green-600 bg-green-50' : 'border-red-600 bg-red-50',
                   )}
                 >
-                  {feedback.correct ? (
-                    <CheckCircle2 className="h-6 w-6 shrink-0 text-green-700" />
-                  ) : (
-                    <XCircle className="h-6 w-6 shrink-0 text-red-700" />
-                  )}
-                  <div className="text-sm font-bold">
-                    {feedback.correct
-                      ? `¡Correcto! +${feedback.points} pts al ranking`
-                      : `Incorrecto. La respuesta era: ${current.options[feedback.correctIndex]}`}
-                  </div>
+                  <motion.div className="flex items-start gap-3">
+                    {feedback.correct ? (
+                      <CheckCircle2 className="h-6 w-6 shrink-0 text-green-700" />
+                    ) : (
+                      <XCircle className="h-6 w-6 shrink-0 text-red-700" />
+                    )}
+                    <motion.div className="text-sm font-bold">
+                      {feedback.timedOut && !feedback.correct ? (
+                        <>Se acabó el tiempo. La respuesta correcta era: {current.options[feedback.correctIndex]}</>
+                      ) : feedback.correct ? (
+                        <>
+                          ¡Correcto! +{feedback.points} pts al ranking
+                          <span className="mt-1 block text-xs font-semibold text-green-800">
+                            Base {feedback.basePoints} + bonus velocidad {feedback.timeBonus}
+                          </span>
+                        </>
+                      ) : (
+                        <>Incorrecto. La respuesta era: {current.options[feedback.correctIndex]}</>
+                      )}
+                    </motion.div>
+                  </motion.div>
                 </motion.div>
               )}
 
-              <div className="mt-6 flex gap-3">
+              <motion.div className="mt-6 flex gap-3">
                 {phase === 'playing' ? (
                   <button
                     type="button"
@@ -275,7 +378,7 @@ export default function TriviaPage() {
                     {index + 1 >= questions.length ? 'Ver resultado' : 'Siguiente'}
                   </button>
                 )}
-              </div>
+              </motion.div>
             </motion.div>
           )}
 
@@ -294,7 +397,10 @@ export default function TriviaPage() {
                 {sessionCorrect}/{questions.length}
               </p>
               <p className="mt-1 text-sm text-[#555]">aciertos en esta ronda</p>
-              <p className="mt-4 text-lg font-bold">+{sessionPoints} puntos sumados al ranking</p>
+              <p className="mt-4 text-lg font-bold">+{sessionPoints} puntos al ranking</p>
+              {sessionTimeBonus > 0 && (
+                <p className="mt-1 text-sm text-[#5d3fd3]">incluye +{sessionTimeBonus} por responder rápido</p>
+              )}
               <motion.div className="mt-8 flex flex-col gap-3 sm:flex-row sm:justify-center">
                 <button
                   type="button"
@@ -314,6 +420,6 @@ export default function TriviaPage() {
           )}
         </AnimatePresence>
       </motion.div>
-    </div>
+    </motion.div>
   )
 }

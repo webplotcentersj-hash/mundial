@@ -4,7 +4,8 @@ import { createClient } from '@/lib/supabase/server'
 import { ensureUserProfile } from '@/lib/ensureUserProfile'
 import { revalidatePath } from 'next/cache'
 import { ensureTriviaQuestionsSeeded } from '@/lib/trivia/seed'
-import { TRIVIA_POINTS, TRIVIA_SESSION_SIZE, type TriviaDifficulty } from '@/lib/trivia/constants'
+import { TRIVIA_SESSION_SIZE, type TriviaDifficulty } from '@/lib/trivia/constants'
+import { computeTriviaPoints } from '@/lib/trivia/scoring'
 
 export type TriviaQuestionPublic = {
   id: string
@@ -122,10 +123,15 @@ export async function getTriviaSession(): Promise<{
 export async function submitTriviaAnswer(
   questionId: string,
   selectedIndex: number,
+  responseTimeMs: number,
 ): Promise<{
   correct: boolean
   correctIndex: number
   pointsEarned: number
+  basePoints: number
+  timeBonus: number
+  responseTimeMs: number
+  timedOut?: boolean
   alreadyAnswered?: boolean
   error?: string
 }> {
@@ -137,17 +143,43 @@ export async function submitTriviaAnswer(
   } = await supabase.auth.getUser()
 
   if (authError || !user) {
-    return { correct: false, correctIndex: 0, pointsEarned: 0, error: 'Debes iniciar sesión' }
+    return {
+      correct: false,
+      correctIndex: 0,
+      pointsEarned: 0,
+      basePoints: 0,
+      timeBonus: 0,
+      responseTimeMs: 0,
+      error: 'Debes iniciar sesión',
+    }
   }
 
   const profileCheck = await ensureUserProfile(supabase, user)
   if (profileCheck.error) {
-    return { correct: false, correctIndex: 0, pointsEarned: 0, error: profileCheck.error }
+    return {
+      correct: false,
+      correctIndex: 0,
+      pointsEarned: 0,
+      basePoints: 0,
+      timeBonus: 0,
+      responseTimeMs: 0,
+      error: profileCheck.error,
+    }
   }
 
-  if (selectedIndex < 0 || selectedIndex > 3) {
-    return { correct: false, correctIndex: 0, pointsEarned: 0, error: 'Respuesta inválida' }
+  if (selectedIndex < -1 || selectedIndex > 3) {
+    return {
+      correct: false,
+      correctIndex: 0,
+      pointsEarned: 0,
+      basePoints: 0,
+      timeBonus: 0,
+      responseTimeMs: 0,
+      error: 'Respuesta inválida',
+    }
   }
+
+  const timedOut = selectedIndex === -1
 
   const { data: existing } = await supabase
     .from('trivia_user_answers')
@@ -162,6 +194,9 @@ export async function submitTriviaAnswer(
       correct: existing.correct,
       correctIndex: q?.correct_index ?? 0,
       pointsEarned: existing.points_earned ?? 0,
+      basePoints: 0,
+      timeBonus: 0,
+      responseTimeMs: 0,
       alreadyAnswered: true,
     }
   }
@@ -173,30 +208,49 @@ export async function submitTriviaAnswer(
     .single()
 
   if (qErr || !question) {
-    return { correct: false, correctIndex: 0, pointsEarned: 0, error: 'Pregunta no encontrada' }
+    return {
+      correct: false,
+      correctIndex: 0,
+      pointsEarned: 0,
+      basePoints: 0,
+      timeBonus: 0,
+      responseTimeMs: 0,
+      error: 'Pregunta no encontrada',
+    }
   }
 
   const correctIndex = question.correct_index as number
-  const correct = selectedIndex === correctIndex
+  const correct = !timedOut && selectedIndex === correctIndex
   const difficulty = question.difficulty as TriviaDifficulty
-  const pointsEarned = correct ? TRIVIA_POINTS[difficulty] ?? TRIVIA_POINTS.medium : 0
+  const score = computeTriviaPoints(difficulty, correct, responseTimeMs)
 
   const { error: insErr } = await supabase.from('trivia_user_answers').insert({
     user_id: user.id,
     question_id: questionId,
     selected_index: selectedIndex,
     correct,
-    points_earned: pointsEarned,
+    points_earned: score.total,
+    base_points: score.basePoints,
+    time_bonus: score.timeBonus,
+    response_time_ms: score.responseTimeMs,
   })
 
   if (insErr) {
     console.error('submitTriviaAnswer insert:', insErr)
-    return { correct: false, correctIndex, pointsEarned: 0, error: 'No se pudo guardar la respuesta' }
+    return {
+      correct: false,
+      correctIndex,
+      pointsEarned: 0,
+      basePoints: 0,
+      timeBonus: 0,
+      responseTimeMs: 0,
+      error: 'No se pudo guardar la respuesta',
+    }
   }
 
-  if (pointsEarned > 0) {
+  if (score.total > 0) {
     const { data: profile } = await supabase.from('profiles').select('total_points').eq('id', user.id).single()
-    const newTotal = (profile?.total_points || 0) + pointsEarned
+    const newTotal = (profile?.total_points || 0) + score.total
     const { error: profErr } = await supabase.from('profiles').update({ total_points: newTotal }).eq('id', user.id)
     if (profErr) {
       console.error('submitTriviaAnswer profile:', profErr)
@@ -207,5 +261,13 @@ export async function submitTriviaAnswer(
   revalidatePath('/trivia')
   revalidatePath('/dashboard')
 
-  return { correct, correctIndex, pointsEarned }
+  return {
+    correct,
+    correctIndex,
+    pointsEarned: score.total,
+    basePoints: score.basePoints,
+    timeBonus: score.timeBonus,
+    responseTimeMs: score.responseTimeMs,
+    timedOut,
+  }
 }
