@@ -169,9 +169,12 @@ export default function FiguritaPage() {
       })
       if (upErr) {
         console.error(upErr)
+        const msg = upErr.message?.toLowerCase() ?? ''
         alert(
-          upErr.message ||
-            'No se pudo subir la imagen. Revisá en Supabase el bucket store-prints y la migración 20260515_store_prints.sql.',
+          msg.includes('bucket not found')
+            ? 'El almacenamiento del Store no está configurado en el servidor. Avisá al administrador o probá de nuevo en unos minutos.'
+            : upErr.message ||
+                'No se pudo subir la imagen. Verificá que estés logueado e intentá de nuevo.',
         )
         return
       }

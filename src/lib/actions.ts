@@ -231,21 +231,167 @@ export async function verifyAdmin() {
   return profile?.role === 'admin'
 }
 
+export type AdminProfileListItem = {
+  id: string
+  username: string | null
+  avatar_url: string | null
+  total_points: number
+  last_active: string | null
+  created_at: string
+  role: string | null
+  predictions_count: number
+}
+
+export type AdminUserDetail = {
+  profile: AdminProfileListItem
+  fixture_points: number
+  trivia_answered: number
+  trivia_correct: number
+  trivia_points: number
+  print_orders_count: number
+  recent_predictions: {
+    id: string
+    match_id: string
+    home_score: number
+    away_score: number
+    points_earned: number | null
+    match_label: string
+    match_status: string | null
+    actual_home: number | null
+    actual_away: number | null
+  }[]
+  print_orders: {
+    id: string
+    product_type: string
+    status: string
+    created_at: string
+    contact_email: string
+    contact_name: string
+  }[]
+}
+
 /** Lista ampliada de perfiles para el panel admin (sin email en DB: ver contacto en pedidos del Store). */
-export async function getAdminProfiles() {
+export async function getAdminProfiles(): Promise<AdminProfileListItem[]> {
+  const isAdmin = await verifyAdmin()
+  if (!isAdmin) return []
+
   const supabase = await createClient()
-  const { data, error } = await supabase
-    .from('profiles')
-    .select('id, username, avatar_url, total_points, last_active, created_at, role')
-    .order('total_points', { ascending: false })
-    .order('last_active', { ascending: false, nullsFirst: false })
-    .limit(500)
+  const [{ data, error }, { data: predRows, error: predErr }] = await Promise.all([
+    supabase
+      .from('profiles')
+      .select('id, username, avatar_url, total_points, last_active, created_at, role')
+      .order('total_points', { ascending: false })
+      .order('last_active', { ascending: false, nullsFirst: false })
+      .limit(500),
+    supabase.from('predictions').select('user_id'),
+  ])
 
   if (error) {
     console.error('Error fetching admin profiles:', error)
     return []
   }
-  return data ?? []
+  if (predErr) {
+    console.error('Error fetching prediction counts:', predErr)
+  }
+
+  const predCountByUser = new Map<string, number>()
+  for (const row of predRows ?? []) {
+    const uid = row.user_id as string
+    predCountByUser.set(uid, (predCountByUser.get(uid) ?? 0) + 1)
+  }
+
+  return (data ?? []).map((p) => ({
+    ...p,
+    predictions_count: predCountByUser.get(p.id) ?? 0,
+  }))
+}
+
+/** Ficha completa de un usuario para el panel admin. */
+export async function getAdminUserDetail(userId: string): Promise<AdminUserDetail | null> {
+  const isAdmin = await verifyAdmin()
+  if (!isAdmin) throw new Error('No autorizado')
+
+  const supabase = await createClient()
+  const { data: profile, error: profileErr } = await supabase
+    .from('profiles')
+    .select('id, username, avatar_url, total_points, last_active, created_at, role')
+    .eq('id', userId)
+    .single()
+
+  if (profileErr || !profile) {
+    console.error('Error fetching admin user profile:', profileErr)
+    return null
+  }
+
+  const [{ data: predRows }, { data: triviaRows }, { data: orders }, { count: predTotal }] =
+    await Promise.all([
+      supabase
+        .from('predictions')
+        .select(
+          `id, match_id, home_score, away_score, points_earned,
+          matches (
+            id, home_score, away_score, status,
+            homeTeam:teams!home_team_id (name),
+            awayTeam:teams!away_team_id (name)
+          )`,
+        )
+        .eq('user_id', userId)
+        .order('updated_at', { ascending: false })
+        .limit(20),
+      supabase.from('trivia_user_answers').select('correct, points_earned').eq('user_id', userId),
+      supabase
+        .from('print_orders')
+        .select('id, product_type, status, created_at, contact_email, contact_name')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false })
+        .limit(10),
+      supabase.from('predictions').select('id', { count: 'exact', head: true }).eq('user_id', userId),
+    ])
+
+  let fixture_points = 0
+  for (const p of predRows ?? []) {
+    fixture_points += toScoreInt(p.points_earned)
+  }
+
+  let trivia_points = 0
+  let trivia_correct = 0
+  for (const t of triviaRows ?? []) {
+    trivia_points += toScoreInt(t.points_earned)
+    if (t.correct) trivia_correct++
+  }
+
+  const recent_predictions = (predRows ?? []).map((p: Record<string, unknown>) => {
+    const m = p.matches as Record<string, unknown> | null
+    const home = m?.homeTeam as { name?: string } | null
+    const away = m?.awayTeam as { name?: string } | null
+    const homeName = home?.name ?? 'Local'
+    const awayName = away?.name ?? 'Visitante'
+    return {
+      id: p.id as string,
+      match_id: p.match_id as string,
+      home_score: p.home_score as number,
+      away_score: p.away_score as number,
+      points_earned: (p.points_earned as number | null) ?? null,
+      match_label: `${homeName} vs ${awayName}`,
+      match_status: (m?.status as string | null) ?? null,
+      actual_home: (m?.home_score as number | null) ?? null,
+      actual_away: (m?.away_score as number | null) ?? null,
+    }
+  })
+
+  return {
+    profile: {
+      ...profile,
+      predictions_count: predTotal ?? predRows?.length ?? 0,
+    },
+    fixture_points,
+    trivia_answered: triviaRows?.length ?? 0,
+    trivia_correct,
+    trivia_points,
+    print_orders_count: orders?.length ?? 0,
+    recent_predictions,
+    print_orders: (orders ?? []) as AdminUserDetail['print_orders'],
+  }
 }
 
 export async function listPrintOrdersForAdmin(): Promise<PrintOrderRow[]> {

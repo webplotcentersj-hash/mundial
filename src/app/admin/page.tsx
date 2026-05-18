@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Settings, CheckCircle2, Save, ShieldAlert, Users, Trophy, Download, Eye, Loader2, Store, Upload, RotateCcw } from 'lucide-react'
+import { Settings, Save, ShieldAlert, Users, Trophy, Download, Eye, Loader2, Store, Upload, RotateCcw, X } from 'lucide-react'
 import Image from 'next/image'
 import { motion, AnimatePresence } from 'framer-motion'
 import { createClient } from '@/lib/supabase/client'
@@ -9,6 +9,9 @@ import { STORE_PRINTS_BUCKET } from '@/lib/storePrints'
 import {
   getMatches,
   getAdminProfiles,
+  getAdminUserDetail,
+  type AdminUserDetail,
+  type AdminProfileListItem,
   listPrintOrdersForAdmin,
   updatePrintOrderAdmin,
   updateMatchScore,
@@ -17,6 +20,7 @@ import {
   type PrintOrderRow,
   type PrintOrderStatus,
 } from '@/lib/actions'
+import { AdminUserFichaModal } from '@/components/admin/AdminUserFichaModal'
 
 const PRINT_STATUS_OPTIONS: { value: PrintOrderStatus; label: string }[] = [
   { value: 'pending', label: 'Pendiente' },
@@ -34,9 +38,20 @@ function productTypeLabel(t: string) {
   return t
 }
 
+function formatAdminDate(iso: string | null | undefined) {
+  if (!iso) return '—'
+  try {
+    return new Date(iso).toLocaleString('es-AR', { dateStyle: 'short', timeStyle: 'short' })
+  } catch {
+    return iso
+  }
+}
+
 export default function AdminPage() {
   const [matches, setMatches] = useState<any[]>([])
-  const [users, setUsers] = useState<any[]>([])
+  const [users, setUsers] = useState<AdminProfileListItem[]>([])
+  const [userFicha, setUserFicha] = useState<AdminUserDetail | null>(null)
+  const [userFichaLoading, setUserFichaLoading] = useState(false)
   const [loading, setLoading] = useState(true)
   const [isSaving, setIsSaving] = useState<string | null>(null)
   const [resettingId, setResettingId] = useState<string | null>(null)
@@ -245,9 +260,25 @@ export default function AdminPage() {
     alert('Simulación: Descargando podio_ganadores.csv con los correos electrónicos para entrega de premios.')
   }
 
-  const handleAuditUser = (username: string) => {
-    alert(`Simulación: Abriendo el Bracket y predicciones exactas del usuario ${username}`)
+  const openUserFicha = async (userId: string) => {
+    setUserFichaLoading(true)
+    setUserFicha(null)
+    try {
+      const detail = await getAdminUserDetail(userId)
+      if (!detail) {
+        alert('No se encontró el perfil del usuario.')
+        return
+      }
+      setUserFicha(detail)
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : 'Error al cargar la ficha'
+      alert(msg)
+    } finally {
+      setUserFichaLoading(false)
+    }
   }
+
+  const closeUserFicha = () => setUserFicha(null)
 
   return (
     <div className="min-h-screen bg-transparent relative font-outfit p-4 lg:p-8 pt-24 -mt-16 w-full">
@@ -318,34 +349,19 @@ export default function AdminPage() {
           {/* TAB 1: RESULTADOS */}
           {activeTab === 'results' && (
             <motion.div key="results" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} className="space-y-6">
-              <div className="bg-red-500/5 border border-red-500/20 rounded-2xl p-6 mb-8 flex flex-col gap-4 backdrop-blur-sm shadow-xl sm:flex-row sm:items-start">
-                <CheckCircle2 className="w-6 h-6 text-red-400 shrink-0 mt-0.5" />
-                <div className="min-w-0 flex-1">
-                  <h3 className="text-red-400 font-bold text-lg mb-1">Cálculo de Puntos Automático</h3>
-                  <p className="text-white/60 text-sm leading-relaxed">
-                    Al cargar un resultado real y guardarlo, el sistema comparará este resultado con las predicciones en Supabase y asignará los puntos correspondientes a todos los usuarios que hayan participado. En partidos finalizados podés usar{' '}
-                    <strong className="text-white/80">Resetear resultado</strong> para volver el partido a pendiente, borrar el marcador oficial y revertir solo los puntos otorgados por ese partido.
-                  </p>
-                  <p className="mt-3 text-amber-200/90 text-xs leading-relaxed border border-amber-500/25 rounded-lg px-3 py-2 bg-amber-500/10">
-                    <strong className="text-amber-300">Importante (Supabase):</strong> hace falta que existan políticas RLS que permitan al administrador actualizar las predicciones y los puntos de otros usuarios. Si el ranking no sube al cargar resultados, ejecutá el SQL del archivo{' '}
-                    <code className="text-amber-100/95 font-mono text-[11px]">supabase/migrations/20260516_admin_fixture_points_rls.sql</code> en el SQL Editor del proyecto.
-                  </p>
-                  <button
-                    type="button"
-                    onClick={handleSyncRankingTotals}
-                    disabled={syncRankingBusy}
-                    className="mt-4 inline-flex items-center justify-center gap-2 rounded-xl border border-white/15 bg-white/10 px-4 py-2.5 text-sm font-bold text-white hover:bg-white/15 disabled:opacity-50"
-                  >
+              <motion.div className="mb-6 flex flex-wrap items-center justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={handleSyncRankingTotals}
+                  disabled={syncRankingBusy}
+                  className="inline-flex items-center justify-center gap-2 rounded-xl border border-white/15 bg-white/10 px-4 py-2.5 text-sm font-bold text-white hover:bg-white/15 disabled:opacity-50"
+                >
                     {syncRankingBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trophy className="h-4 w-4 text-amber-400" />}
-                    {syncRankingBusy ? 'Sincronizando…' : 'Sincronizar ranking con pronósticos'}
+                    {syncRankingBusy ? 'Sincronizando…' : 'Sincronizar ranking'}
                   </button>
-                  <p className="mt-2 text-[11px] text-white/40">
-                    Usá este botón después de aplicar el SQL si ya habías cargado resultados y los puntos del ranking quedaron en cero.
-                  </p>
-                </div>
-              </div>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+              </motion.div>
+
+              <motion.div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
                 {matches.map(match => (
                   <div key={match.id} className="relative glass-card p-6 rounded-2xl border border-white/10 hover:border-white/20 transition-all group overflow-hidden bg-[#0a0f1c]/80 backdrop-blur-xl">
                     {match.status === 'finished' && <div className="absolute inset-0 bg-green-500/5 pointer-events-none" />}
@@ -420,7 +436,7 @@ export default function AdminPage() {
                     )}
                   </div>
                 ))}
-              </div>
+              </motion.div>
             </motion.div>
           )}
 
@@ -442,13 +458,22 @@ export default function AdminPage() {
                     </thead>
                     <tbody className="divide-y divide-white/5">
                       {users.map(user => (
-                        <tr key={user.id} className="hover:bg-white/5 transition-colors">
+                        <tr
+                          key={user.id}
+                          className="cursor-pointer hover:bg-white/5 transition-colors"
+                          onClick={() => openUserFicha(user.id)}
+                        >
                           <td className="px-6 py-4">
                             <div className="flex items-center gap-3">
                               <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary to-amber-500 flex items-center justify-center font-bold text-white shadow-md overflow-hidden">
-                                {user.avatar_url ? <img src={user.avatar_url} alt={user.username} className="w-full h-full object-cover" /> : user.username?.charAt(0).toUpperCase() || 'U'}
+                                {user.avatar_url ? (
+                                  // eslint-disable-next-line @next/next/no-img-element
+                                  <img src={user.avatar_url} alt={user.username ?? ''} className="w-full h-full object-cover" />
+                                ) : (
+                                  user.username?.charAt(0).toUpperCase() || 'U'
+                                )}
                               </div>
-                              <span className="font-bold text-white">{user.username}</span>
+                              <span className="font-bold text-white">{user.username ?? '—'}</span>
                             </div>
                           </td>
                           <td className="px-6 py-4">
@@ -462,7 +487,7 @@ export default function AdminPage() {
                           </td>
                           <td className="px-6 py-4 text-center">
                             <span className="bg-white/10 px-3 py-1 rounded-full text-xs font-mono text-white/80 border border-white/10">
-                              - / 104
+                              {user.predictions_count} / {matches.length}
                             </span>
                           </td>
                           <td className="px-6 py-4 text-center">
@@ -470,12 +495,16 @@ export default function AdminPage() {
                               {user.total_points}
                             </span>
                           </td>
-                          <td className="px-6 py-4 text-sm text-white/40">{user.last_active}</td>
+                          <td className="px-6 py-4 text-sm text-white/40">{formatAdminDate(user.last_active)}</td>
                           <td className="px-6 py-4 text-right">
-                            <button 
-                              onClick={() => handleAuditUser(user.username)}
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                void openUserFicha(user.id)
+                              }}
                               className="p-2 rounded-lg bg-white/5 hover:bg-primary/20 text-white/50 hover:text-primary transition-all border border-transparent hover:border-primary/30"
-                              title="Auditar Prode"
+                              title="Ver ficha"
                             >
                               <Eye className="w-5 h-5" />
                             </button>
@@ -513,7 +542,7 @@ export default function AdminPage() {
                   <div className="glass-card w-full border border-gray-300/30 bg-gradient-to-b from-gray-300/10 to-transparent p-6 rounded-t-3xl rounded-b-xl flex flex-col items-center relative overflow-hidden shadow-[0_0_30px_rgba(209,213,219,0.1)]">
                     <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-gray-300 to-transparent" />
                     <div className="w-16 h-16 rounded-full bg-gradient-to-br from-gray-300 to-gray-500 flex items-center justify-center font-black text-2xl text-white shadow-lg mb-4 border-4 border-[#0a0f1c] overflow-hidden">
-                      {users[1].avatar_url ? <img src={users[1].avatar_url} alt={users[1].username} className="w-full h-full object-cover" /> : users[1].username?.charAt(0).toUpperCase() || 'U'}
+                      {users[1].avatar_url ? <img src={users[1].avatar_url} alt={users[1].username ?? ''} className="w-full h-full object-cover" /> : users[1].username?.charAt(0).toUpperCase() || 'U'}
                     </div>
                     <h3 className="text-xl font-bold text-white">{users[1].username}</h3>
                     <div className="flex items-center gap-2 text-gray-300 font-black text-3xl mt-2 drop-shadow-md">
@@ -536,7 +565,7 @@ export default function AdminPage() {
                     <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-transparent via-amber-400 to-transparent" />
                     <Trophy className="w-10 h-10 text-amber-400 absolute top-4 right-4 opacity-20" />
                     <div className="w-20 h-20 rounded-full bg-gradient-to-br from-amber-300 to-amber-600 flex items-center justify-center font-black text-3xl text-white shadow-xl mb-4 border-4 border-[#0a0f1c] ring-4 ring-amber-500/30 overflow-hidden">
-                      {users[0].avatar_url ? <img src={users[0].avatar_url} alt={users[0].username} className="w-full h-full object-cover" /> : users[0].username?.charAt(0).toUpperCase() || 'U'}
+                      {users[0].avatar_url ? <img src={users[0].avatar_url} alt={users[0].username ?? ''} className="w-full h-full object-cover" /> : users[0].username?.charAt(0).toUpperCase() || 'U'}
                     </div>
                     <h3 className="text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-white to-amber-100">{users[0].username}</h3>
                     <div className="flex items-center gap-2 text-amber-400 font-black text-5xl mt-2 drop-shadow-[0_0_10px_rgba(245,158,11,0.8)]">
@@ -558,7 +587,7 @@ export default function AdminPage() {
                   <div className="glass-card w-full border border-orange-700/50 bg-gradient-to-b from-orange-800/20 to-transparent p-6 rounded-t-3xl rounded-b-xl flex flex-col items-center relative overflow-hidden shadow-[0_0_30px_rgba(194,65,12,0.1)]">
                     <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-orange-600 to-transparent" />
                     <div className="w-16 h-16 rounded-full bg-gradient-to-br from-orange-500 to-orange-800 flex items-center justify-center font-black text-2xl text-white shadow-lg mb-4 border-4 border-[#0a0f1c] overflow-hidden">
-                      {users[2].avatar_url ? <img src={users[2].avatar_url} alt={users[2].username} className="w-full h-full object-cover" /> : users[2].username?.charAt(0).toUpperCase() || 'U'}
+                      {users[2].avatar_url ? <img src={users[2].avatar_url} alt={users[2].username ?? ''} className="w-full h-full object-cover" /> : users[2].username?.charAt(0).toUpperCase() || 'U'}
                     </div>
                     <h3 className="text-xl font-bold text-white">{users[2].username}</h3>
                     <div className="flex items-center gap-2 text-orange-500 font-black text-3xl mt-2 drop-shadow-md">
@@ -760,6 +789,14 @@ export default function AdminPage() {
         </AnimatePresence>
         )}
       </div>
-    </div>
+
+      <AdminUserFichaModal
+        open={userFichaLoading || !!userFicha}
+        loading={userFichaLoading && !userFicha}
+        detail={userFicha}
+        totalMatches={matches.length}
+        onClose={closeUserFicha}
+      />
+     </div>
   )
 }
