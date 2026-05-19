@@ -4,23 +4,18 @@ import { Preference } from 'mercadopago'
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { ensureUserProfile } from '@/lib/ensureUserProfile'
+import type { PrintProductType } from '@/lib/store/catalog'
 import {
-  STORE_COMBO_PRICE_ARS,
-  buildComboOrderNotes,
+  buildOrderNotesForLine,
+  getCartLineLabel,
   getCartTotal,
-  getProductLabel,
-  validateComboLine,
+  getUnitPrice,
+  validateStoreCartLine,
+  type StoreCartLineInput,
 } from '@/lib/store/catalog'
 import { getAppBaseUrl, getMercadoPagoClient, isMercadoPagoConfigured } from '@/lib/mercadopago/config'
 
-export type CartLineInput = {
-  product_type: 'combo'
-  quantity: number
-  combo_sticker_id: string
-  combo_poster_id: string
-  notes?: string
-  customer_image_url?: string | null
-}
+export type CartLineInput = StoreCartLineInput
 
 export async function createMercadoPagoCheckoutFromCart(input: {
   lines: CartLineInput[]
@@ -99,7 +94,7 @@ export async function createMercadoPagoCheckoutFromCart(input: {
   const orderRows: {
     user_id: string
     checkout_id: string
-    product_type: 'combo'
+    product_type: PrintProductType
     quantity: number
     notes: string | null
     contact_name: string
@@ -110,26 +105,29 @@ export async function createMercadoPagoCheckoutFromCart(input: {
   }[] = []
 
   for (const line of input.lines) {
-    const comboCheck = validateComboLine(line)
-    if (!comboCheck.ok) return { error: comboCheck.error }
+    const check = validateStoreCartLine(line)
+    if (!check.ok) return { error: check.error }
     const qty = Math.min(99, Math.max(1, Math.floor(Number(line.quantity)) || 1))
-    const u = line.customer_image_url!.trim()
-    if (!imagePrefix || !u.startsWith(imagePrefix) || u.length > 2048) {
-      return { error: 'Hay una imagen adjunta inválida. Volvé a cargar desde Mi Figurita.' }
+    const orderNotes = buildOrderNotesForLine(line)
+    let customerImage: string | null = null
+    if (line.product_type === 'combo') {
+      const u = line.customer_image_url!.trim()
+      if (!imagePrefix || !u.startsWith(imagePrefix) || u.length > 2048) {
+        return { error: 'Hay una imagen adjunta inválida. Volvé a cargar desde Mi Figurita.' }
+      }
+      customerImage = u
     }
-    const orderNotes =
-      line.notes?.trim() || buildComboOrderNotes(comboCheck.selection)
     orderRows.push({
       user_id: user.id,
       checkout_id: checkoutId,
-      product_type: 'combo',
+      product_type: line.product_type,
       quantity: qty,
       notes: orderNotes,
       contact_name: name,
       contact_email: email,
       contact_phone: input.contact_phone?.trim() || null,
       status: 'awaiting_payment',
-      customer_image_url: u,
+      customer_image_url: customerImage,
     })
   }
 
@@ -142,15 +140,16 @@ export async function createMercadoPagoCheckoutFromCart(input: {
 
   const appBase = getAppBaseUrl()
   const items = input.lines.map((line, index) => {
-    const comboCheck = validateComboLine(line)
-    if (!comboCheck.ok) throw new Error(comboCheck.error)
+    const check = validateStoreCartLine(line)
+    if (!check.ok) throw new Error(check.error)
     const qty = Math.min(99, Math.max(1, Math.floor(Number(line.quantity)) || 1))
+    const unit = getUnitPrice(line.product_type)
     return {
-      id: `combo-${index}`,
-      title: getProductLabel('combo'),
-      description: line.notes?.trim() || buildComboOrderNotes(comboCheck.selection),
+      id: `${line.product_type}-${index}`,
+      title: getCartLineLabel(line),
+      description: buildOrderNotesForLine(line).slice(0, 256),
       quantity: qty,
-      unit_price: STORE_COMBO_PRICE_ARS,
+      unit_price: unit,
       currency_id: 'ARS',
     }
   })

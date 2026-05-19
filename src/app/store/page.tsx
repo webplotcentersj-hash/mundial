@@ -17,17 +17,79 @@ import {
   DEFAULT_COMBO_POSTER_ID,
   DEFAULT_COMBO_STICKER_ID,
   buildComboOrderNotes,
+  buildPosterOrderNotes,
+  buildStickerOrderNotes,
   isComboPosterId,
   isComboStickerId,
   isSellableProductType,
+  validateStoreCartLine,
   type ComboPosterId,
   type ComboStickerId,
 } from '@/lib/store/catalog'
+import type { StoreCartLine } from '@/lib/store/cart-lines'
 import { readFiguritaStoreImageFromSession, clearFiguritaStoreImageFromSession } from '@/lib/storePrints'
 import { StoreLanding } from '@/components/store/store-landing'
-import { StoreCheckoutPanel, type StoreCartLine } from '@/components/store/store-checkout-panel'
+import { StoreCheckoutPanel } from '@/components/store/store-checkout-panel'
 
-const CART_STORAGE_KEY = 'plotmundial_store_cart_v3'
+const CART_STORAGE_KEY = 'plotmundial_store_cart_v4'
+
+function parseStoredCartLine(row: unknown): StoreCartLine | null {
+  if (!row || typeof row !== 'object') return null
+  const r = row as Record<string, unknown>
+  if (!r.id || typeof r.id !== 'string') return null
+  if (!isSellableProductType(String(r.product_type ?? ''))) return null
+  const qty = Math.min(99, Math.max(1, Math.floor(Number(r.quantity)) || 1))
+  const notes = typeof r.notes === 'string' ? r.notes : ''
+
+  if (r.product_type === 'combo') {
+    if (!r.combo_sticker_id || !isComboStickerId(String(r.combo_sticker_id))) return null
+    if (!r.combo_poster_id || !isComboPosterId(String(r.combo_poster_id))) return null
+    const img = typeof r.customer_image_url === 'string' ? r.customer_image_url : ''
+    const check = validateStoreCartLine({
+      product_type: 'combo',
+      quantity: qty,
+      combo_sticker_id: String(r.combo_sticker_id),
+      combo_poster_id: String(r.combo_poster_id),
+      customer_image_url: img,
+    })
+    if (!check.ok) return null
+    return {
+      id: r.id,
+      product_type: 'combo',
+      quantity: qty,
+      combo_sticker_id: r.combo_sticker_id as ComboStickerId,
+      combo_poster_id: r.combo_poster_id as ComboPosterId,
+      notes,
+      customer_image_url: img,
+    }
+  }
+
+  if (r.product_type === 'poster') {
+    if (!r.variant_id || !isComboPosterId(String(r.variant_id))) return null
+    return {
+      id: r.id,
+      product_type: 'poster',
+      quantity: qty,
+      variant_id: r.variant_id as ComboPosterId,
+      notes: notes || buildPosterOrderNotes(r.variant_id as ComboPosterId),
+      customer_image_url: null,
+    }
+  }
+
+  if (r.product_type === 'sticker') {
+    if (!r.variant_id || !isComboStickerId(String(r.variant_id))) return null
+    return {
+      id: r.id,
+      product_type: 'sticker',
+      quantity: qty,
+      variant_id: r.variant_id as ComboStickerId,
+      notes: notes || buildStickerOrderNotes(r.variant_id as ComboStickerId),
+      customer_image_url: null,
+    }
+  }
+
+  return null
+}
 
 export default function StorePage() {
   const [userReady, setUserReady] = useState(false)
@@ -122,20 +184,8 @@ export default function StorePage() {
       }
       const cleaned: StoreCartLine[] = []
       for (const row of parsed) {
-        if (!row || typeof row !== 'object') continue
-        const r = row as Partial<StoreCartLine>
-        if (!r.id || !isSellableProductType(r.product_type ?? '')) continue
-        if (!r.combo_sticker_id || !isComboStickerId(r.combo_sticker_id)) continue
-        if (!r.combo_poster_id || !isComboPosterId(r.combo_poster_id)) continue
-        cleaned.push({
-          id: String(r.id),
-          product_type: 'combo',
-          quantity: Math.min(99, Math.max(1, Math.floor(Number(r.quantity)) || 1)),
-          combo_sticker_id: r.combo_sticker_id,
-          combo_poster_id: r.combo_poster_id,
-          notes: typeof r.notes === 'string' ? r.notes : '',
-          customer_image_url: typeof r.customer_image_url === 'string' ? r.customer_image_url : null,
-        })
+        const line = parseStoredCartLine(row)
+        if (line) cleaned.push(line)
       }
       setCart(cleaned)
     } catch {
@@ -154,18 +204,48 @@ export default function StorePage() {
     }
   }, [cart, loggedIn, cartReady])
 
+  function requireLoginForCart(): boolean {
+    if (loggedIn) return true
+    setMessage({ type: 'err', text: 'Iniciá sesión para agregar productos al carrito.' })
+    document.getElementById('store-cart')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    return false
+  }
+
   function cartPayload() {
-    return cart.map((c) => ({
-      product_type: 'combo' as const,
-      quantity: c.quantity,
-      combo_sticker_id: c.combo_sticker_id,
-      combo_poster_id: c.combo_poster_id,
-      notes: c.notes || undefined,
-      customer_image_url: c.customer_image_url,
-    }))
+    return cart.map((c) => {
+      if (c.product_type === 'combo') {
+        return {
+          product_type: 'combo' as const,
+          quantity: c.quantity,
+          combo_sticker_id: c.combo_sticker_id,
+          combo_poster_id: c.combo_poster_id,
+          notes: c.notes || undefined,
+          customer_image_url: c.customer_image_url,
+        }
+      }
+      if (c.product_type === 'poster') {
+        return {
+          product_type: 'poster' as const,
+          quantity: c.quantity,
+          variant_id: c.variant_id,
+          notes: c.notes || undefined,
+        }
+      }
+      return {
+        product_type: 'sticker' as const,
+        quantity: c.quantity,
+        variant_id: c.variant_id,
+        notes: c.notes || undefined,
+      }
+    })
+  }
+
+  function scrollToCart() {
+    document.getElementById('store-cart')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
   }
 
   function addToCart() {
+    if (!requireLoginForCart()) return
     if (!canAddCombo) {
       setMessage({
         type: 'err',
@@ -186,14 +266,49 @@ export default function StorePage() {
         combo_sticker_id: comboStickerId,
         combo_poster_id: comboPosterId,
         notes,
-        customer_image_url: customerImageUrl,
+        customer_image_url: customerImageUrl!,
       },
     ])
     setCustomerImageUrl(null)
     clearFiguritaStoreImageFromSession()
     setLineNotes('')
     setQuantity(1)
-    setMessage(null)
+    setMessage({ type: 'ok', text: 'Combo agregado al carrito.' })
+    scrollToCart()
+  }
+
+  function addPosterToCart(posterId: ComboPosterId) {
+    if (!requireLoginForCart()) return
+    setCart((prev) => [
+      ...prev,
+      {
+        id: crypto.randomUUID(),
+        product_type: 'poster',
+        quantity: 1,
+        variant_id: posterId,
+        notes: buildPosterOrderNotes(posterId),
+        customer_image_url: null,
+      },
+    ])
+    setMessage({ type: 'ok', text: 'Poster agregado al carrito.' })
+    scrollToCart()
+  }
+
+  function addStickerToCart(stickerId: ComboStickerId) {
+    if (!requireLoginForCart()) return
+    setCart((prev) => [
+      ...prev,
+      {
+        id: crypto.randomUUID(),
+        product_type: 'sticker',
+        quantity: 1,
+        variant_id: stickerId,
+        notes: buildStickerOrderNotes(stickerId),
+        customer_image_url: null,
+      },
+    ])
+    setMessage({ type: 'ok', text: 'Plancha de stickers agregada al carrito.' })
+    scrollToCart()
   }
 
   function removeCartLine(id: string) {
@@ -227,7 +342,7 @@ export default function StorePage() {
     e.preventDefault()
     setMessage(null)
     if (cart.length === 0) {
-      setMessage({ type: 'err', text: 'Agregá al menos un combo al carrito.' })
+      setMessage({ type: 'err', text: 'Agregá al menos un producto al carrito.' })
       return
     }
     setSubmitting(true)
@@ -253,7 +368,7 @@ export default function StorePage() {
     e.preventDefault()
     setMessage(null)
     if (cart.length === 0) {
-      setMessage({ type: 'err', text: 'Agregá al menos un combo al carrito.' })
+      setMessage({ type: 'err', text: 'Agregá al menos un producto al carrito.' })
       return
     }
     setSubmitting(true)
@@ -271,7 +386,7 @@ export default function StorePage() {
     const n = 'count' in res ? res.count : cart.length
     setMessage({
       type: 'ok',
-      text: `Listo: se registraron ${n} combo${n === 1 ? '' : 's'}. Te escribimos al mail que dejaste.`,
+      text: `Listo: se registraron ${n} pedido${n === 1 ? '' : 's'}. Te escribimos al mail que dejaste.`,
     })
     setCart([])
     clearCartStorage()
@@ -286,11 +401,12 @@ export default function StorePage() {
         comboPosterId={comboPosterId}
         onStickerChange={setComboStickerId}
         onPosterChange={setComboPosterId}
-        canAddCombo={canAddCombo}
+        canAddCombo={canAddCombo && loggedIn}
         onAddToCart={() => {
           addToCart()
-          document.getElementById('store-cart')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
         }}
+        onBuySticker={addStickerToCart}
+        onBuyPoster={addPosterToCart}
       />
 
       <div className="store-panel">
@@ -328,6 +444,8 @@ export default function StorePage() {
             canAddCombo={canAddCombo}
             cart={cart}
             addToCart={addToCart}
+            onBuySticker={addStickerToCart}
+            onBuyPoster={addPosterToCart}
             removeCartLine={removeCartLine}
             updateCartQty={updateCartQty}
             clearCart={clearCart}

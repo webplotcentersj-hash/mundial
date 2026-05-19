@@ -12,30 +12,27 @@ import {
 } from 'lucide-react'
 import { clearFiguritaStoreImageFromSession } from '@/lib/storePrints'
 import type { PrintOrderRow } from '@/lib/actions'
-import type { ComboPosterId, ComboStickerId } from '@/lib/store/catalog'
+import type { ComboPosterId, ComboStickerId } from '@/lib/store/gallery-assets'
+import type { StoreCartLine } from '@/lib/store/cart-lines'
 import {
   STORE_COMBO_PRICE_ARS,
+  STORE_POSTER_PRICE_ARS,
+  STORE_STICKER_PRICE_ARS,
   formatPriceARS,
+  getCartLineLabel,
+  getCartLinePreviewImage,
   getCartTotal,
-  getComboLineLabel,
   getLineSubtotal,
   getPosterOption,
   getProductLabel,
   getStickerOption,
+  getUnitPrice,
 } from '@/lib/store/catalog'
 import { POSTER_GALLERY, STICKER_SHEET_GALLERY } from '@/lib/store/gallery-assets'
 import { StoreGalleryPicker } from '@/components/store/store-gallery-picker'
 import Image from 'next/image'
 
-export type StoreCartLine = {
-  id: string
-  product_type: 'combo'
-  quantity: number
-  combo_sticker_id: ComboStickerId
-  combo_poster_id: ComboPosterId
-  notes: string
-  customer_image_url: string | null
-}
+export type { StoreCartLine }
 
 const STATUS_ES: Record<string, string> = {
   awaiting_payment: 'Esperando pago',
@@ -71,6 +68,8 @@ export type StoreCheckoutPanelProps = {
   canAddCombo: boolean
   cart: StoreCartLine[]
   addToCart: () => void
+  onBuySticker: (id: ComboStickerId) => void
+  onBuyPoster: (id: ComboPosterId) => void
   removeCartLine: (id: string) => void
   updateCartQty: (id: string, delta: number) => void
   clearCart: () => void
@@ -103,6 +102,8 @@ export function StoreCheckoutPanel({
   canAddCombo,
   cart,
   addToCart,
+  onBuySticker,
+  onBuyPoster,
   removeCartLine,
   updateCartQty,
   clearCart,
@@ -261,15 +262,19 @@ export function StoreCheckoutPanel({
                 <StoreGalleryPicker
                   label="Elegí tu plancha de stickers"
                   items={STICKER_SHEET_GALLERY}
+                  unitPrice={STORE_STICKER_PRICE_ARS}
                   value={comboStickerId}
                   onChange={(id) => setComboStickerId(id as ComboStickerId)}
+                  onBuyIndividual={(item) => onBuySticker(item.id as ComboStickerId)}
                 />
 
                 <StoreGalleryPicker
                   label="Elegí tu poster"
                   items={POSTER_GALLERY}
+                  unitPrice={STORE_POSTER_PRICE_ARS}
                   value={comboPosterId}
                   onChange={(id) => setComboPosterId(id as ComboPosterId)}
+                  onBuyIndividual={(item) => onBuyPoster(item.id as ComboPosterId)}
                 />
 
                 <div className="summary-line" style={{ marginTop: 16 }}>
@@ -360,9 +365,23 @@ export function StoreCheckoutPanel({
                 </div>
                 {cart.map((line) => (
                   <div key={line.id} className="cart-item">
-                    {line.customer_image_url ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img src={line.customer_image_url} alt="" className="cart-item-image object-top" />
+                    {getCartLinePreviewImage(line) ? (
+                      line.product_type === 'combo' ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={getCartLinePreviewImage(line)!}
+                          alt=""
+                          className="cart-item-image object-top"
+                        />
+                      ) : (
+                        <Image
+                          src={getCartLinePreviewImage(line)!}
+                          alt=""
+                          width={96}
+                          height={96}
+                          className="cart-item-image object-cover"
+                        />
+                      )
                     ) : (
                       <div
                         className="cart-item-image flex items-center justify-center text-xs font-bold uppercase"
@@ -372,20 +391,15 @@ export function StoreCheckoutPanel({
                       </div>
                     )}
                     <div className="cart-item-details">
-                      <h3>
-                        {getComboLineLabel({
-                          stickerId: line.combo_sticker_id,
-                          posterId: line.combo_poster_id,
-                        })}
-                      </h3>
+                      <h3>{getCartLineLabel(line)}</h3>
                       {line.notes ? (
                         <p className="mt-1 whitespace-pre-line text-sm">{line.notes}</p>
                       ) : null}
                       <p className="cart-item-price">
-                        {formatPriceARS(getLineSubtotal('combo', line.quantity))}
+                        {formatPriceARS(getLineSubtotal(line.product_type, line.quantity))}
                         <span className="text-sm font-normal text-[#666]">
                           {' '}
-                          ({line.quantity} × {formatPriceARS(STORE_COMBO_PRICE_ARS)})
+                          ({line.quantity} × {formatPriceARS(getUnitPrice(line.product_type))})
                         </span>
                       </p>
                     </div>

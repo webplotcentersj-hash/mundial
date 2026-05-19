@@ -4,7 +4,13 @@ import { useRef } from 'react'
 import Link from 'next/link'
 import { motion } from 'framer-motion'
 import { Sparkles, Layers, Maximize2, ArrowRight } from 'lucide-react'
-import { STORE_CATALOG, STORE_COMBO_PRICE_ARS, formatPriceARS } from '@/lib/store/catalog'
+import {
+  STORE_CATALOG,
+  STORE_COMBO_PRICE_ARS,
+  STORE_POSTER_PRICE_ARS,
+  STORE_STICKER_PRICE_ARS,
+  formatPriceARS,
+} from '@/lib/store/catalog'
 import type { ComboPosterId, ComboStickerId } from '@/lib/store/gallery-assets'
 import { POSTER_GALLERY, STICKER_SHEET_GALLERY } from '@/lib/store/gallery-assets'
 import { StoreGalleryPicker } from '@/components/store/store-gallery-picker'
@@ -23,6 +29,8 @@ type StoreLandingProps = {
   onPosterChange: (id: ComboPosterId) => void
   canAddCombo: boolean
   onAddToCart: () => void
+  onBuySticker: (id: ComboStickerId) => void
+  onBuyPoster: (id: ComboPosterId) => void
 }
 
 export function StoreLanding({
@@ -33,6 +41,8 @@ export function StoreLanding({
   onPosterChange,
   canAddCombo,
   onAddToCart,
+  onBuySticker,
+  onBuyPoster,
 }: StoreLandingProps) {
   const heroCardRef = useRef<HTMLDivElement>(null)
 
@@ -185,22 +195,26 @@ export function StoreLanding({
             <Link href="#store-armado">Ir al armado</Link>
           </div>
           <p className="store-galleries-intro">
-            Elegí la plancha de stickers y el poster para tu combo. Tu figurita personalizada se suma desde Mi
-            Figurita.
+            Tocá una imagen para verla en grande. Podés comprar cada plancha o poster por separado, o armar el combo con
+            figurita desde Mi Figurita.
           </p>
 
           <StoreGalleryPicker
             label="Planchas de stickers en vinilo"
             items={STICKER_SHEET_GALLERY}
+            unitPrice={STORE_STICKER_PRICE_ARS}
             value={comboStickerId}
             onChange={(id) => onStickerChange(id as ComboStickerId)}
+            onBuyIndividual={(item) => onBuySticker(item.id as ComboStickerId)}
           />
 
           <StoreGalleryPicker
             label="Posters"
             items={POSTER_GALLERY}
+            unitPrice={STORE_POSTER_PRICE_ARS}
             value={comboPosterId}
             onChange={(id) => onPosterChange(id as ComboPosterId)}
+            onBuyIndividual={(item) => onBuyPoster(item.id as ComboPosterId)}
             onAddToCart={onAddToCart}
             addDisabled={!canAddCombo}
             addLabel={

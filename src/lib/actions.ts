@@ -4,7 +4,12 @@ import { createClient } from './supabase/server'
 import { ensureUserProfile } from './ensureUserProfile'
 import { revalidatePath } from 'next/cache'
 import type { PrintProductType } from '@/lib/store/catalog'
-import { buildComboOrderNotes, isPrintProductType, validateComboLine } from '@/lib/store/catalog'
+import {
+  buildOrderNotesForLine,
+  isPrintProductType,
+  validateStoreCartLine,
+  type StoreCartLineInput,
+} from '@/lib/store/catalog'
 
 export type { PrintProductType } from '@/lib/store/catalog'
 
@@ -500,14 +505,7 @@ export async function createPrintOrder(input: {
 }
 
 export async function createPrintOrdersFromCart(input: {
-  lines: {
-    product_type: 'combo'
-    quantity: number
-    combo_sticker_id: string
-    combo_poster_id: string
-    notes?: string
-    customer_image_url?: string | null
-  }[]
+  lines: StoreCartLineInput[]
   contact_name: string
   contact_email: string
   contact_phone?: string
@@ -553,25 +551,28 @@ export async function createPrintOrdersFromCart(input: {
   }[] = []
 
   for (const line of input.lines) {
-    const comboCheck = validateComboLine(line)
-    if (!comboCheck.ok) return { error: comboCheck.error }
+    const check = validateStoreCartLine(line)
+    if (!check.ok) return { error: check.error }
     const qty = Math.min(99, Math.max(1, Math.floor(Number(line.quantity)) || 1))
-    const u = line.customer_image_url!.trim()
-    if (!prefix || !u.startsWith(prefix) || u.length > 2048) {
-      return { error: 'Hay una imagen adjunta inválida. Volvé a cargar desde Mi Figurita.' }
+    const orderNotes = buildOrderNotesForLine(line)
+    let customerImage: string | null = null
+    if (line.product_type === 'combo') {
+      const u = line.customer_image_url!.trim()
+      if (!prefix || !u.startsWith(prefix) || u.length > 2048) {
+        return { error: 'Hay una imagen adjunta inválida. Volvé a cargar desde Mi Figurita.' }
+      }
+      customerImage = u
     }
-    const orderNotes =
-      line.notes?.trim() || buildComboOrderNotes(comboCheck.selection)
     rows.push({
       user_id: user.id,
-      product_type: 'combo',
+      product_type: line.product_type,
       quantity: qty,
       notes: orderNotes,
       contact_name: name,
       contact_email: email,
       contact_phone: input.contact_phone?.trim() || null,
       status: 'pending',
-      customer_image_url: u,
+      customer_image_url: customerImage,
     })
   }
 
