@@ -453,7 +453,7 @@ export function StoreCheckoutPanel({
                 <p className="shipping-note text-sm" style={{ marginTop: 8 }}>
                   {mercadoPagoEnabled
                     ? 'Pagá con Mercado Pago (tarjeta, dinero en cuenta o cuotas según tu medio).'
-                    : 'Precios en pesos argentinos. El pago se coordina por mail o al retirar.'}
+                    : 'Pago online no configurado: completá MERCADOPAGO_ACCESS_TOKEN y SUPABASE_SERVICE_ROLE_KEY en .env.local, ejecutá npm run check:mp y reiniciá el servidor.'}
                 </p>
 
                 <form
@@ -502,7 +502,7 @@ export function StoreCheckoutPanel({
                   <button
                     type="submit"
                     disabled={submitting || cart.length === 0}
-                    className="btn-primary hover-lift checkout-btn flex items-center justify-center gap-2 disabled:cursor-not-allowed disabled:opacity-50"
+                    className={`btn-primary hover-lift checkout-btn flex items-center justify-center gap-2 disabled:cursor-not-allowed disabled:opacity-50${mercadoPagoEnabled ? ' checkout-btn--mp' : ''}`}
                     style={{ border: 'none', cursor: submitting ? 'wait' : 'pointer' }}
                   >
                     {submitting ? (

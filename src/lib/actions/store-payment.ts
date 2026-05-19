@@ -13,7 +13,13 @@ import {
   validateStoreCartLine,
   type StoreCartLineInput,
 } from '@/lib/store/catalog'
-import { getAppBaseUrl, getMercadoPagoClient, isMercadoPagoConfigured } from '@/lib/mercadopago/config'
+import {
+  getAppBaseUrl,
+  getMercadoPagoClient,
+  getMercadoPagoSetupStatus,
+  isMercadoPagoConfigured,
+  pickCheckoutInitPoint,
+} from '@/lib/mercadopago/config'
 
 export type CartLineInput = StoreCartLineInput
 
@@ -26,10 +32,10 @@ export async function createMercadoPagoCheckoutFromCart(input: {
   | { success: true; initPoint: string; checkoutId: string }
   | { error: string }
 > {
-  if (!isMercadoPagoConfigured()) {
+  const setup = getMercadoPagoSetupStatus()
+  if (!setup.ready) {
     return {
-      error:
-        'Mercado Pago no está configurado. Agregá MERCADOPAGO_ACCESS_TOKEN en el servidor (Vercel / .env.local).',
+      error: `Mercado Pago no está listo. Faltan: ${setup.missing.join(', ')}. Ver .env.example y ejecutá: node scripts/check-mp-config.mjs`,
     }
   }
 
@@ -178,10 +184,7 @@ export async function createMercadoPagoCheckoutFromCart(input: {
     })
 
     const preferenceId = preference.id
-    const initPoint =
-      preference.init_point ??
-      preference.sandbox_init_point ??
-      (preference as { init_point?: string }).init_point
+    const initPoint = pickCheckoutInitPoint(preference)
 
     if (!preferenceId || !initPoint) {
       return { error: 'Mercado Pago no devolvió URL de pago.' }

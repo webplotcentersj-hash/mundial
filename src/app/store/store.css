@@ -950,6 +950,15 @@
   margin-top: 8px;
 }
 
+.plot-store .checkout-btn--mp {
+  background: #009ee3;
+  color: #fff;
+}
+
+.plot-store .checkout-btn--mp:hover:not(:disabled) {
+  background: #007eb5;
+}
+
 /* Profile Page */
 .profile-section {
   max-width: 1000px;
