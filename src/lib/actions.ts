@@ -10,6 +10,7 @@ import {
   validateStoreCartLine,
   type StoreCartLineInput,
 } from '@/lib/store/catalog'
+import { getPrintImageFieldsForLine } from '@/lib/store/order-print-assets'
 
 export type { PrintProductType } from '@/lib/store/catalog'
 
@@ -65,9 +66,21 @@ export type PrintOrderStatus =
   | 'shipped'
   | 'cancelled'
 
+export type StoreCheckoutSummary = {
+  id: string
+  total_ars: number
+  payment_status: string
+  mp_payment_id: string | null
+  mp_preference_id: string | null
+  contact_name: string
+  contact_email: string
+  created_at: string
+}
+
 export type PrintOrderRow = {
   id: string
   user_id: string
+  checkout_id?: string | null
   product_type: PrintProductType
   quantity: number
   notes: string | null
@@ -77,10 +90,19 @@ export type PrintOrderRow = {
   status: PrintOrderStatus
   admin_notes: string | null
   customer_image_url: string | null
+  variant_image_url?: string | null
+  combo_sticker_image_url?: string | null
+  combo_poster_image_url?: string | null
   admin_file_url: string | null
   created_at: string
   updated_at: string
   profiles?: { username: string | null; avatar_url: string | null } | null
+  store_checkouts?: StoreCheckoutSummary | StoreCheckoutSummary[] | null
+}
+
+export type AdminStoreDashboard = {
+  orders: PrintOrderRow[]
+  checkouts: StoreCheckoutSummary[]
 }
 
 // --- ACCIONES DE USUARIO ---
@@ -404,21 +426,58 @@ export async function getAdminUserDetail(userId: string): Promise<AdminUserDetai
 }
 
 export async function listPrintOrdersForAdmin(): Promise<PrintOrderRow[]> {
+  const dash = await getAdminStoreDashboard()
+  return dash.orders
+}
+
+export async function getAdminStoreDashboard(): Promise<AdminStoreDashboard> {
   const isAdmin = await verifyAdmin()
   if (!isAdmin) throw new Error('No autorizado')
 
   const supabase = await createClient()
-  const { data, error } = await supabase
-    .from('print_orders')
-    .select('*, profiles(username, avatar_url)')
-    .order('created_at', { ascending: false })
-    .limit(300)
+  const [ordersRes, checkoutsRes] = await Promise.all([
+    supabase
+      .from('print_orders')
+      .select(
+        `
+        *,
+        profiles(username, avatar_url),
+        store_checkouts:checkout_id (
+          id,
+          total_ars,
+          payment_status,
+          mp_payment_id,
+          mp_preference_id,
+          contact_name,
+          contact_email,
+          created_at
+        )
+      `,
+      )
+      .order('created_at', { ascending: false })
+      .limit(400),
+    supabase
+      .from('store_checkouts')
+      .select(
+        'id, total_ars, payment_status, mp_payment_id, mp_preference_id, contact_name, contact_email, created_at',
+      )
+      .order('created_at', { ascending: false })
+      .limit(200),
+  ])
 
-  if (error) {
-    console.error('Error listing print orders:', error)
+  if (ordersRes.error) {
+    console.error('Error listing print orders:', ordersRes.error)
     throw new Error('No se pudieron cargar los pedidos')
   }
-  return (data ?? []) as PrintOrderRow[]
+  if (checkoutsRes.error) {
+    console.error('Error listing store checkouts:', checkoutsRes.error)
+    throw new Error('No se pudieron cargar los pagos de Mercado Pago')
+  }
+
+  return {
+    orders: (ordersRes.data ?? []) as PrintOrderRow[],
+    checkouts: (checkoutsRes.data ?? []) as StoreCheckoutSummary[],
+  }
 }
 
 export async function listMyPrintOrders(): Promise<PrintOrderRow[]> {
@@ -538,23 +597,14 @@ export async function createPrintOrdersFromCart(input: {
 
   const baseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL?.replace(/\/$/, '')
   const prefix = baseUrl ? `${baseUrl}/storage/v1/object/public/store-prints/` : null
-  const rows: {
-    user_id: string
-    product_type: PrintProductType
-    quantity: number
-    notes: string | null
-    contact_name: string
-    contact_email: string
-    contact_phone: string | null
-    status: 'pending'
-    customer_image_url: string | null
-  }[] = []
+  const rows: Record<string, unknown>[] = []
 
   for (const line of input.lines) {
     const check = validateStoreCartLine(line)
     if (!check.ok) return { error: check.error }
     const qty = Math.min(99, Math.max(1, Math.floor(Number(line.quantity)) || 1))
     const orderNotes = buildOrderNotesForLine(line)
+    const images = getPrintImageFieldsForLine(line)
     let customerImage: string | null = null
     if (line.product_type === 'combo') {
       const u = line.customer_image_url!.trim()
@@ -573,6 +623,7 @@ export async function createPrintOrdersFromCart(input: {
       contact_phone: input.contact_phone?.trim() || null,
       status: 'pending',
       customer_image_url: customerImage,
+      ...images,
     })
   }
 

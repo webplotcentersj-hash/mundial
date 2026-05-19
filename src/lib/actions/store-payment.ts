@@ -20,6 +20,7 @@ import {
   isMercadoPagoConfigured,
   pickCheckoutInitPoint,
 } from '@/lib/mercadopago/config'
+import { getPrintImageFieldsForLine } from '@/lib/store/order-print-assets'
 
 export type CartLineInput = StoreCartLineInput
 
@@ -97,24 +98,14 @@ export async function createMercadoPagoCheckoutFromCart(input: {
   }
 
   const checkoutId = checkoutRow.id as string
-  const orderRows: {
-    user_id: string
-    checkout_id: string
-    product_type: PrintProductType
-    quantity: number
-    notes: string | null
-    contact_name: string
-    contact_email: string
-    contact_phone: string | null
-    status: 'awaiting_payment'
-    customer_image_url: string | null
-  }[] = []
+  const orderRows: Record<string, unknown>[] = []
 
   for (const line of input.lines) {
     const check = validateStoreCartLine(line)
     if (!check.ok) return { error: check.error }
     const qty = Math.min(99, Math.max(1, Math.floor(Number(line.quantity)) || 1))
     const orderNotes = buildOrderNotesForLine(line)
+    const images = getPrintImageFieldsForLine(line)
     let customerImage: string | null = null
     if (line.product_type === 'combo') {
       const u = line.customer_image_url!.trim()
@@ -134,6 +125,7 @@ export async function createMercadoPagoCheckoutFromCart(input: {
       contact_phone: input.contact_phone?.trim() || null,
       status: 'awaiting_payment',
       customer_image_url: customerImage,
+      ...images,
     })
   }
 

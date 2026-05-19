@@ -1,5 +1,7 @@
 /* Estilos del template GZ Store — scoped a .plot-store para no afectar el resto del sitio */
 .plot-store {
+  --store-nav-offset: 4rem;
+  --store-subnav-height: 3.5rem;
   font-family: var(--font-store-sans), "Space Grotesk", sans-serif;
   background-color: rgb(248, 248, 248);
   color: rgb(17, 17, 17);
@@ -1746,6 +1748,10 @@
   padding: 24px 20px 48px;
 }
 
+.plot-store #store-cart {
+  scroll-margin-top: calc(var(--store-nav-offset, 4rem) + var(--store-subnav-height, 3.5rem) + 0.75rem);
+}
+
 /* Home: bloque “Cómo funciona” con tres tarjetas */
 .plot-home-store .product-grid {
   grid-template-columns: repeat(3, 1fr);
@@ -1875,12 +1881,21 @@
 
 /* Subnav + páginas simplificadas */
 .plot-store .store-subnav {
-  position: sticky;
-  top: 4rem;
-  z-index: 40;
+  position: fixed;
+  top: var(--store-nav-offset);
+  left: 0;
+  right: 0;
+  width: 100%;
+  z-index: 45;
   border-bottom: 2px solid #111;
   background: #f8f8f8;
   padding: 0 16px;
+}
+
+.plot-store .store-subnav-spacer {
+  height: var(--store-subnav-height);
+  flex-shrink: 0;
+  pointer-events: none;
 }
 
 .plot-store .store-subnav__inner {
@@ -1924,8 +1939,9 @@
 }
 
 .plot-store .store-page-section {
-  padding: 32px 0 24px;
+  padding: 24px 0 24px;
   border-bottom: 2px solid #111;
+  scroll-margin-top: calc(var(--store-nav-offset) + var(--store-subnav-height) + 0.75rem);
 }
 
 .plot-store .store-page-section .container {

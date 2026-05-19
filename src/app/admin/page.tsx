@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Settings, Save, ShieldAlert, Users, Trophy, Download, Eye, Loader2, Store, Upload, RotateCcw, X } from 'lucide-react'
+import { Settings, Save, ShieldAlert, Users, Trophy, Download, Eye, Loader2, Store, RotateCcw, X } from 'lucide-react'
 import Image from 'next/image'
 import { motion, AnimatePresence } from 'framer-motion'
 import { createClient } from '@/lib/supabase/client'
@@ -12,30 +12,17 @@ import {
   getAdminUserDetail,
   type AdminUserDetail,
   type AdminProfileListItem,
-  listPrintOrdersForAdmin,
+  getAdminStoreDashboard,
   updatePrintOrderAdmin,
   updateMatchScore,
   resetMatchResult,
   adminSyncRankingTotalsFromPredictions,
-  type PrintOrderRow,
+  type AdminStoreDashboard,
   type PrintOrderStatus,
 } from '@/lib/actions'
-import { getProductLabel } from '@/lib/store/catalog'
 import { AdminUserFichaModal } from '@/components/admin/AdminUserFichaModal'
-
-const PRINT_STATUS_OPTIONS: { value: PrintOrderStatus; label: string }[] = [
-  { value: 'awaiting_payment', label: 'Esperando pago' },
-  { value: 'pending', label: 'Pendiente' },
-  { value: 'in_review', label: 'En revisión' },
-  { value: 'printing', label: 'Producción' },
-  { value: 'ready', label: 'Listo' },
-  { value: 'shipped', label: 'Enviado' },
-  { value: 'cancelled', label: 'Cancelado' },
-]
-
-function productTypeLabel(t: string) {
-  return getProductLabel(t)
-}
+import { AdminStoreOrdersPanel } from '@/components/admin/AdminStoreOrdersPanel'
+import './admin-store.css'
 
 function formatAdminDate(iso: string | null | undefined) {
   if (!iso) return '—'
@@ -58,7 +45,7 @@ export default function AdminPage() {
   const [results, setResults] = useState<Record<string, { home: string, away: string }>>({})
   const [activeTab, setActiveTab] = useState<'results' | 'users' | 'podium' | 'print-orders'>('results')
 
-  const [printOrders, setPrintOrders] = useState<PrintOrderRow[]>([])
+  const [storeDashboard, setStoreDashboard] = useState<AdminStoreDashboard | null>(null)
   const [printOrdersLoading, setPrintOrdersLoading] = useState(false)
   const [printSavingId, setPrintSavingId] = useState<string | null>(null)
   const [adminNotesDraft, setAdminNotesDraft] = useState<Record<string, string>>({})
@@ -89,12 +76,12 @@ export default function AdminPage() {
     async function loadPrint() {
       setPrintOrdersLoading(true)
       try {
-        const rows = await listPrintOrdersForAdmin()
+        const dash = await getAdminStoreDashboard()
         if (cancelled) return
-        setPrintOrders(rows)
+        setStoreDashboard(dash)
         setAdminNotesDraft((prev) => {
           const next = { ...prev }
-          for (const o of rows) {
+          for (const o of dash.orders) {
             if (next[o.id] === undefined) next[o.id] = o.admin_notes ?? ''
           }
           return next
@@ -115,7 +102,9 @@ export default function AdminPage() {
     setPrintSavingId(orderId)
     try {
       await updatePrintOrderAdmin(orderId, { status })
-      setPrintOrders((prev) => prev.map((o) => (o.id === orderId ? { ...o, status } : o)))
+      setStoreDashboard((prev) =>
+        prev ? { ...prev, orders: prev.orders.map((o) => (o.id === orderId ? { ...o, status } : o)) } : prev,
+      )
     } catch (e: any) {
       alert(e?.message || 'No se pudo actualizar el estado')
     } finally {
@@ -128,8 +117,15 @@ export default function AdminPage() {
     try {
       const notes = adminNotesDraft[orderId] ?? ''
       await updatePrintOrderAdmin(orderId, { admin_notes: notes.trim() || null })
-      setPrintOrders((prev) =>
-        prev.map((o) => (o.id === orderId ? { ...o, admin_notes: notes.trim() || null } : o)),
+      setStoreDashboard((prev) =>
+        prev
+          ? {
+              ...prev,
+              orders: prev.orders.map((o) =>
+                o.id === orderId ? { ...o, admin_notes: notes.trim() || null } : o,
+              ),
+            }
+          : prev,
       )
     } catch (e: any) {
       alert(e?.message || 'No se pudieron guardar las notas')
@@ -161,7 +157,11 @@ export default function AdminPage() {
       if (upErr) throw new Error(upErr.message)
       const pub = supabase.storage.from(STORE_PRINTS_BUCKET).getPublicUrl(path).data.publicUrl
       await updatePrintOrderAdmin(orderId, { admin_file_url: pub })
-      setPrintOrders((prev) => prev.map((o) => (o.id === orderId ? { ...o, admin_file_url: pub } : o)))
+      setStoreDashboard((prev) =>
+        prev
+          ? { ...prev, orders: prev.orders.map((o) => (o.id === orderId ? { ...o, admin_file_url: pub } : o)) }
+          : prev,
+      )
     } catch (e: any) {
       alert(e?.message || 'No se pudo subir el archivo (¿bucket store-prints y políticas SQL?)')
     } finally {
@@ -611,178 +611,19 @@ export default function AdminPage() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -20 }}
-              className="space-y-6"
             >
-              <div className="flex flex-col gap-2 rounded-2xl border border-violet-500/25 bg-violet-500/5 p-6 backdrop-blur-sm shadow-xl sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                  <h3 className="text-lg font-bold text-violet-200">Pedidos del Store</h3>
-                  <p className="text-sm text-white/55">
-                    Figuritas, stickers y posters desde{' '}
-                    <a href="/store" className="font-semibold text-violet-300 underline decoration-violet-500/40 underline-offset-2">
-                      /store
-                    </a>
-                    .
-                  </p>
-                </div>
-              </div>
-
-              {printOrdersLoading ? (
-                <div className="flex justify-center py-16">
-                  <Loader2 className="h-10 w-10 animate-spin text-violet-400" />
-                </div>
-              ) : printOrders.length === 0 ? (
-                <p className="rounded-2xl border border-white/10 bg-[#0a0f1c]/80 px-6 py-12 text-center text-white/50">
-                  No hay pedidos todavía.
-                </p>
-              ) : (
-                <div className="glass-card overflow-hidden rounded-2xl border border-white/10 bg-[#0a0f1c]/80 backdrop-blur-xl">
-                  <div className="overflow-x-auto">
-                    <table className="w-full min-w-[1100px] text-left text-sm">
-                      <thead className="border-b border-white/10 bg-white/5 text-xs uppercase tracking-widest text-white/50">
-                        <tr>
-                          <th className="px-4 py-3 font-bold">Fecha</th>
-                          <th className="px-4 py-3 font-bold">Usuario</th>
-                          <th className="px-4 py-3 font-bold">Producto</th>
-                          <th className="px-4 py-3 font-bold text-center">Cant.</th>
-                          <th className="px-4 py-3 font-bold">Contacto</th>
-                          <th className="px-4 py-3 font-bold">Arte / adjuntos</th>
-                          <th className="px-4 py-3 font-bold">Estado</th>
-                          <th className="px-4 py-3 font-bold">Notas admin</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-white/5">
-                        {printOrders.map((o) => (
-                          <tr key={o.id} className="align-top hover:bg-white/[0.03]">
-                            <td className="whitespace-nowrap px-4 py-3 text-white/45">
-                              {new Date(o.created_at).toLocaleString('es-AR')}
-                            </td>
-                            <td className="px-4 py-3">
-                              <div className="flex items-center gap-2">
-                                <div className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-full bg-gradient-to-br from-violet-500 to-fuchsia-600 text-xs font-bold text-white">
-                                  {o.profiles?.avatar_url ? (
-                                    // eslint-disable-next-line @next/next/no-img-element
-                                    <img src={o.profiles.avatar_url} alt="" className="h-full w-full object-cover" />
-                                  ) : (
-                                    (o.profiles?.username || '?').charAt(0).toUpperCase()
-                                  )}
-                                </div>
-                                <span className="font-semibold text-white">{o.profiles?.username || '—'}</span>
-                              </div>
-                            </td>
-                            <td className="px-4 py-3 font-medium text-white/90">{productTypeLabel(o.product_type)}</td>
-                            <td className="px-4 py-3 text-center font-mono text-white/80">{o.quantity}</td>
-                            <td className="max-w-[220px] px-4 py-3 text-xs text-white/70">
-                              <div className="font-semibold text-white/90">{o.contact_name}</div>
-                              <div>{o.contact_email}</div>
-                              {o.contact_phone && <div className="text-white/50">{o.contact_phone}</div>}
-                              {o.notes && (
-                                <p className="mt-1 line-clamp-3 border-t border-white/10 pt-1 text-white/45" title={o.notes}>
-                                  {o.notes}
-                                </p>
-                              )}
-                            </td>
-                            <td className="max-w-[200px] px-4 py-3 align-top text-xs text-white/70">
-                              <div className="space-y-2">
-                                {o.customer_image_url ? (
-                                  <a
-                                    href={o.customer_image_url}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="block"
-                                  >
-                                    <span className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-white/40">
-                                      Arte cliente
-                                    </span>
-                                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                                    <img
-                                      src={o.customer_image_url}
-                                      alt=""
-                                      className="h-20 w-14 rounded border border-white/15 object-cover object-top"
-                                    />
-                                  </a>
-                                ) : (
-                                  <span className="text-white/35">Sin arte</span>
-                                )}
-                                {o.admin_file_url ? (
-                                  <a
-                                    href={o.admin_file_url}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="block break-all font-medium text-violet-300 underline decoration-violet-500/40 underline-offset-2 hover:text-violet-200"
-                                  >
-                                    Ver archivo admin
-                                  </a>
-                                ) : null}
-                                <div>
-                                  <input
-                                    type="file"
-                                    id={`admin-store-up-${o.id}`}
-                                    className="hidden"
-                                    accept="image/png,image/jpeg,image/webp,application/pdf"
-                                    disabled={printSavingId === o.id}
-                                    onChange={(e) => {
-                                      const f = e.target.files?.[0] ?? null
-                                      void handleAdminStoreFileUpload(o.id, f)
-                                      e.target.value = ''
-                                    }}
-                                  />
-                                  <label
-                                    htmlFor={`admin-store-up-${o.id}`}
-                                    className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-white/15 bg-white/5 px-2.5 py-1.5 text-[11px] font-bold text-white/80 transition hover:border-violet-400/40 hover:bg-violet-500/10 hover:text-white"
-                                  >
-                                    <Upload className="h-3.5 w-3.5" aria-hidden />
-                                    Subir archivo
-                                  </label>
-                                </div>
-                              </div>
-                            </td>
-                            <td className="px-4 py-3">
-                              <div className="flex items-center gap-2">
-                                <select
-                                  value={o.status}
-                                  disabled={printSavingId === o.id}
-                                  onChange={(e) =>
-                                    handlePrintStatusChange(o.id, e.target.value as PrintOrderStatus)
-                                  }
-                                  className="max-w-[160px] rounded-lg border border-white/15 bg-[#060913] px-2 py-2 text-xs font-semibold text-white outline-none focus:ring-2 focus:ring-violet-500/50 disabled:opacity-50"
-                                >
-                                  {PRINT_STATUS_OPTIONS.map((opt) => (
-                                    <option key={opt.value} value={opt.value}>
-                                      {opt.label}
-                                    </option>
-                                  ))}
-                                </select>
-                                {printSavingId === o.id && (
-                                  <Loader2 className="h-4 w-4 shrink-0 animate-spin text-violet-400" />
-                                )}
-                              </div>
-                            </td>
-                            <td className="px-4 py-3">
-                              <textarea
-                                rows={2}
-                                value={adminNotesDraft[o.id] ?? ''}
-                                onChange={(e) =>
-                                  setAdminNotesDraft((prev) => ({ ...prev, [o.id]: e.target.value }))
-                                }
-                                className="mb-2 w-full min-w-[180px] resize-y rounded-lg border border-white/10 bg-black/40 px-2 py-2 text-xs text-white outline-none focus:ring-2 focus:ring-violet-500/40"
-                                placeholder="Interno…"
-                              />
-                              <button
-                                type="button"
-                                disabled={printSavingId === o.id}
-                                onClick={() => handleSavePrintAdminNotes(o.id)}
-                                className="rounded-lg border border-violet-500/40 bg-violet-500/20 px-3 py-1.5 text-xs font-bold text-violet-100 transition hover:bg-violet-500/30 disabled:opacity-40"
-                              >
-                                Guardar nota
-                              </button>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              )}
+              <AdminStoreOrdersPanel
+                loading={printOrdersLoading}
+                data={storeDashboard}
+                printSavingId={printSavingId}
+                adminNotesDraft={adminNotesDraft}
+                onNotesDraftChange={(id, value) =>
+                  setAdminNotesDraft((prev) => ({ ...prev, [id]: value }))
+                }
+                onStatusChange={handlePrintStatusChange}
+                onSaveAdminNotes={handleSavePrintAdminNotes}
+                onAdminFileUpload={handleAdminStoreFileUpload}
+              />
             </motion.div>
           )}
         </AnimatePresence>

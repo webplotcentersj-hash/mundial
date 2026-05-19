@@ -1,0 +1,415 @@
+/* Panel Store en /admin — estética sólida Plot Store */
+.admin-store {
+  background: #f4f4f4;
+  border: 3px solid #111;
+  box-shadow: 8px 8px 0 #111;
+  padding: 24px;
+  color: #111;
+}
+
+.admin-store__hero {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 24px;
+  padding-bottom: 20px;
+  border-bottom: 2px solid #111;
+}
+
+.admin-store__hero-text {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.admin-store__title {
+  font-family: var(--font-store-display, 'Archivo Black', sans-serif);
+  font-size: 1.75rem;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+}
+
+.admin-store__subtitle {
+  font-size: 0.9rem;
+  color: #444;
+  margin-top: 4px;
+}
+
+.admin-store__cta {
+  display: inline-flex;
+  align-items: center;
+  padding: 10px 18px;
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  background: #ccff00;
+  border: 2px solid #111;
+  color: #111;
+  text-decoration: none;
+  box-shadow: 4px 4px 0 #111;
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+
+.admin-store__cta:hover {
+  transform: translate(-2px, -2px);
+  box-shadow: 6px 6px 0 #111;
+}
+
+.admin-store__stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.admin-store__stat {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 14px 16px;
+  background: #fff;
+  border: 2px solid #111;
+}
+
+.admin-store__stat--accent {
+  background: #ccff00;
+}
+
+.admin-store__stat-label {
+  display: block;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #555;
+}
+
+.admin-store__stat strong {
+  display: block;
+  font-size: 1.25rem;
+  font-weight: 900;
+  margin-top: 4px;
+}
+
+.admin-store__stat-hint {
+  display: block;
+  font-size: 11px;
+  margin-top: 4px;
+  color: #333;
+}
+
+.admin-store__toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+.admin-store__search-wrap {
+  position: relative;
+  flex: 1 1 280px;
+}
+
+.admin-store__search-icon {
+  position: absolute;
+  left: 16px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 22px;
+  height: 22px;
+  color: #111;
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+.admin-store__search {
+  width: 100%;
+  padding: 16px 16px 16px 48px;
+  font-size: 1rem;
+  font-weight: 600;
+  border: 3px solid #111;
+  background: #fff;
+  color: #111;
+  outline: none;
+}
+
+.admin-store__search:focus {
+  box-shadow: 4px 4px 0 #ccff00;
+}
+
+.admin-store__select {
+  padding: 12px 14px;
+  font-size: 13px;
+  font-weight: 700;
+  border: 2px solid #111;
+  background: #fff;
+  color: #111;
+  min-width: 160px;
+}
+
+.admin-store__select--full {
+  width: 100%;
+  min-width: 0;
+}
+
+.admin-store__loading,
+.admin-store__empty {
+  text-align: center;
+  padding: 48px 24px;
+  background: #fff;
+  border: 2px dashed #999;
+  font-weight: 600;
+  color: #555;
+}
+
+.admin-store__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.admin-store-card {
+  background: #fff;
+  border: 2px solid #111;
+  padding: 18px;
+}
+
+.admin-store-card__head {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.admin-store-card__date {
+  font-size: 12px;
+  color: #666;
+  font-weight: 600;
+}
+
+.admin-store-card__product {
+  font-family: var(--font-store-display, 'Archivo Black', sans-serif);
+  font-size: 1.35rem;
+  margin-top: 4px;
+}
+
+.admin-store-card__user {
+  font-size: 13px;
+  color: #5d3fd3;
+  font-weight: 700;
+  margin-top: 2px;
+}
+
+.admin-store-card__badges {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+}
+
+.admin-store-card__price {
+  font-size: 1.25rem;
+  font-weight: 900;
+}
+
+.admin-store-card__qty {
+  font-size: 12px;
+  color: #666;
+}
+
+.admin-store-badge {
+  display: inline-block;
+  padding: 4px 10px;
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  border: 2px solid #111;
+}
+
+.admin-store-badge--ok {
+  background: #ccff00;
+}
+
+.admin-store-badge--warn {
+  background: #ffe566;
+}
+
+.admin-store-badge--err {
+  background: #ff3366;
+  color: #fff;
+}
+
+.admin-store-badge--muted {
+  background: #e8e8e8;
+  color: #555;
+}
+
+.admin-store-card__prints {
+  margin-bottom: 16px;
+  padding: 14px;
+  background: #fafafa;
+  border: 2px solid #ddd;
+}
+
+.admin-store-card__prints-title {
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-bottom: 12px;
+  color: #111;
+}
+
+.admin-store-card__prints-empty {
+  font-size: 13px;
+  color: #888;
+}
+
+.admin-store-card__thumbs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.admin-store-thumb {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  text-decoration: none;
+  color: #111;
+  border: 2px solid #111;
+  padding: 8px;
+  background: #fff;
+  transition: box-shadow 0.15s;
+}
+
+.admin-store-thumb:hover {
+  box-shadow: 4px 4px 0 #ccff00;
+}
+
+.admin-store-thumb__label {
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.admin-store-thumb__img {
+  width: 100px;
+  height: 100px;
+  object-fit: cover;
+  border: 1px solid #ccc;
+}
+
+.admin-store-thumb__img--figurita {
+  width: 72px;
+  height: 100px;
+  object-position: top;
+}
+
+.admin-store-card__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+  margin-bottom: 12px;
+}
+
+.admin-store-card__label {
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #888;
+  margin-bottom: 4px;
+}
+
+.admin-store-card__value {
+  font-weight: 700;
+  font-size: 14px;
+}
+
+.admin-store-card__value-muted {
+  font-size: 13px;
+  color: #555;
+}
+
+.admin-store-card__mono {
+  font-size: 11px;
+  font-family: ui-monospace, monospace;
+  color: #444;
+  word-break: break-all;
+}
+
+.admin-store-card__notes {
+  margin-bottom: 12px;
+  font-size: 13px;
+}
+
+.admin-store-card__notes pre {
+  margin-top: 8px;
+  padding: 10px;
+  background: #f0f0f0;
+  border: 1px solid #ccc;
+  white-space: pre-wrap;
+  font-size: 12px;
+}
+
+.admin-store-card__admin {
+  border-top: 2px dashed #ddd;
+  padding-top: 12px;
+}
+
+.admin-store__textarea {
+  width: 100%;
+  padding: 10px;
+  border: 2px solid #111;
+  font-size: 13px;
+  resize: vertical;
+  margin-bottom: 8px;
+}
+
+.admin-store-card__admin-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.admin-store__btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+  border: 2px solid #111;
+  background: #111;
+  color: #fff;
+  cursor: pointer;
+}
+
+.admin-store__btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.admin-store__btn--ghost {
+  background: #fff;
+  color: #111;
+}
+
+.admin-store__link {
+  font-size: 12px;
+  font-weight: 700;
+  color: #5d3fd3;
+  text-decoration: underline;
+}

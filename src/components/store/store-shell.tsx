@@ -13,6 +13,7 @@ export function StoreShell({
   return (
     <StoreProvider>
       <StoreSubnav />
+      <div className="store-subnav-spacer" aria-hidden />
       {children}
       <div className="store-panel">
         <StoreLoginGate>

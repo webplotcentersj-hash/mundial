@@ -79,7 +79,7 @@ export function StoreCartBlock() {
         )}
       </AnimatePresence>
 
-      <section id="store-cart" className="cart-section scroll-mt-28">
+      <section id="store-cart" className="cart-section">
         <div className="cart-container">
           <h2 className="cart-title">Carrito</h2>
 
