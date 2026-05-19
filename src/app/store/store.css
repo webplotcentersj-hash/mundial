@@ -1872,3 +1872,114 @@
   font-size: 13px;
   color: #666;
 }
+
+/* Subnav + páginas simplificadas */
+.plot-store .store-subnav {
+  position: sticky;
+  top: 4rem;
+  z-index: 40;
+  border-bottom: 2px solid #111;
+  background: #f8f8f8;
+  padding: 0 16px;
+}
+
+.plot-store .store-subnav__inner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 10px 0;
+}
+
+.plot-store .store-subnav__link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  font-size: 13px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #111;
+  text-decoration: none;
+  border: 2px solid transparent;
+  transition: 0.15s;
+}
+
+.plot-store .store-subnav__link:hover {
+  border-color: #111;
+  background: #fff;
+}
+
+.plot-store .store-subnav__link--active {
+  border-color: #111;
+  background: #ccff00;
+  box-shadow: 3px 3px 0 #111;
+}
+
+.plot-store .store-subnav__link--cart {
+  margin-left: auto;
+}
+
+.plot-store .store-page-section {
+  padding: 32px 0 24px;
+  border-bottom: 2px solid #111;
+}
+
+.plot-store .store-page-section .container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 20px;
+}
+
+.plot-store .store-page-header {
+  margin-bottom: 28px;
+  max-width: 640px;
+}
+
+.plot-store .store-page-title {
+  font-family: var(--font-store-display), "Archivo Black", sans-serif;
+  font-size: clamp(2rem, 5vw, 2.75rem);
+  line-height: 1.05;
+  margin: 8px 0 12px;
+  letter-spacing: -0.02em;
+}
+
+.plot-store .store-page-lead {
+  color: #444;
+  font-size: 1rem;
+  line-height: 1.5;
+}
+
+.plot-store .store-page-price {
+  font-weight: 800;
+  font-size: 1.25rem;
+  margin-top: 12px;
+}
+
+.plot-store .store-page-subtitle {
+  font-family: var(--font-store-display), "Archivo Black", sans-serif;
+  font-size: 1.25rem;
+  margin-bottom: 16px;
+}
+
+.plot-store .store-combo-actions {
+  margin-top: 24px;
+  padding-top: 24px;
+  border-top: 2px dashed #ccc;
+  max-width: 480px;
+}
+
+.plot-store .store-orders-compact {
+  padding-bottom: 48px;
+}
+
+.plot-store .store-orders-compact .orders-list {
+  margin-top: 0;
+}
+
+.plot-store .store-panel {
+  padding-top: 0;
+}

@@ -1,4 +1,5 @@
 import { Archivo_Black, Space_Grotesk } from 'next/font/google'
+import { StoreShell } from '@/components/store/store-shell'
 import './store.css'
 
 const storeSans = Space_Grotesk({
@@ -13,5 +14,9 @@ const storeDisplay = Archivo_Black({
 })
 
 export default function StoreLayout({ children }: { children: React.ReactNode }) {
-  return <div className={`plot-store ${storeSans.variable} ${storeDisplay.variable}`}>{children}</div>
+  return (
+    <div className={`plot-store ${storeSans.variable} ${storeDisplay.variable}`}>
+      <StoreShell>{children}</StoreShell>
+    </div>
+  )
 }

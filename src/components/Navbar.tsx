@@ -16,8 +16,8 @@ import {
   LogIn,
   LogOut,
   UserRound,
-  Store,
 } from 'lucide-react'
+import { NavStoreMenu } from '@/components/nav-store-menu'
 import { motion, AnimatePresence } from 'framer-motion'
 import { usePathname } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
@@ -32,7 +32,6 @@ const navLinks: { href: string; label: string; icon: LucideIcon }[] = [
   { href: '/ranking', label: 'Ranking', icon: Medal },
   { href: '/trivia', label: 'Trivia', icon: HelpCircle },
   { href: '/figurita', label: 'Mi Figurita', icon: Sparkles },
-  { href: '/store', label: 'Store', icon: Store },
   { href: '/dashboard', label: 'Mi Prode', icon: LayoutDashboard },
 ]
 
@@ -160,6 +159,10 @@ export default function Navbar() {
                   <span className="whitespace-nowrap">{label}</span>
                 </Link>
               ))}
+              <NavStoreMenu
+                plotStoreChrome={plotStoreChrome}
+                itemClass={plotStoreChrome ? navItemPlotStore : navItemClass}
+              />
             </div>
 
             <div className="flex items-center gap-2 shrink-0">
@@ -252,6 +255,37 @@ export default function Navbar() {
                   {label}
                 </Link>
               ))}
+              <div className="flex flex-col gap-1 border-t border-[#111]/15 pt-2 mt-1">
+                <p
+                  className={cn(
+                    'px-2 text-xs font-bold uppercase tracking-wide',
+                    plotStoreChrome ? 'text-[#666]' : 'text-white/50',
+                  )}
+                >
+                  Store
+                </p>
+                <Link
+                  href="/store/combo"
+                  onClick={() => setMobileOpen(false)}
+                  className={cn(plotStoreChrome ? navItemPlotStore : navItemClass, 'justify-center py-3')}
+                >
+                  Combo
+                </Link>
+                <Link
+                  href="/store/posters"
+                  onClick={() => setMobileOpen(false)}
+                  className={cn(plotStoreChrome ? navItemPlotStore : navItemClass, 'justify-center py-3')}
+                >
+                  Posters
+                </Link>
+                <Link
+                  href="/store/stickers"
+                  onClick={() => setMobileOpen(false)}
+                  className={cn(plotStoreChrome ? navItemPlotStore : navItemClass, 'justify-center py-3')}
+                >
+                  Stickers
+                </Link>
+              </div>
               {authReady && user ? (
                 <div
                   className={cn(
