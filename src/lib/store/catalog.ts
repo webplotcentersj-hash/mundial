@@ -1,8 +1,32 @@
 /** Catálogo del Store: solo combo (figurita + plancha stickers + poster). */
 
+import {
+  DEFAULT_COMBO_POSTER_ID,
+  DEFAULT_COMBO_STICKER_ID,
+  POSTER_GALLERY,
+  STICKER_SHEET_GALLERY,
+  getPosterAsset,
+  getStickerAsset,
+  isComboPosterId,
+  isComboStickerId,
+  type ComboPosterId,
+  type ComboStickerId,
+} from '@/lib/store/gallery-assets'
+
+export type { ComboPosterId, ComboStickerId }
+export {
+  DEFAULT_COMBO_POSTER_ID,
+  DEFAULT_COMBO_STICKER_ID,
+  POSTER_GALLERY,
+  STICKER_SHEET_GALLERY,
+  getPosterAsset,
+  getStickerAsset,
+  isComboPosterId,
+  isComboStickerId,
+}
+
 export type PrintProductType = 'combo' | 'poster' | 'sticker' | 'figurita'
 
-/** Tipos que aún pueden existir en pedidos viejos; venta nueva = solo combo. */
 export const PRINT_PRODUCT_TYPES: PrintProductType[] = ['combo', 'poster', 'sticker', 'figurita']
 
 export const STORE_SELLABLE_PRODUCT_TYPE = 'combo' as const
@@ -10,66 +34,9 @@ export type SellableProductType = typeof STORE_SELLABLE_PRODUCT_TYPE
 
 export const STORE_COMBO_PRICE_ARS = 10_000
 
-export type ComboStickerId = 'stickers-clasico' | 'stickers-neon' | 'stickers-mundial'
-export type ComboPosterId = 'poster-estadio' | 'poster-leyenda' | 'poster-bandera'
-
-export type ComboVariantOption<T extends string> = {
-  id: T
-  label: string
-  hint: string
-  image?: string
-}
-
-export const COMBO_STICKER_OPTIONS: ComboVariantOption<ComboStickerId>[] = [
-  {
-    id: 'stickers-clasico',
-    label: 'Plancha Clásica',
-    hint: 'Vinilo troquelado · set A',
-    image:
-      'https://images.unsplash.com/photo-1560769629-975ec94e6a86?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80',
-  },
-  {
-    id: 'stickers-neon',
-    label: 'Plancha Neon',
-    hint: 'Vinilo troquelado · set B',
-    image:
-      'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80',
-  },
-  {
-    id: 'stickers-mundial',
-    label: 'Plancha Mundial',
-    hint: 'Vinilo troquelado · set C',
-    image:
-      'https://images.unsplash.com/photo-1576566588028-4147f3842f27?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80',
-  },
-]
-
-export const COMBO_POSTER_OPTIONS: ComboVariantOption<ComboPosterId>[] = [
-  {
-    id: 'poster-estadio',
-    label: 'Poster Estadio',
-    hint: 'A3 · papel mate',
-    image:
-      'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80',
-  },
-  {
-    id: 'poster-leyenda',
-    label: 'Poster Leyenda',
-    hint: 'A2 · papel premium',
-    image:
-      'https://images.unsplash.com/photo-1508098682720-e8620fca8142?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80',
-  },
-  {
-    id: 'poster-bandera',
-    label: 'Poster Bandera',
-    hint: 'A3 · full color',
-    image:
-      'https://images.unsplash.com/photo-1521412648747-7eef3094c9f0?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80',
-  },
-]
-
-export const DEFAULT_COMBO_STICKER_ID: ComboStickerId = COMBO_STICKER_OPTIONS[0].id
-export const DEFAULT_COMBO_POSTER_ID: ComboPosterId = COMBO_POSTER_OPTIONS[0].id
+/** Opciones del combo (desde galerías en /public). */
+export const COMBO_STICKER_OPTIONS = STICKER_SHEET_GALLERY
+export const COMBO_POSTER_OPTIONS = POSTER_GALLERY
 
 export type ComboSelection = {
   stickerId: ComboStickerId
@@ -91,13 +58,11 @@ export const STORE_CATALOG: StoreCatalogItem[] = [
     label: 'Combo Plot Mundial',
     hint: 'Figurita personalizada + plancha de stickers en vinilo + poster',
     badge: 'sale',
-    image:
-      'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80',
+    image: POSTER_GALLERY[0]?.image ?? '/Poster/STORE-06.png',
     includes: ['Tu figurita (Mi Figurita)', '1 plancha de stickers a elección', '1 poster a elección'],
   },
 ]
 
-/** @deprecated Solo referencia histórica; no se venden por separado. */
 export const STORE_PRICES_ARS: Record<PrintProductType, number> = {
   combo: STORE_COMBO_PRICE_ARS,
   poster: 0,
@@ -113,14 +78,6 @@ export function formatPriceARS(amount: number): string {
   }).format(amount)
 }
 
-export function isComboStickerId(value: string): value is ComboStickerId {
-  return COMBO_STICKER_OPTIONS.some((o) => o.id === value)
-}
-
-export function isComboPosterId(value: string): value is ComboPosterId {
-  return COMBO_POSTER_OPTIONS.some((o) => o.id === value)
-}
-
 export function isSellableProductType(value: string): value is SellableProductType {
   return value === STORE_SELLABLE_PRODUCT_TYPE
 }
@@ -129,21 +86,21 @@ export function isPrintProductType(value: string): value is PrintProductType {
   return PRINT_PRODUCT_TYPES.includes(value as PrintProductType)
 }
 
-export function getStickerOption(id: ComboStickerId) {
-  return COMBO_STICKER_OPTIONS.find((o) => o.id === id)
+export function getStickerOption(id: ComboStickerId | string) {
+  return getStickerAsset(id)
 }
 
-export function getPosterOption(id: ComboPosterId) {
-  return COMBO_POSTER_OPTIONS.find((o) => o.id === id)
+export function getPosterOption(id: ComboPosterId | string) {
+  return getPosterAsset(id)
 }
 
 export function buildComboOrderNotes(selection: ComboSelection, extraNotes?: string): string {
-  const sticker = getStickerOption(selection.stickerId)
-  const poster = getPosterOption(selection.posterId)
+  const sticker = getStickerAsset(selection.stickerId)
+  const poster = getPosterAsset(selection.posterId)
   const lines = [
     'Combo: figurita + plancha de stickers + poster',
-    `Plancha stickers: ${sticker?.label ?? selection.stickerId}`,
-    `Poster: ${poster?.label ?? selection.posterId}`,
+    `Plancha stickers: ${sticker?.label ?? selection.stickerId} (${sticker?.image ?? '—'})`,
+    `Poster: ${poster?.label ?? selection.posterId} (${poster?.image ?? '—'})`,
   ]
   const extra = extraNotes?.trim()
   if (extra) lines.push(extra)
@@ -151,8 +108,8 @@ export function buildComboOrderNotes(selection: ComboSelection, extraNotes?: str
 }
 
 export function getComboLineLabel(selection: ComboSelection): string {
-  const sticker = getStickerOption(selection.stickerId)
-  const poster = getPosterOption(selection.posterId)
+  const sticker = getStickerAsset(selection.stickerId)
+  const poster = getPosterAsset(selection.posterId)
   return `Combo · ${sticker?.label ?? 'Stickers'} + ${poster?.label ?? 'Poster'}`
 }
 

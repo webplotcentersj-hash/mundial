@@ -5,6 +5,9 @@ import Link from 'next/link'
 import { motion } from 'framer-motion'
 import { Sparkles, Layers, Maximize2, ArrowRight } from 'lucide-react'
 import { STORE_CATALOG, STORE_COMBO_PRICE_ARS, formatPriceARS } from '@/lib/store/catalog'
+import type { ComboPosterId, ComboStickerId } from '@/lib/store/gallery-assets'
+import { POSTER_GALLERY, STICKER_SHEET_GALLERY } from '@/lib/store/gallery-assets'
+import { StoreGalleryPicker } from '@/components/store/store-gallery-picker'
 import { InteractiveTravelCard } from '@/components/store/interactive-figurita-card'
 
 const MARQUEE =
@@ -14,9 +17,23 @@ const COMBO = STORE_CATALOG[0]
 
 type StoreLandingProps = {
   cartItemCount: number
+  comboStickerId: ComboStickerId
+  comboPosterId: ComboPosterId
+  onStickerChange: (id: ComboStickerId) => void
+  onPosterChange: (id: ComboPosterId) => void
+  canAddCombo: boolean
+  onAddToCart: () => void
 }
 
-export function StoreLanding({ cartItemCount }: StoreLandingProps) {
+export function StoreLanding({
+  cartItemCount,
+  comboStickerId,
+  comboPosterId,
+  onStickerChange,
+  onPosterChange,
+  canAddCombo,
+  onAddToCart,
+}: StoreLandingProps) {
   const heroCardRef = useRef<HTMLDivElement>(null)
 
   function scrollToArmado() {
@@ -158,6 +175,40 @@ export function StoreLanding({ cartItemCount }: StoreLandingProps) {
               </div>
             </div>
           </article>
+        </div>
+      </section>
+
+      <section className="trending-section store-galleries-section" id="galerias">
+        <div className="container">
+          <div className="trending-header">
+            <h3>Galerías</h3>
+            <Link href="#store-armado">Ir al armado</Link>
+          </div>
+          <p className="store-galleries-intro">
+            Elegí la plancha de stickers y el poster para tu combo. Tu figurita personalizada se suma desde Mi
+            Figurita.
+          </p>
+
+          <StoreGalleryPicker
+            label="Planchas de stickers en vinilo"
+            items={STICKER_SHEET_GALLERY}
+            value={comboStickerId}
+            onChange={(id) => onStickerChange(id as ComboStickerId)}
+          />
+
+          <StoreGalleryPicker
+            label="Posters"
+            items={POSTER_GALLERY}
+            value={comboPosterId}
+            onChange={(id) => onPosterChange(id as ComboPosterId)}
+            onAddToCart={onAddToCart}
+            addDisabled={!canAddCombo}
+            addLabel={
+              canAddCombo
+                ? `Agregar combo al carrito · ${formatPriceARS(STORE_COMBO_PRICE_ARS)}`
+                : 'Creá tu figurita en Mi Figurita primero'
+            }
+          />
         </div>
       </section>
     </>

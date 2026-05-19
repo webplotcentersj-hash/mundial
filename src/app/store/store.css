@@ -1316,6 +1316,180 @@
   color: #5d3fd3;
 }
 
+/* Galerías stickers / posters */
+.plot-store .store-galleries-section {
+  border-top: 2px solid #111;
+  padding-top: 48px;
+  padding-bottom: 48px;
+}
+
+.plot-store .store-galleries-intro {
+  color: #555;
+  font-size: 15px;
+  line-height: 1.5;
+  max-width: 56ch;
+  margin-bottom: 32px;
+}
+
+.plot-store .store-gallery {
+  margin-bottom: 40px;
+}
+
+.plot-store .store-gallery__header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px 16px;
+  margin-bottom: 16px;
+}
+
+.plot-store .store-gallery__selected-name {
+  font-size: 14px;
+  font-weight: 700;
+  color: #5d3fd3;
+}
+
+.plot-store .store-gallery__selected-name--muted {
+  color: #999;
+  font-weight: 600;
+}
+
+.plot-store .store-gallery__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 14px;
+}
+
+@media (min-width: 768px) {
+  .plot-store .store-gallery__grid {
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: 16px;
+  }
+}
+
+.plot-store .store-gallery__item {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  padding: 0;
+  border: 2px solid #ddd;
+  background: #fff;
+  cursor: pointer;
+  text-align: left;
+  font: inherit;
+  transition: border-color 0.15s, box-shadow 0.15s, transform 0.15s;
+}
+
+.plot-store .store-gallery__item:hover {
+  border-color: #111;
+}
+
+.plot-store .store-gallery__item--selected {
+  border-color: #5d3fd3;
+  box-shadow: 4px 4px 0 #111;
+  outline: 2px solid #5d3fd3;
+}
+
+.plot-store .store-gallery__thumb {
+  position: relative;
+  aspect-ratio: 1;
+  overflow: hidden;
+  background: #f0f0f0;
+}
+
+.plot-store .store-gallery__img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.plot-store .store-gallery__check {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  background: #ccff00;
+  border: 2px solid #111;
+  color: #111;
+}
+
+.plot-store .store-gallery__caption {
+  padding: 10px 12px;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  border-top: 2px solid #eee;
+}
+
+.plot-store .store-gallery__add-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 8px;
+  width: 100%;
+  max-width: 420px;
+}
+
+.plot-store .combo-preview-strip {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin: 20px 0 28px;
+  padding: 14px;
+  border: 2px dashed #5d3fd3;
+  background: #faf8ff;
+}
+
+.plot-store .combo-preview-strip__item {
+  text-align: center;
+}
+
+.plot-store .combo-preview-strip__label {
+  display: block;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  margin-bottom: 8px;
+  color: #5d3fd3;
+}
+
+.plot-store .combo-preview-strip__img {
+  width: 100%;
+  max-width: 100px;
+  height: auto;
+  max-height: 120px;
+  margin: 0 auto;
+  object-fit: contain;
+  border: 2px solid #111;
+  background: #fff;
+}
+
+.plot-store .cart-item-image--combo {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+  justify-content: center;
+  padding: 8px;
+  min-height: auto;
+  height: auto;
+}
+
+.plot-store .cart-item-thumb {
+  width: 56px;
+  height: 56px;
+  object-fit: cover;
+  border: 2px solid #111;
+  flex-shrink: 0;
+}
+
 @media (max-width: 900px) {
   .plot-store .combo-showcase {
     grid-template-columns: 1fr;

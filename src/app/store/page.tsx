@@ -27,7 +27,7 @@ import { readFiguritaStoreImageFromSession, clearFiguritaStoreImageFromSession }
 import { StoreLanding } from '@/components/store/store-landing'
 import { StoreCheckoutPanel, type StoreCartLine } from '@/components/store/store-checkout-panel'
 
-const CART_STORAGE_KEY = 'plotmundial_store_cart_v2'
+const CART_STORAGE_KEY = 'plotmundial_store_cart_v3'
 
 export default function StorePage() {
   const [userReady, setUserReady] = useState(false)
@@ -280,7 +280,18 @@ export default function StorePage() {
 
   return (
     <>
-      <StoreLanding cartItemCount={cart.reduce((s, line) => s + line.quantity, 0)} />
+      <StoreLanding
+        cartItemCount={cart.reduce((s, line) => s + line.quantity, 0)}
+        comboStickerId={comboStickerId}
+        comboPosterId={comboPosterId}
+        onStickerChange={setComboStickerId}
+        onPosterChange={setComboPosterId}
+        canAddCombo={canAddCombo}
+        onAddToCart={() => {
+          addToCart()
+          document.getElementById('store-cart')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+        }}
+      />
 
       <div className="store-panel">
         {!userReady ? (

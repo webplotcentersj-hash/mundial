@@ -5,8 +5,6 @@ import { motion, AnimatePresence } from 'framer-motion'
 import {
   Loader2,
   CheckCircle2,
-  Layers,
-  Maximize2,
   Truck,
   ShieldCheck,
   ShoppingCart,
@@ -16,15 +14,18 @@ import { clearFiguritaStoreImageFromSession } from '@/lib/storePrints'
 import type { PrintOrderRow } from '@/lib/actions'
 import type { ComboPosterId, ComboStickerId } from '@/lib/store/catalog'
 import {
-  COMBO_POSTER_OPTIONS,
-  COMBO_STICKER_OPTIONS,
   STORE_COMBO_PRICE_ARS,
   formatPriceARS,
   getCartTotal,
   getComboLineLabel,
   getLineSubtotal,
+  getPosterOption,
   getProductLabel,
+  getStickerOption,
 } from '@/lib/store/catalog'
+import { POSTER_GALLERY, STICKER_SHEET_GALLERY } from '@/lib/store/gallery-assets'
+import { StoreGalleryPicker } from '@/components/store/store-gallery-picker'
+import Image from 'next/image'
 
 export type StoreCartLine = {
   id: string
@@ -223,47 +224,53 @@ export function StoreCheckoutPanel({
                   </p>
                 ) : null}
 
-                <div className="size-selection" style={{ marginTop: 24 }}>
-                  <span className="size-label">Plancha de stickers</span>
-                  <div className="grid gap-3 sm:grid-cols-3">
-                    {COMBO_STICKER_OPTIONS.map((opt) => {
-                      const selected = comboStickerId === opt.id
-                      return (
-                        <button
-                          key={opt.id}
-                          type="button"
-                          onClick={() => setComboStickerId(opt.id)}
-                          className={`product-type-btn ${selected ? 'selected' : ''}`}
-                        >
-                          <Layers className="mb-2 h-6 w-6" aria-hidden />
-                          <h4>{opt.label}</h4>
-                          <p>{opt.hint}</p>
-                        </button>
-                      )
-                    })}
+                {customerImageUrl ? (
+                  <div className="combo-preview-strip" aria-label="Vista previa del combo">
+                    <div className="combo-preview-strip__item">
+                      <span className="combo-preview-strip__label">Figurita</span>
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={customerImageUrl} alt="Tu figurita" className="combo-preview-strip__img" />
+                    </div>
+                    <div className="combo-preview-strip__item">
+                      <span className="combo-preview-strip__label">Stickers</span>
+                      {getStickerOption(comboStickerId) ? (
+                        <Image
+                          src={getStickerOption(comboStickerId)!.image}
+                          alt=""
+                          width={120}
+                          height={120}
+                          className="combo-preview-strip__img"
+                        />
+                      ) : null}
+                    </div>
+                    <div className="combo-preview-strip__item">
+                      <span className="combo-preview-strip__label">Poster</span>
+                      {getPosterOption(comboPosterId) ? (
+                        <Image
+                          src={getPosterOption(comboPosterId)!.image}
+                          alt=""
+                          width={120}
+                          height={120}
+                          className="combo-preview-strip__img"
+                        />
+                      ) : null}
+                    </div>
                   </div>
-                </div>
+                ) : null}
 
-                <div className="size-selection" style={{ marginTop: 20 }}>
-                  <span className="size-label">Poster</span>
-                  <div className="grid gap-3 sm:grid-cols-3">
-                    {COMBO_POSTER_OPTIONS.map((opt) => {
-                      const selected = comboPosterId === opt.id
-                      return (
-                        <button
-                          key={opt.id}
-                          type="button"
-                          onClick={() => setComboPosterId(opt.id)}
-                          className={`product-type-btn ${selected ? 'selected' : ''}`}
-                        >
-                          <Maximize2 className="mb-2 h-6 w-6" aria-hidden />
-                          <h4>{opt.label}</h4>
-                          <p>{opt.hint}</p>
-                        </button>
-                      )
-                    })}
-                  </div>
-                </div>
+                <StoreGalleryPicker
+                  label="Elegí tu plancha de stickers"
+                  items={STICKER_SHEET_GALLERY}
+                  value={comboStickerId}
+                  onChange={(id) => setComboStickerId(id as ComboStickerId)}
+                />
+
+                <StoreGalleryPicker
+                  label="Elegí tu poster"
+                  items={POSTER_GALLERY}
+                  value={comboPosterId}
+                  onChange={(id) => setComboPosterId(id as ComboPosterId)}
+                />
 
                 <div className="summary-line" style={{ marginTop: 16 }}>
                   <span>Combo (figurita + stickers + poster)</span>
