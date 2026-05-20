@@ -131,9 +131,9 @@ export default function Home() {
           <motion.div
             ref={heroCardRef}
             className="main-image-container main-image-container--interactive"
-            initial={{ opacity: 0, scale: 0.96 }}
+            initial={{ opacity: 0.4, scale: 0.98 }}
             animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.5, ease: 'easeOut' }}
+            transition={{ duration: 0.25, ease: 'easeOut' }}
           >
             <InteractiveTravelCard />
           </motion.div>

@@ -1,16 +1,17 @@
 'use client'
 
 import React from 'react'
+import Image from 'next/image'
 import { motion, useMotionValue, useSpring, useTransform } from 'framer-motion'
 import { cn } from '@/lib/utils'
 
-export const FIGURITA_HERO_IMAGE =
-  'https://plotcenter.com.ar/wp-content/uploads/2026/05/figurita-lionel-messi.png'
+/** Hero local (~67 KB WebP). Antes: PNG 1.2 MB desde plotcenter.com.ar */
+export const FIGURITA_HERO_IMAGE = '/figurita-hero.webp'
 
 export const InteractiveTravelCard = React.forwardRef<
   HTMLDivElement,
-  { className?: string; imageUrl?: string; alt?: string }
->(({ className, imageUrl = FIGURITA_HERO_IMAGE, alt = 'Figurita Lionel Messi' }, ref) => {
+  { className?: string; imageUrl?: string; alt?: string; priority?: boolean }
+>(({ className, imageUrl = FIGURITA_HERO_IMAGE, alt = 'Figurita Lionel Messi', priority = true }, ref) => {
   const mouseX = useMotionValue(0)
   const mouseY = useMotionValue(0)
 
@@ -34,6 +35,8 @@ export const InteractiveTravelCard = React.forwardRef<
     mouseX.set(0)
     mouseY.set(0)
   }
+
+  const isLocal = imageUrl.startsWith('/')
 
   return (
     <motion.div
@@ -59,13 +62,28 @@ export const InteractiveTravelCard = React.forwardRef<
         }}
         className="absolute inset-0 h-full w-full"
       >
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src={imageUrl}
-          alt={alt}
-          draggable={false}
-          className="pointer-events-none absolute inset-0 h-full w-full select-none object-contain drop-shadow-2xl"
-        />
+        {isLocal ? (
+          <Image
+            src={imageUrl}
+            alt={alt}
+            fill
+            priority={priority}
+            fetchPriority={priority ? 'high' : 'auto'}
+            sizes="(max-width: 768px) 85vw, 352px"
+            draggable={false}
+            className="pointer-events-none select-none object-contain drop-shadow-2xl"
+          />
+        ) : (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={imageUrl}
+            alt={alt}
+            draggable={false}
+            fetchPriority={priority ? 'high' : 'auto'}
+            decoding="async"
+            className="pointer-events-none absolute inset-0 h-full w-full select-none object-contain drop-shadow-2xl"
+          />
+        )}
       </div>
     </motion.div>
   )

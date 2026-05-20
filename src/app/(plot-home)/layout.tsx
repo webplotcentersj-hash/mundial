@@ -15,6 +15,7 @@ const storeDisplay = Archivo_Black({
 export default function PlotHomeLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className={`plot-home-store plot-store ${storeSans.variable} ${storeDisplay.variable}`}>
+      <link rel="preload" as="image" href="/figurita-hero.webp" type="image/webp" />
       {children}
     </div>
   )
