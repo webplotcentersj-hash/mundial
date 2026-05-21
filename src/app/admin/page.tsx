@@ -20,7 +20,6 @@ import {
   type AdminStoreDashboard,
   type PrintOrderStatus,
 } from '@/lib/actions'
-import { ensureTriviaQuestionsSeeded } from '@/lib/trivia/seed'
 import { AdminUserFichaModal } from '@/components/admin/AdminUserFichaModal'
 import { AdminStoreOrdersPanel } from '@/components/admin/AdminStoreOrdersPanel'
 import './admin-store.css'
@@ -245,10 +244,9 @@ export default function AdminPage() {
       return
     setSyncRankingBusy(true)
     try {
-      await ensureTriviaQuestionsSeeded()
       const res = await adminSyncRankingTotalsFromPredictions()
       alert(
-        `Ranking sincronizado.\nPerfiles: ${res.profilesUpdated}\nPronósticos: ${res.predictionsCounted}\nRespuestas trivia: ${res.triviaAnswersCounted}`,
+        `Ranking sincronizado.\nPerfiles: ${res.profilesUpdated}\nPronósticos: ${res.predictionsCounted}\nRespuestas trivia: ${res.triviaAnswersCounted}\nPreguntas trivia en DB: ${res.triviaQuestionsInDb}/${res.triviaBankSize}`,
       )
       const fetchedUsers = await getAdminProfiles()
       setUsers(fetchedUsers || [])

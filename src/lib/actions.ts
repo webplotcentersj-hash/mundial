@@ -23,6 +23,7 @@ import {
   type StoreCartLineInput,
 } from '@/lib/store/catalog'
 import { getPrintImageFieldsForLine } from '@/lib/store/order-print-assets'
+import { ensureTriviaQuestionsSeeded } from '@/lib/trivia/seed'
 
 export type { PrintProductType } from '@/lib/store/catalog'
 
@@ -885,6 +886,7 @@ export async function adminSyncRankingTotalsFromPredictions() {
     throw new Error('No autorizado')
   }
 
+  const seedResult = await ensureTriviaQuestionsSeeded()
   const supabase = createAdminClient()
 
   const { data: preds, error: predErr } = await supabase.from('predictions').select('user_id, points_earned')
@@ -935,6 +937,8 @@ export async function adminSyncRankingTotalsFromPredictions() {
     profilesUpdated: profiles?.length ?? 0,
     triviaAnswersCounted: triviaRows?.length ?? 0,
     predictionsCounted: preds?.length ?? 0,
+    triviaQuestionsInDb: seedResult.count,
+    triviaBankSize: seedResult.bankSize,
   }
 }
 
