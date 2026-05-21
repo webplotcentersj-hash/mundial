@@ -15,6 +15,8 @@ import {
 import { TRIVIA_POINTS, TRIVIA_TIME_LIMIT_SEC } from '@/lib/trivia/constants'
 import { labelTriviaCategory, labelTriviaDifficulty, labelTriviaPoints } from '@/lib/trivia/labels'
 
+const FEEDBACK_AUTO_ADVANCE_MS = 1600
+
 type Phase = 'intro' | 'playing' | 'feedback' | 'summary'
 
 type FeedbackState = {
@@ -154,7 +156,7 @@ export default function TriviaPage() {
     void submitAnswer(selected)
   }
 
-  const nextQuestion = () => {
+  const nextQuestion = useCallback(() => {
     if (index + 1 >= questions.length) {
       setPhase('summary')
       return
@@ -163,7 +165,13 @@ export default function TriviaPage() {
     setSelected(null)
     setFeedback(null)
     setPhase('playing')
-  }
+  }, [index, questions.length])
+
+  useEffect(() => {
+    if (phase !== 'feedback') return
+    const id = window.setTimeout(nextQuestion, FEEDBACK_AUTO_ADVANCE_MS)
+    return () => window.clearTimeout(id)
+  }, [phase, index, nextQuestion])
 
   const timerPct = (secondsLeft / TRIVIA_TIME_LIMIT_SEC) * 100
   const timerUrgent = secondsLeft <= 3 && phase === 'playing'
@@ -241,7 +249,7 @@ export default function TriviaPage() {
                 Partida de hasta {Math.min(10, stats?.remainingInBank ?? 10)} preguntas
               </h2>
               <p className="mt-2 text-sm text-[#555]">
-                Ronda ordenada de fácil a difícil. Elegí una respuesta y confirmá antes de que se acabe el tiempo.
+                Ronda ordenada de fácil a difícil. Elegí una respuesta, confirmá y pasás solo a la siguiente.
                 Cada pregunta del banco solo suma puntos la primera vez que la acertás.
               </p>
               <button
@@ -378,24 +386,28 @@ export default function TriviaPage() {
                 </motion.div>
               )}
 
-              <motion.div className="mt-6 flex gap-3">
+              <motion.div className="mt-6">
                 {phase === 'playing' ? (
                   <button
                     type="button"
                     onClick={confirmAnswer}
                     disabled={selected === null || submitting}
-                    className="btn-primary hover-lift flex-1 py-3 disabled:opacity-40 [font-family:var(--font-store-display),sans-serif]"
+                    className="btn-primary hover-lift w-full py-3 disabled:opacity-40 [font-family:var(--font-store-display),sans-serif]"
                   >
                     {submitting ? <Loader2 className="mx-auto h-5 w-5 animate-spin" /> : 'Confirmar'}
                   </button>
                 ) : (
-                  <button
-                    type="button"
-                    onClick={nextQuestion}
-                    className="btn-primary hover-lift flex-1 py-3 [font-family:var(--font-store-display),sans-serif]"
-                  >
-                    {index + 1 >= questions.length ? 'Ver resultado' : 'Siguiente'}
-                  </button>
+                  <p className="flex items-center justify-center gap-2 text-center text-xs font-bold uppercase tracking-wider text-[#888]">
+                    <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+                    {index + 1 >= questions.length ? 'Mostrando resultado…' : 'Siguiente pregunta…'}
+                    <button
+                      type="button"
+                      onClick={nextQuestion}
+                      className="normal-case underline underline-offset-2 text-[#5d3fd3]"
+                    >
+                      Saltar
+                    </button>
+                  </p>
                 )}
               </motion.div>
             </motion.div>
