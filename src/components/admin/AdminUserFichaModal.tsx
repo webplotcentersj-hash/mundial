@@ -90,8 +90,7 @@ export function AdminUserFichaModal({ open, loading, detail, totalMatches, onClo
 
                 <motion.div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
                   {[
-                    { label: 'Ranking', value: detail.profile.total_points },
-                    { label: 'Fixture', value: detail.fixture_points },
+                    { label: 'Prode', value: detail.fixture_points },
                     { label: 'Trivia', value: detail.trivia_points },
                     {
                       label: 'Predicciones',

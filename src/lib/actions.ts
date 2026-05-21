@@ -24,6 +24,7 @@ import {
 } from '@/lib/store/catalog'
 import { getPrintImageFieldsForLine } from '@/lib/store/order-print-assets'
 import { ensureTriviaQuestionsSeeded } from '@/lib/trivia/seed'
+import { applyFixturePointDelta } from '@/lib/profile-points'
 
 export type { PrintProductType } from '@/lib/store/catalog'
 
@@ -55,16 +56,31 @@ export async function getMatches() {
 
 export async function getRanking() {
   const supabase = await createClient()
-  // Ranking global = profiles.total_points (pronósticos del fixture + puntos de trivia).
   const { data: profiles, error } = await supabase
     .from('profiles')
-    .select('id, username, avatar_url, total_points, last_active')
-    .order('total_points', { ascending: false })
+    .select('id, username, avatar_url, fixture_points, trivia_points, total_points, last_active')
+    .order('fixture_points', { ascending: false })
     .order('last_active', { ascending: false, nullsFirst: false })
     .limit(50)
 
   if (error) {
     console.error('Error fetching ranking:', error)
+    return []
+  }
+  return profiles
+}
+
+export async function getTriviaRanking() {
+  const supabase = await createClient()
+  const { data: profiles, error } = await supabase
+    .from('profiles')
+    .select('id, username, avatar_url, fixture_points, trivia_points, total_points, last_active')
+    .order('trivia_points', { ascending: false })
+    .order('last_active', { ascending: false, nullsFirst: false })
+    .limit(50)
+
+  if (error) {
+    console.error('Error fetching trivia ranking:', error)
     return []
   }
   return profiles
@@ -280,6 +296,8 @@ export type AdminProfileListItem = {
   username: string | null
   avatar_url: string | null
   total_points: number
+  fixture_points: number
+  trivia_points: number
   last_active: string | null
   created_at: string
   role: string | null
@@ -323,8 +341,8 @@ export async function getAdminProfiles(): Promise<AdminProfileListItem[]> {
   const [{ data, error }, { data: predRows, error: predErr }] = await Promise.all([
     supabase
       .from('profiles')
-      .select('id, username, avatar_url, total_points, last_active, created_at, role')
-      .order('total_points', { ascending: false })
+      .select('id, username, avatar_url, total_points, fixture_points, trivia_points, last_active, created_at, role')
+      .order('fixture_points', { ascending: false })
       .order('last_active', { ascending: false, nullsFirst: false })
       .limit(500),
     supabase.from('predictions').select('user_id'),
@@ -359,7 +377,7 @@ export async function getAdminUserDetail(userId: string): Promise<AdminUserDetai
   const adminDb = createAdminClient()
   const { data: profile, error: profileErr } = await supabase
     .from('profiles')
-    .select('id, username, avatar_url, total_points, last_active, created_at, role')
+    .select('id, username, avatar_url, total_points, fixture_points, trivia_points, last_active, created_at, role')
     .eq('id', userId)
     .single()
 
@@ -393,15 +411,10 @@ export async function getAdminUserDetail(userId: string): Promise<AdminUserDetai
       supabase.from('predictions').select('id', { count: 'exact', head: true }).eq('user_id', userId),
     ])
 
-  let fixture_points = 0
-  for (const p of predRows ?? []) {
-    fixture_points += toScoreInt(p.points_earned)
-  }
-
-  let trivia_points = 0
+  let fixture_points = toScoreInt(profile.fixture_points)
+  let trivia_points = toScoreInt(profile.trivia_points)
   let trivia_correct = 0
   for (const t of triviaRows ?? []) {
-    trivia_points += toScoreInt(t.points_earned)
     if (t.correct) trivia_correct++
   }
 
@@ -771,24 +784,12 @@ export async function updateMatchScore(matchId: string, homeScore: number, awayS
 
         const pointDelta = points - prevEarned
         if (pointDelta !== 0) {
-          const { data: profile, error: profileReadErr } = await supabase
-            .from('profiles')
-            .select('total_points')
-            .eq('id', pred.user_id)
-            .single()
-          if (profileReadErr) {
-            console.error('Error reading profile for ranking:', profileReadErr)
-            throw new Error(`No se pudo leer el perfil para el ranking: ${profileReadErr.message}`)
-          }
-          const newTotal = (profile?.total_points || 0) + pointDelta
-          const { error: profileUpdErr } = await supabase
-            .from('profiles')
-            .update({ total_points: newTotal })
-            .eq('id', pred.user_id)
-          if (profileUpdErr) {
-            console.error('Error updating profile total_points:', profileUpdErr)
+          try {
+            await applyFixturePointDelta(supabase, pred.user_id as string, pointDelta)
+          } catch (e) {
+            console.error('Error updating fixture_points:', e)
             throw new Error(
-              `No se pudo actualizar los puntos en el ranking (${profileUpdErr.message}). ¿Corriste la migración supabase/migrations/20260516_admin_fixture_points_rls.sql?`,
+              `No se pudo actualizar los puntos del prode (${e instanceof Error ? e.message : 'error'}). ¿Corriste la migración supabase/migrations/20260516_admin_fixture_points_rls.sql?`,
             )
           }
         }
@@ -831,20 +832,12 @@ export async function resetMatchResult(matchId: string) {
     const earned = toScoreInt(pred.points_earned)
     if (earned <= 0) continue
 
-    const { data: profile, error: profileReadErr } = await supabase.from('profiles').select('total_points').eq('id', pred.user_id).single()
-
-    if (profileReadErr) {
-      console.error('resetMatchResult profile read:', profileReadErr)
-      throw new Error(`No se pudo leer el perfil al resetear: ${profileReadErr.message}`)
-    }
-
-    const newTotal = Math.max(0, (profile?.total_points || 0) - earned)
-    const { error: profileUpdErr } = await supabase.from('profiles').update({ total_points: newTotal }).eq('id', pred.user_id)
-
-    if (profileUpdErr) {
-      console.error('resetMatchResult profile update:', profileUpdErr)
+    try {
+      await applyFixturePointDelta(supabase, pred.user_id as string, -earned)
+    } catch (e) {
+      console.error('resetMatchResult profile update:', e)
       throw new Error(
-        `No se pudo revertir puntos del ranking (${profileUpdErr.message}). ¿Corriste la migración supabase/migrations/20260516_admin_fixture_points_rls.sql?`,
+        `No se pudo revertir puntos del prode (${e instanceof Error ? e.message : 'error'}). ¿Corriste la migración supabase/migrations/20260516_admin_fixture_points_rls.sql?`,
       )
     }
   }
@@ -878,7 +871,7 @@ export async function resetMatchResult(matchId: string) {
 }
 
 /**
- * Admin: recalcula `profiles.total_points` = pronósticos + trivia por usuario.
+ * Admin: recalcula fixture_points (prode) y trivia_points por separado.
  */
 export async function adminSyncRankingTotalsFromPredictions() {
   const isAdmin = await verifyAdmin()
@@ -901,18 +894,15 @@ export async function adminSyncRankingTotalsFromPredictions() {
     throw new Error(triviaErr.message)
   }
 
-  const byUser = new Map<string, { fixture: number; trivia: number }>()
+  const fixtureByUser = new Map<string, number>()
+  const triviaByUser = new Map<string, number>()
   for (const row of preds || []) {
     const uid = row.user_id as string
-    const cur = byUser.get(uid) ?? { fixture: 0, trivia: 0 }
-    cur.fixture += toScoreInt(row.points_earned)
-    byUser.set(uid, cur)
+    fixtureByUser.set(uid, (fixtureByUser.get(uid) || 0) + toScoreInt(row.points_earned))
   }
   for (const row of triviaRows || []) {
     const uid = row.user_id as string
-    const cur = byUser.get(uid) ?? { fixture: 0, trivia: 0 }
-    cur.trivia += toScoreInt(row.points_earned)
-    byUser.set(uid, cur)
+    triviaByUser.set(uid, (triviaByUser.get(uid) || 0) + toScoreInt(row.points_earned))
   }
 
   const { data: profiles, error: profErr } = await supabase.from('profiles').select('id')
@@ -921,9 +911,16 @@ export async function adminSyncRankingTotalsFromPredictions() {
   }
 
   for (const p of profiles || []) {
-    const breakdown = byUser.get(p.id) ?? { fixture: 0, trivia: 0 }
-    const pts = breakdown.fixture + breakdown.trivia
-    const { error: updErr } = await supabase.from('profiles').update({ total_points: pts }).eq('id', p.id)
+    const fixturePts = fixtureByUser.get(p.id) ?? 0
+    const triviaPts = triviaByUser.get(p.id) ?? 0
+    const { error: updErr } = await supabase
+      .from('profiles')
+      .update({
+        fixture_points: fixturePts,
+        trivia_points: triviaPts,
+        total_points: fixturePts,
+      })
+      .eq('id', p.id)
     if (updErr) {
       throw new Error(updErr.message)
     }
@@ -1069,14 +1066,16 @@ export async function getLeagueLeaderboard(leagueId: string) {
   
   const { data: members, error } = await supabase
     .from('league_members')
-    .select('user_id, profiles(username, total_points, avatar_url)')
+    .select('user_id, profiles(username, fixture_points, total_points, avatar_url)')
     .eq('league_id', leagueId)
 
   if (error) return []
   return members
     .map((m: any) => ({
       user_id: m.user_id,
-      ...m.profiles,
+      username: m.profiles?.username,
+      avatar_url: m.profiles?.avatar_url,
+      total_points: toScoreInt(m.profiles?.fixture_points ?? m.profiles?.total_points),
     }))
     .sort((a: any, b: any) => {
       const d = (b.total_points || 0) - (a.total_points || 0)

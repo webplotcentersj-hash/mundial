@@ -238,7 +238,7 @@ export default function AdminPage() {
   const handleSyncRankingTotals = async () => {
     if (
       !window.confirm(
-        'Se va a recalcular el puntaje de cada perfil sumando pronósticos (fixture) + trivia. ¿Continuar?',
+        'Se va a recalcular prode (fixture_points) y trivia (trivia_points) por separado. ¿Continuar?',
       )
     )
       return
@@ -246,7 +246,7 @@ export default function AdminPage() {
     try {
       const res = await adminSyncRankingTotalsFromPredictions()
       alert(
-        `Ranking sincronizado.\nPerfiles: ${res.profilesUpdated}\nPronósticos: ${res.predictionsCounted}\nRespuestas trivia: ${res.triviaAnswersCounted}\nPreguntas trivia en DB: ${res.triviaQuestionsInDb}/${res.triviaBankSize}`,
+        `Ranking sincronizado.\nPerfiles: ${res.profilesUpdated}\nPronósticos: ${res.predictionsCounted}\nRespuestas trivia: ${res.triviaAnswersCounted}\nProde y trivia van por columnas separadas.`,
       )
       const fetchedUsers = await getAdminProfiles()
       setUsers(fetchedUsers || [])
@@ -452,7 +452,8 @@ export default function AdminPage() {
                         <th className="px-6 py-4 font-bold">Usuario</th>
                         <th className="px-6 py-4 font-bold">Rol</th>
                         <th className="px-6 py-4 font-bold text-center">Partidos Predichos</th>
-                        <th className="px-6 py-4 font-bold text-center">Puntos Totales</th>
+                        <th className="px-6 py-4 font-bold text-center">Prode</th>
+                        <th className="px-6 py-4 font-bold text-center">Trivia</th>
                         <th className="px-6 py-4 font-bold">Última Actividad</th>
                         <th className="px-6 py-4 font-bold text-right">Acciones</th>
                       </tr>
@@ -493,7 +494,12 @@ export default function AdminPage() {
                           </td>
                           <td className="px-6 py-4 text-center">
                             <span className="text-lg font-bold text-amber-400 drop-shadow-[0_0_5px_rgba(245,158,11,0.5)]">
-                              {user.total_points}
+                              {user.fixture_points ?? user.total_points ?? 0}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4 text-center">
+                            <span className="text-lg font-bold text-violet-400 drop-shadow-[0_0_5px_rgba(167,139,250,0.5)]">
+                              {user.trivia_points ?? 0}
                             </span>
                           </td>
                           <td className="px-6 py-4 text-sm text-white/40">{formatAdminDate(user.last_active)}</td>
@@ -547,7 +553,7 @@ export default function AdminPage() {
                     </div>
                     <h3 className="text-xl font-bold text-white">{users[1].username}</h3>
                     <div className="flex items-center gap-2 text-gray-300 font-black text-3xl mt-2 drop-shadow-md">
-                      {users[1].total_points} <span className="text-sm text-gray-300/50 uppercase tracking-widest">PTS</span>
+                      {users[1].fixture_points ?? users[1].total_points ?? 0} <span className="text-sm text-gray-300/50 uppercase tracking-widest">PTS PRODE</span>
                     </div>
                     <a href="/store" className="mt-6 flex items-center gap-2 text-xs text-white/50 hover:text-white transition-colors bg-white/5 px-4 py-2 rounded-full border border-white/10">
                       Ir al Store
@@ -570,7 +576,7 @@ export default function AdminPage() {
                     </div>
                     <h3 className="text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-white to-amber-100">{users[0].username}</h3>
                     <div className="flex items-center gap-2 text-amber-400 font-black text-5xl mt-2 drop-shadow-[0_0_10px_rgba(245,158,11,0.8)]">
-                      {users[0].total_points} <span className="text-base text-amber-500/50 uppercase tracking-widest">PTS</span>
+                      {users[0].fixture_points ?? users[0].total_points ?? 0} <span className="text-base text-amber-500/50 uppercase tracking-widest">PTS PRODE</span>
                     </div>
                     <a href="/store" className="mt-8 flex items-center gap-2 text-sm text-amber-100 hover:text-white transition-colors bg-amber-500/20 px-5 py-2.5 rounded-full border border-amber-500/30 font-bold">
                       Ir al Store
@@ -592,7 +598,7 @@ export default function AdminPage() {
                     </div>
                     <h3 className="text-xl font-bold text-white">{users[2].username}</h3>
                     <div className="flex items-center gap-2 text-orange-500 font-black text-3xl mt-2 drop-shadow-md">
-                      {users[2].total_points} <span className="text-sm text-orange-500/50 uppercase tracking-widest">PTS</span>
+                      {users[2].fixture_points ?? users[2].total_points ?? 0} <span className="text-sm text-orange-500/50 uppercase tracking-widest">PTS PRODE</span>
                     </div>
                     <a href="/store" className="mt-6 flex items-center gap-2 text-xs text-white/50 hover:text-white transition-colors bg-white/5 px-4 py-2 rounded-full border border-white/10">
                       Ir al Store

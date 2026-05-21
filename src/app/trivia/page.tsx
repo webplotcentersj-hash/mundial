@@ -196,11 +196,11 @@ export default function TriviaPage() {
           <p className="mt-2 text-sm text-[#444]">
             Tenés <strong>{TRIVIA_TIME_LIMIT_SEC} segundos</strong> por pregunta. Puntos = acierto (
             {TRIVIA_POINTS.easy}/{TRIVIA_POINTS.medium}/{TRIVIA_POINTS.hard} según dificultad) +{' '}
-            <strong>bonus por velocidad</strong> (hasta el mismo valor). Todo suma al{' '}
+            <strong>bonus por velocidad</strong>. Sumá al{' '}
             <Link href="/ranking" className="font-bold text-[#5d3fd3] underline underline-offset-2">
-              ranking
-            </Link>
-            .
+              ranking de trivia
+            </Link>{' '}
+            (aparte del prode).
           </p>
         </motion.div>
 
@@ -369,7 +369,7 @@ export default function TriviaPage() {
                         <>Se acabó el tiempo. La respuesta correcta era: {current.options[feedback.correctIndex]}</>
                       ) : feedback.correct ? (
                         <>
-                          ¡Correcto! +{feedback.points} pts al ranking
+                          ¡Correcto! +{feedback.points} pts en trivia
                           {feedback.timeBonus > 0 ? (
                             <span className="mt-1 block text-xs font-semibold text-green-800">
                               Base {feedback.basePoints} + bonus velocidad {feedback.timeBonus}
@@ -428,7 +428,7 @@ export default function TriviaPage() {
                 {sessionCorrect}/{questions.length}
               </p>
               <p className="mt-1 text-sm text-[#555]">aciertos en esta ronda</p>
-              <p className="mt-4 text-lg font-bold">+{sessionPoints} puntos al ranking</p>
+              <p className="mt-4 text-lg font-bold">+{sessionPoints} pts en ranking trivia</p>
               {sessionTimeBonus > 0 && (
                 <p className="mt-1 text-sm text-[#5d3fd3]">incluye +{sessionTimeBonus} por responder rápido</p>
               )}

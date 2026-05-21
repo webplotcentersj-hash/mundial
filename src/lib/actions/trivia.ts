@@ -6,6 +6,7 @@ import { revalidatePath } from 'next/cache'
 import { ensureTriviaQuestionsSeeded } from '@/lib/trivia/seed'
 import { TRIVIA_SESSION_SIZE, type TriviaDifficulty } from '@/lib/trivia/constants'
 import { computeTriviaPoints } from '@/lib/trivia/scoring'
+import { applyTriviaPointDelta } from '@/lib/profile-points'
 import { presentQuestionOptions } from '@/lib/trivia/present-options'
 import { pickTriviaSessionQuestions } from '@/lib/trivia/session-pick'
 
@@ -279,11 +280,10 @@ export async function submitTriviaAnswer(
   }
 
   if (score.total > 0) {
-    const { data: profile } = await supabase.from('profiles').select('total_points').eq('id', user.id).single()
-    const newTotal = (profile?.total_points || 0) + score.total
-    const { error: profErr } = await supabase.from('profiles').update({ total_points: newTotal }).eq('id', user.id)
-    if (profErr) {
-      console.error('submitTriviaAnswer profile:', profErr)
+    try {
+      await applyTriviaPointDelta(supabase, user.id, score.total)
+    } catch (e) {
+      console.error('submitTriviaAnswer profile:', e)
     }
   }
 
