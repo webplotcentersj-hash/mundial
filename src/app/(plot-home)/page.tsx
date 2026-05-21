@@ -3,9 +3,10 @@
 import { useState, useEffect, useMemo, useRef } from 'react'
 import { motion } from 'framer-motion'
 import Link from 'next/link'
-import { Trophy, Star, Flame, Circle } from 'lucide-react'
+import { Circle } from 'lucide-react'
 import { getLiveTickerNews } from '@/lib/actions'
 import { InteractiveTravelCard } from '@/components/store/interactive-figurita-card'
+import { MundialHubSection } from '@/components/home/mundial-hub-section'
 
 const MARQUEE_HOME =
   '104 PARTIDOS FIFA • PLOT MUNDIAL 2026 • PRODE EN VIVO • LIGAS PRIVADAS • RANKING GLOBAL • STORE • '
@@ -17,18 +18,7 @@ export default function Home() {
     '🏆 Conectando con los servidores...',
   ])
 
-  const [liveFakeCount, setLiveFakeCount] = useState(() => 9000 + Math.floor(Math.random() * 6000))
-
-  useEffect(() => {
-    const tick = () => {
-      setLiveFakeCount((prev) => {
-        const jitter = Math.floor(Math.random() * 2400) - 1200
-        return Math.min(24000, Math.max(7200, prev + jitter))
-      })
-    }
-    const id = setInterval(tick, 650 + Math.floor(Math.random() * 400))
-    return () => clearInterval(id)
-  }, [])
+  const [playerCount, setPlayerCount] = useState(0)
 
   useEffect(() => {
     async function loadNews() {
@@ -64,7 +54,9 @@ export default function Home() {
               <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-red-600" />
             </div>
             <span className="text-[#111] font-bold text-xs uppercase tracking-widest tabular-nums font-[family-name:var(--font-store-sans)]">
-              Live: {liveFakeCount.toLocaleString('es-AR')} jugadores
+              {playerCount > 0
+                ? `${playerCount.toLocaleString('es-AR')} jugadores en Plot`
+                : 'Prode Mundial 2026'}
             </span>
           </div>
 
@@ -140,40 +132,7 @@ export default function Home() {
         </div>
       </main>
 
-      <section className="trending-section">
-        <div className="container">
-          <div className="trending-header">
-            <h3>Cómo funciona</h3>
-          </div>
-          <div className="product-grid">
-            <article className="product-card hover-lift cursor-default">
-              <div className="product-image flex items-center justify-center bg-gradient-to-br from-orange-100 to-white">
-                <Flame className="w-16 h-16 text-[#EB671B]" aria-hidden />
-              </div>
-              <h4>Acierta y ganá</h4>
-              <p>
-                Sumá 3 puntos por resultado exacto y 1 punto por acertar la tendencia: ganador o empate.
-              </p>
-            </article>
-            <article className="product-card hover-lift cursor-default">
-              <div className="product-image flex items-center justify-center bg-gradient-to-br from-amber-100 to-white">
-                <Trophy className="w-16 h-16 text-amber-600" aria-hidden />
-              </div>
-              <h4>Ligas privadas</h4>
-              <p>Creá grupos con amigos, compará llaves y el ranking de tu liga.</p>
-            </article>
-            <article className="product-card hover-lift cursor-default">
-              <div className="product-image flex items-center justify-center bg-gradient-to-br from-violet-100 to-white">
-                <Star className="w-16 h-16 text-violet-600" aria-hidden />
-              </div>
-              <h4>Logros</h4>
-              <p>
-                Desbloqueá medallas y desafíos a medida que avanzás en el mundial: nostalgia y estadísticas.
-              </p>
-            </article>
-          </div>
-        </div>
-      </section>
+      <MundialHubSection onSnapshotChange={(s) => setPlayerCount(s.playerCount)} />
 
       <section className="trending-section border-t-2 border-[#111] !py-6">
         <div className="container overflow-hidden">

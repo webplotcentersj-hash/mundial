@@ -500,6 +500,60 @@
   }
 }
 
+/* Mundial hub — home */
+.mundial-countdown-banner {
+  border: 2px solid #111;
+  background: linear-gradient(135deg, #fff8f3 0%, #fff 100%);
+  padding: 20px 24px;
+}
+
+.mundial-countdown-digits {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: "Archivo Black", sans-serif;
+}
+
+.mundial-countdown-unit {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 52px;
+}
+
+.mundial-countdown-value {
+  font-size: 28px;
+  line-height: 1;
+  color: #111;
+  font-variant-numeric: tabular-nums;
+}
+
+.mundial-countdown-label {
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: #888;
+  font-family: var(--font-store-sans), sans-serif;
+  font-weight: 700;
+  margin-top: 4px;
+}
+
+.mundial-countdown-sep {
+  font-size: 22px;
+  color: #EB671B;
+  padding-bottom: 14px;
+}
+
+@media (max-width: 640px) {
+  .mundial-countdown-value {
+    font-size: 22px;
+  }
+
+  .mundial-countdown-unit {
+    min-width: 42px;
+  }
+}
+
 .product-card {
   border: 2px solid #eee;
   padding: 10px;

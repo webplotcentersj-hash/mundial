@@ -3,6 +3,17 @@
 import { createClient } from './supabase/server'
 import { ensureUserProfile } from './ensureUserProfile'
 import { revalidatePath } from 'next/cache'
+import {
+  getDaysUntilKickoff,
+  getMundialPhase,
+  WC2026_ARGENTINA_DEBUT,
+  WC2026_FACTS,
+  WC2026_FINAL_ISO,
+  WC2026_KICKOFF_ISO,
+  WC2026_OPENING_MATCH,
+  type MundialMatchPreview,
+  type MundialPhase,
+} from './world-cup-2026'
 import type { PrintProductType } from '@/lib/store/catalog'
 import {
   buildOrderNotesForLine,
@@ -1137,11 +1148,108 @@ export async function getLiveTickerNews() {
     news.push("🔥 Predice los resultados exactos para sumar más puntos")
   }
   
-  // Rellenar hasta que al menos haya 5 noticias para un buen flujo visual
+  const daysLeft = getDaysUntilKickoff()
   if (news.length < 5) {
-    news.push("⚽ Faltan 20 días para el gran partido inaugural")
-    news.push("💰 ¡Nuevos premios anunciados para el Top 3 Global!")
+    if (getMundialPhase() === 'pre') {
+      news.push(`⚽ Faltan ${daysLeft} días para el inaugural: México vs Sudáfrica`)
+    } else {
+      news.push('⚽ Mundial 2026 en curso — seguí el fixture en Plot Mundial')
+    }
+    news.push(`🏟️ ${WC2026_FACTS.teams} selecciones · ${WC2026_FACTS.matches} partidos · 3 países sede`)
   }
 
   return { news, userCount: finalUserCount }
+}
+
+export type HomeMundialSnapshot = {
+  playerCount: number
+  leagueCount: number
+  predictionCount: number
+  nextMatch: MundialMatchPreview | null
+  argentinaMatch: MundialMatchPreview | null
+  kickoffIso: string
+  finalIso: string
+  phase: MundialPhase
+  daysUntilKickoff: number
+  facts: typeof WC2026_FACTS
+}
+
+function normalizeTeam(
+  team: { name?: string; code?: string } | { name?: string; code?: string }[] | null | undefined,
+): { name?: string; code?: string } | null {
+  if (!team) return null
+  if (Array.isArray(team)) return team[0] ?? null
+  return team
+}
+
+function mapDbMatchToPreview(m: {
+  date: string
+  venue?: string | null
+  stage?: string | null
+  homeTeam?: { name?: string; code?: string } | { name?: string; code?: string }[] | null
+  awayTeam?: { name?: string; code?: string } | { name?: string; code?: string }[] | null
+}): MundialMatchPreview | null {
+  const home = normalizeTeam(m.homeTeam)
+  const away = normalizeTeam(m.awayTeam)
+  const homeName = home?.name
+  const awayName = away?.name
+  const homeCode = home?.code
+  const awayCode = away?.code
+  if (!homeName || !awayName || !homeCode || !awayCode) return null
+  if (homeCode === 'tbd' || awayCode === 'tbd') return null
+  return {
+    homeName,
+    awayName,
+    homeCode,
+    awayCode,
+    date: m.date,
+    venue: m.venue ?? null,
+    stage: m.stage ?? null,
+  }
+}
+
+/** Datos en vivo del Mundial + actividad Plot para el home. */
+export async function getHomeMundialSnapshot(): Promise<HomeMundialSnapshot> {
+  const supabase = await createClient()
+  const nowIso = new Date().toISOString()
+
+  const [
+    { count: playerCount },
+    { count: leagueCount },
+    { count: predictionCount },
+    { data: upcomingMatches },
+  ] = await Promise.all([
+    supabase.from('profiles').select('*', { count: 'exact', head: true }),
+    supabase.from('leagues').select('*', { count: 'exact', head: true }),
+    supabase.from('predictions').select('*', { count: 'exact', head: true }),
+    supabase
+      .from('matches')
+      .select('date, venue, stage, homeTeam:teams!home_team_id(name, code), awayTeam:teams!away_team_id(name, code)')
+      .gte('date', nowIso)
+      .order('date', { ascending: true })
+      .limit(80),
+  ])
+
+  const mapped = (upcomingMatches ?? [])
+    .map(mapDbMatchToPreview)
+    .filter((m): m is MundialMatchPreview => m !== null)
+
+  const nextMatch = mapped[0] ?? WC2026_OPENING_MATCH
+  const argentinaFromDb = mapped.find(
+    (m) => m.homeCode === 'ar' || m.awayCode === 'ar',
+  )
+  const argentinaMatch = argentinaFromDb ?? WC2026_ARGENTINA_DEBUT
+
+  return {
+    playerCount: playerCount ?? 0,
+    leagueCount: leagueCount ?? 0,
+    predictionCount: predictionCount ?? 0,
+    nextMatch,
+    argentinaMatch,
+    kickoffIso: WC2026_KICKOFF_ISO,
+    finalIso: WC2026_FINAL_ISO,
+    phase: getMundialPhase(),
+    daysUntilKickoff: getDaysUntilKickoff(),
+    facts: WC2026_FACTS,
+  }
 }
