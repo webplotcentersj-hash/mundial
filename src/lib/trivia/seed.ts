@@ -1,49 +1,48 @@
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { TRIVIA_QUESTIONS_BANK } from './questions-bank'
 
-let seedPromise: Promise<{ count: number }> | null = null
+function getSeedSupabase() {
+  try {
+    return createAdminClient()
+  } catch {
+    return null
+  }
+}
 
-/** Inserta el banco de preguntas si la tabla está vacía o tiene pocas filas. */
-export async function ensureTriviaQuestionsSeeded(): Promise<{ count: number }> {
-  if (seedPromise) return seedPromise
+/** Inserta o actualiza el banco completo de preguntas en Supabase. */
+export async function ensureTriviaQuestionsSeeded(): Promise<{ count: number; bankSize: number }> {
+  const admin = getSeedSupabase()
+  const supabase = admin ?? (await createClient())
+  const bank = TRIVIA_QUESTIONS_BANK
 
-  seedPromise = (async () => {
-    const supabase = await createClient()
-    const { count, error: countErr } = await supabase
-      .from('trivia_questions')
-      .select('id', { count: 'exact', head: true })
+  const rows = bank.map((item) => ({
+    id: item.id,
+    question: item.question,
+    options: item.options,
+    correct_index: item.correctIndex,
+    difficulty: item.difficulty,
+    world_cup_year: item.worldCupYear ?? null,
+    category: item.category,
+  }))
 
-    if (countErr) {
-      console.error('ensureTriviaQuestionsSeeded count:', countErr)
-      return { count: 0 }
+  const chunkSize = 50
+  for (let i = 0; i < rows.length; i += chunkSize) {
+    const chunk = rows.slice(i, i + chunkSize)
+    const { error } = await supabase.from('trivia_questions').upsert(chunk, { onConflict: 'id' })
+    if (error) {
+      console.error('ensureTriviaQuestionsSeeded upsert:', error)
+      break
     }
+  }
 
-    const rows = TRIVIA_QUESTIONS_BANK.map((item) => ({
-      id: item.id,
-      question: item.question,
-      options: item.options,
-      correct_index: item.correctIndex,
-      difficulty: item.difficulty,
-      world_cup_year: item.worldCupYear ?? null,
-      category: item.category,
-    }))
+  const { count: finalCount, error: countErr } = await supabase
+    .from('trivia_questions')
+    .select('id', { count: 'exact', head: true })
 
-    const chunkSize = 50
-    for (let i = 0; i < rows.length; i += chunkSize) {
-      const chunk = rows.slice(i, i + chunkSize)
-      const { error } = await supabase.from('trivia_questions').upsert(chunk, { onConflict: 'id' })
-      if (error) {
-        console.error('ensureTriviaQuestionsSeeded upsert:', error)
-        break
-      }
-    }
+  if (countErr) {
+    console.error('ensureTriviaQuestionsSeeded count:', countErr)
+  }
 
-    const { count: finalCount } = await supabase
-      .from('trivia_questions')
-      .select('id', { count: 'exact', head: true })
-
-    return { count: finalCount ?? rows.length }
-  })()
-
-  return seedPromise
+  return { count: finalCount ?? rows.length, bankSize: bank.length }
 }

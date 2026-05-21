@@ -10,3 +10,13 @@ export const TRIVIA_TIME_LIMIT_SEC = 12
 export const TRIVIA_SESSION_SIZE = 10
 
 export type TriviaDifficulty = keyof typeof TRIVIA_POINTS
+
+export type TriviaQuestionSeed = {
+  id: string
+  question: string
+  options: [string, string, string, string]
+  correctIndex: 0 | 1 | 2 | 3
+  difficulty: TriviaDifficulty
+  worldCupYear?: number
+  category: string
+}

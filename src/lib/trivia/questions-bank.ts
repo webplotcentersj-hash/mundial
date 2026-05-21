@@ -1,14 +1,7 @@
-import type { TriviaDifficulty } from './constants'
+import type { TriviaDifficulty, TriviaQuestionSeed } from './constants'
+import { TRIVIA_QUESTIONS_EXTRA } from './questions-bank-extra'
 
-export type TriviaQuestionSeed = {
-  id: string
-  question: string
-  options: [string, string, string, string]
-  correctIndex: 0 | 1 | 2 | 3
-  difficulty: TriviaDifficulty
-  worldCupYear?: number
-  category: string
-}
+export type { TriviaQuestionSeed } from './constants'
 
 function q(
   id: string,
@@ -115,7 +108,7 @@ export function buildTriviaQuestionsBank(): TriviaQuestionSeed[] {
     { year: 2002, team: 'Alemania', wrong: ['Brasil', 'Turquía', 'Corea del Sur'] },
     { year: 1998, team: 'Brasil', wrong: ['Francia', 'Croacia', 'Países Bajos'] },
     { year: 1994, team: 'Italia', wrong: ['Brasil', 'Suecia', 'Bulgaria'] },
-    { year: 1986, team: 'Alemania', wrong: ['Argentina', 'Francia', 'Bélgica'] },
+    { year: 1986, team: 'Alemania Occidental', wrong: ['Argentina', 'Francia', 'Bélgica'] },
     { year: 1982, team: 'Alemania', wrong: ['Italia', 'Polonia', 'Francia'] },
   ]
 
@@ -192,7 +185,7 @@ export function buildTriviaQuestionsBank(): TriviaQuestionSeed[] {
     q('mom-2', '¿En qué Mundial fue el “Gol del Siglo” de Maradona vs Inglaterra?', '1986', ['1982', '1990', '1978'], 'medium', 'momentos', 1986),
     q('mom-3', '¿Zinedine Zidane cabeceó a Materazzi en la final de…?', '2006', ['2002', '2010', '1998'], 'medium', 'momentos', 2006),
     q('mom-4', '¿Roberto Baggio erró el penal decisivo en la final de…?', '1994', ['1990', '1998', '2002'], 'hard', 'momentos', 1994),
-    q('mom-5', '¿El Mundial con la “vaca loca” (vuvuzela) fue…?', '2010', ['2006', '2014', '2018'], 'easy', 'curiosidades', 2010),
+    q('mom-5', '¿El Mundial 2010 se recuerda por el sonido de las…?', 'Vuvuzelas', ['Tambores', 'Silbatos', 'Campanas'], 'easy', 'curiosidades', 2010),
     q('mom-6', '¿Croatia llegó a su primera final en…?', '2018', ['2022', '1998', '2014'], 'medium', 'momentos', 2018),
     q('mom-7', '¿Marruecos llegó a semifinales en…?', '2022', ['2018', '2010', '2006'], 'medium', 'momentos', 2022),
     q('mom-8', '¿Corea del Sur llegó a semifinales en casa en…?', '2002', ['2010', '1994', '2018'], 'hard', 'momentos', 2002),
@@ -283,7 +276,7 @@ export function buildTriviaQuestionsBank(): TriviaQuestionSeed[] {
     q('x-45', '¿Alemania campeona cayó en fase de grupos en…?', '2018', ['2014', '2022', '2010'], 'medium', 'momentos', 2018),
     q('x-46', '¿El primer Mundial transmitido en color en TV fue en…?', '1970', ['1966', '1974', '1982'], 'hard', 'curiosidades', 1970),
     q('x-47', '¿El "Grupo de la muerte" suele referirse a grupos muy competitivos; en 2014 uno incluía a Alemania, Portugal, Ghana y…?', 'Estados Unidos', ['España', 'Italia', 'Uruguay'], 'hard', 'formato', 2014),
-    q('x-48', '¿Quién marcó el gol más rápido en una final (aprox. 90 segundos)?', 'Johan Neeskens (penal)', ['Pelé', 'Müller', 'Lineker'], 'hard', 'records'),
+    q('x-48', '¿Qué anfitrión cayó 7-1 ante Alemania en semifinales en 2014?', 'Brasil', ['Sudáfrica', 'Rusia', 'Japón'], 'easy', 'momentos', 2014),
     q('x-49', '¿Miroslav Klose marcó goles en cuántos Mundiales distintos?', '4', ['3', '5', '2'], 'hard', 'goleadores'),
     q('x-50', '¿Cristiano Ronaldo marcó su primer gol mundialista en…?', '2006', ['2010', '2014', '2002'], 'medium', 'leyendas', 2006),
   ]
@@ -371,7 +364,7 @@ export function buildTriviaQuestionsBank(): TriviaQuestionSeed[] {
     q('y-80', '¿Qué selección ganó el primer Mundial en 1930?', 'Uruguay', ['Argentina', 'Estados Unidos', 'Yugoslavia'], 'easy', 'campeones', 1930),
   ]
 
-  items.push(...extraBatch, ...yBatch)
+  items.push(...extraBatch, ...yBatch, ...TRIVIA_QUESTIONS_EXTRA)
 
   // Dedupe by id
   const seen = new Set<string>()

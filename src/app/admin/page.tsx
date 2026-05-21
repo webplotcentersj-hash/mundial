@@ -20,6 +20,7 @@ import {
   type AdminStoreDashboard,
   type PrintOrderStatus,
 } from '@/lib/actions'
+import { ensureTriviaQuestionsSeeded } from '@/lib/trivia/seed'
 import { AdminUserFichaModal } from '@/components/admin/AdminUserFichaModal'
 import { AdminStoreOrdersPanel } from '@/components/admin/AdminStoreOrdersPanel'
 import './admin-store.css'
@@ -238,14 +239,17 @@ export default function AdminPage() {
   const handleSyncRankingTotals = async () => {
     if (
       !window.confirm(
-        'Se va a recalcular el puntaje de cada perfil como la suma de todos los points_earned en pronósticos. ¿Continuar?',
+        'Se va a recalcular el puntaje de cada perfil sumando pronósticos (fixture) + trivia. ¿Continuar?',
       )
     )
       return
     setSyncRankingBusy(true)
     try {
+      await ensureTriviaQuestionsSeeded()
       const res = await adminSyncRankingTotalsFromPredictions()
-      alert(`Ranking sincronizado. Perfiles actualizados: ${res.profilesUpdated}.`)
+      alert(
+        `Ranking sincronizado.\nPerfiles: ${res.profilesUpdated}\nPronósticos: ${res.predictionsCounted}\nRespuestas trivia: ${res.triviaAnswersCounted}`,
+      )
       const fetchedUsers = await getAdminProfiles()
       setUsers(fetchedUsers || [])
     } catch (e: any) {

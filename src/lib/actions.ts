@@ -1,6 +1,7 @@
 'use server'
 
 import { createClient } from './supabase/server'
+import { createAdminClient } from './supabase/admin'
 import { ensureUserProfile } from './ensureUserProfile'
 import { revalidatePath } from 'next/cache'
 import {
@@ -354,6 +355,7 @@ export async function getAdminUserDetail(userId: string): Promise<AdminUserDetai
   if (!isAdmin) throw new Error('No autorizado')
 
   const supabase = await createClient()
+  const adminDb = createAdminClient()
   const { data: profile, error: profileErr } = await supabase
     .from('profiles')
     .select('id, username, avatar_url, total_points, last_active, created_at, role')
@@ -380,7 +382,7 @@ export async function getAdminUserDetail(userId: string): Promise<AdminUserDetai
         .eq('user_id', userId)
         .order('updated_at', { ascending: false })
         .limit(20),
-      supabase.from('trivia_user_answers').select('correct, points_earned').eq('user_id', userId),
+      adminDb.from('trivia_user_answers').select('correct, points_earned').eq('user_id', userId),
       supabase
         .from('print_orders')
         .select('id, product_type, status, created_at, contact_email, contact_name')
@@ -883,7 +885,8 @@ export async function adminSyncRankingTotalsFromPredictions() {
     throw new Error('No autorizado')
   }
 
-  const supabase = await createClient()
+  const supabase = createAdminClient()
+
   const { data: preds, error: predErr } = await supabase.from('predictions').select('user_id, points_earned')
   if (predErr) {
     throw new Error(predErr.message)
@@ -896,14 +899,18 @@ export async function adminSyncRankingTotalsFromPredictions() {
     throw new Error(triviaErr.message)
   }
 
-  const byUser = new Map<string, number>()
+  const byUser = new Map<string, { fixture: number; trivia: number }>()
   for (const row of preds || []) {
     const uid = row.user_id as string
-    byUser.set(uid, (byUser.get(uid) || 0) + toScoreInt(row.points_earned))
+    const cur = byUser.get(uid) ?? { fixture: 0, trivia: 0 }
+    cur.fixture += toScoreInt(row.points_earned)
+    byUser.set(uid, cur)
   }
   for (const row of triviaRows || []) {
     const uid = row.user_id as string
-    byUser.set(uid, (byUser.get(uid) || 0) + toScoreInt(row.points_earned))
+    const cur = byUser.get(uid) ?? { fixture: 0, trivia: 0 }
+    cur.trivia += toScoreInt(row.points_earned)
+    byUser.set(uid, cur)
   }
 
   const { data: profiles, error: profErr } = await supabase.from('profiles').select('id')
@@ -912,7 +919,8 @@ export async function adminSyncRankingTotalsFromPredictions() {
   }
 
   for (const p of profiles || []) {
-    const pts = byUser.get(p.id) ?? 0
+    const breakdown = byUser.get(p.id) ?? { fixture: 0, trivia: 0 }
+    const pts = breakdown.fixture + breakdown.trivia
     const { error: updErr } = await supabase.from('profiles').update({ total_points: pts }).eq('id', p.id)
     if (updErr) {
       throw new Error(updErr.message)
@@ -922,7 +930,12 @@ export async function adminSyncRankingTotalsFromPredictions() {
   revalidatePath('/ranking')
   revalidatePath('/admin')
   revalidatePath('/trivia')
-  return { success: true as const, profilesUpdated: profiles?.length ?? 0 }
+  return {
+    success: true as const,
+    profilesUpdated: profiles?.length ?? 0,
+    triviaAnswersCounted: triviaRows?.length ?? 0,
+    predictionsCounted: preds?.length ?? 0,
+  }
 }
 
 
