@@ -13,6 +13,7 @@ import {
   type TriviaStats,
 } from '@/lib/actions/trivia'
 import { TRIVIA_POINTS, TRIVIA_TIME_LIMIT_SEC } from '@/lib/trivia/constants'
+import { labelTriviaCategory, labelTriviaDifficulty, labelTriviaPoints } from '@/lib/trivia/labels'
 
 type Phase = 'intro' | 'playing' | 'feedback' | 'summary'
 
@@ -23,6 +24,7 @@ type FeedbackState = {
   basePoints: number
   timeBonus: number
   timedOut?: boolean
+  alreadyAnswered?: boolean
 }
 
 export default function TriviaPage() {
@@ -43,6 +45,11 @@ export default function TriviaPage() {
   const questionStartedAt = useRef(0)
   const timedOutRef = useRef(false)
   const submittingRef = useRef(false)
+  const selectedRef = useRef<number | null>(null)
+
+  useEffect(() => {
+    selectedRef.current = selected
+  }, [selected])
 
   const refreshStats = useCallback(async () => {
     const s = await getTriviaStats()
@@ -68,6 +75,7 @@ export default function TriviaPage() {
         basePoints: res.basePoints,
         timeBonus: res.timeBonus,
         timedOut: res.timedOut,
+        alreadyAnswered: res.alreadyAnswered,
       })
       if (res.correct && !res.alreadyAnswered) {
         setSessionCorrect((c) => c + 1)
@@ -108,13 +116,13 @@ export default function TriviaPage() {
       setSecondsLeft(left)
       if (left <= 0 && !timedOutRef.current) {
         timedOutRef.current = true
-        const choice = selected ?? -1
+        const choice = selectedRef.current ?? -1
         void submitAnswer(choice, TRIVIA_TIME_LIMIT_SEC * 1000)
       }
     }, 100)
 
     return () => window.clearInterval(tick)
-  }, [phase, index, current?.id, selected, submitAnswer])
+  }, [phase, index, current?.id, submitAnswer])
 
   const startSession = async () => {
     setLoading(true)
@@ -126,7 +134,8 @@ export default function TriviaPage() {
       return
     }
     if (res.questions.length === 0) {
-      setError('No quedan preguntas nuevas. Volvé más tarde o revisá el ranking.')
+      setError(res.error ?? 'No hay preguntas nuevas disponibles.')
+      setPhase('intro')
       return
     }
     setStats(res.stats)
@@ -191,7 +200,7 @@ export default function TriviaPage() {
           <motion.div className="mb-8 grid grid-cols-2 gap-3 sm:grid-cols-4">
             {[
               { label: 'Banco', value: stats.totalInBank },
-              { label: 'Respondidas', value: stats.answered },
+              { label: 'Te faltan', value: stats.remainingInBank },
               { label: 'Aciertos', value: stats.correct },
               { label: 'Pts trivia', value: stats.triviaPoints },
             ].map((box) => (
@@ -229,11 +238,11 @@ export default function TriviaPage() {
               className="border-[3px] border-[#111] bg-white p-6 shadow-[8px_8px_0_#111] sm:p-8"
             >
               <h2 className="text-xl font-black uppercase [font-family:var(--font-store-display),sans-serif]">
-                Partida de 10 preguntas
+                Partida de hasta {Math.min(10, stats?.remainingInBank ?? 10)} preguntas
               </h2>
               <p className="mt-2 text-sm text-[#555]">
-                Respondé rápido para sumar bonus. Si se acaba el tiempo, la pregunta cuenta como incorrecta. Cada
-                pregunta del banco solo otorga puntos la primera vez que la acertás.
+                Ronda ordenada de fácil a difícil. Elegí una respuesta y confirmá antes de que se acabe el tiempo.
+                Cada pregunta del banco solo suma puntos la primera vez que la acertás.
               </p>
               <button
                 type="button"
@@ -250,19 +259,25 @@ export default function TriviaPage() {
           {(phase === 'playing' || phase === 'feedback') && current && (
             <motion.div
               key={`q-${current.id}`}
-              initial={{ opacity: 0, x: 16 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -16 }}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
               className="border-[3px] border-[#111] bg-white p-5 shadow-[8px_8px_0_#111] sm:p-7"
             >
               <motion.div className="mb-4 flex flex-wrap items-center justify-between gap-2">
                 <span className="rounded-full border-2 border-[#111] bg-[#ccff00] px-3 py-0.5 text-[10px] font-black uppercase">
-                  {index + 1} / {questions.length}
+                  Pregunta {index + 1} de {questions.length}
                 </span>
-                <span className="text-[10px] font-bold uppercase tracking-wider text-[#5d3fd3]">
-                  {current.difficulty}
-                  {current.worldCupYear ? ` · ${current.worldCupYear}` : ''}
-                </span>
+                <div className="flex flex-wrap items-center gap-2 text-[10px] font-bold uppercase tracking-wider">
+                  <span className="rounded-full border border-[#5d3fd3] px-2 py-0.5 text-[#5d3fd3]">
+                    {labelTriviaDifficulty(current.difficulty)} · {labelTriviaPoints(current.difficulty)} pts
+                  </span>
+                  <span className="text-[#888]">
+                    {labelTriviaCategory(current.category)}
+                    {current.worldCupYear ? ` · ${current.worldCupYear}` : ''}
+                  </span>
+                </div>
               </motion.div>
 
               {phase === 'playing' && (
@@ -347,10 +362,14 @@ export default function TriviaPage() {
                       ) : feedback.correct ? (
                         <>
                           ¡Correcto! +{feedback.points} pts al ranking
-                          <span className="mt-1 block text-xs font-semibold text-green-800">
-                            Base {feedback.basePoints} + bonus velocidad {feedback.timeBonus}
-                          </span>
+                          {feedback.timeBonus > 0 ? (
+                            <span className="mt-1 block text-xs font-semibold text-green-800">
+                              Base {feedback.basePoints} + bonus velocidad {feedback.timeBonus}
+                            </span>
+                          ) : null}
                         </>
+                      ) : feedback.alreadyAnswered ? (
+                        <>Ya habías respondido esta pregunta. No suma puntos de nuevo.</>
                       ) : (
                         <>Incorrecto. La respuesta era: {current.options[feedback.correctIndex]}</>
                       )}

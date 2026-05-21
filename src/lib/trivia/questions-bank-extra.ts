@@ -100,7 +100,7 @@ export const TRIVIA_QUESTIONS_EXTRA: TriviaQuestionSeed[] = [
   q('z-083', '¿Quién fue DT de Francia campeona en 2018?', 'Didier Deschamps', ['Domenech', 'Blanc', 'Lemerre'], 'medium', 'dt', 2018),
   q('z-084', '¿Quién fue DT de España campeona en 2010?', 'Vicente del Bosque', ['Aragonés', 'Lopetegui', 'Enrique'], 'easy', 'dt', 2010),
   q('z-085', '¿Cuántos goles marcó Lionel Messi en Mundiales (hasta 2022)?', '13', ['10', '15', '11'], 'hard', 'leyendas'),
-  q('z-086', '¿Cristiano Ronaldo marcó gol en cinco Mundiales distintos?', 'Sí', ['No', 'Solo en cuatro', 'Solo en tres'], 'medium', 'leyendas'),
+  q('z-086', '¿En cuántos Mundiales distintos marcó gol Cristiano Ronaldo?', '5', ['4', '3', '6'], 'medium', 'leyendas'),
   q('z-087', '¿Lionel Messi ganó el Balón de Oro del torneo en…?', '2022', ['2014', '2018', '2010'], 'easy', 'leyendas', 2022),
   q('z-088', '¿Luka Modrić ganó el Balón de Oro del torneo en…?', '2018', ['2022', '2014', '2010'], 'medium', 'leyendas', 2018),
   q('z-089', '¿Diego Maradona levantó la Copa en…?', '1986', ['1982', '1990', '1978'], 'easy', 'leyendas', 1986),

@@ -886,7 +886,7 @@ export async function adminSyncRankingTotalsFromPredictions() {
     throw new Error('No autorizado')
   }
 
-  const seedResult = await ensureTriviaQuestionsSeeded()
+  const seedResult = await ensureTriviaQuestionsSeeded(true)
   const supabase = createAdminClient()
 
   const { data: preds, error: predErr } = await supabase.from('predictions').select('user_id, points_earned')

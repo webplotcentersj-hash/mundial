@@ -6,6 +6,8 @@ import { revalidatePath } from 'next/cache'
 import { ensureTriviaQuestionsSeeded } from '@/lib/trivia/seed'
 import { TRIVIA_SESSION_SIZE, type TriviaDifficulty } from '@/lib/trivia/constants'
 import { computeTriviaPoints } from '@/lib/trivia/scoring'
+import { presentQuestionOptions } from '@/lib/trivia/present-options'
+import { pickTriviaSessionQuestions } from '@/lib/trivia/session-pick'
 
 export type TriviaQuestionPublic = {
   id: string
@@ -21,15 +23,7 @@ export type TriviaStats = {
   correct: number
   triviaPoints: number
   totalInBank: number
-}
-
-function shuffle<T>(arr: T[]): T[] {
-  const a = [...arr]
-  for (let i = a.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1))
-    ;[a[i], a[j]] = [a[j], a[i]]
-  }
-  return a
+  remainingInBank: number
 }
 
 export async function getTriviaStats(): Promise<TriviaStats> {
@@ -44,7 +38,8 @@ export async function getTriviaStats(): Promise<TriviaStats> {
     .select('id', { count: 'exact', head: true })
 
   if (!user) {
-    return { answered: 0, correct: 0, triviaPoints: 0, totalInBank: totalInBank ?? 0 }
+    const bank = totalInBank ?? 0
+    return { answered: 0, correct: 0, triviaPoints: 0, totalInBank: bank, remainingInBank: bank }
   }
 
   const { data: answers } = await supabase
@@ -59,15 +54,49 @@ export async function getTriviaStats(): Promise<TriviaStats> {
     triviaPoints += a.points_earned || 0
   }
 
+  const answered = answers?.length ?? 0
+  const bank = totalInBank ?? 0
+
   return {
-    answered: answers?.length ?? 0,
+    answered,
     correct,
     triviaPoints,
-    totalInBank: totalInBank ?? 0,
+    totalInBank: bank,
+    remainingInBank: Math.max(0, bank - answered),
   }
 }
 
-/** Devuelve hasta N preguntas que el usuario aún no respondió. */
+function toPublicQuestion(row: {
+  id: string
+  question: string
+  options: unknown
+  correct_index: number
+  difficulty: string
+  world_cup_year: number | null
+  category: string | null
+}): TriviaQuestionPublic {
+  const rawOptions = row.options as string[]
+  const presented = presentQuestionOptions(row.id, rawOptions, row.correct_index)
+
+  return {
+    id: row.id,
+    question: row.question,
+    options: presented.options,
+    difficulty: row.difficulty as TriviaDifficulty,
+    worldCupYear: row.world_cup_year,
+    category: row.category,
+  }
+}
+
+function resolveCorrectIndex(
+  questionId: string,
+  rawOptions: string[],
+  storedCorrectIndex: number,
+): number {
+  return presentQuestionOptions(questionId, rawOptions, storedCorrectIndex).correctIndex
+}
+
+/** Devuelve hasta N preguntas nuevas, ordenadas de fácil a difícil. */
 export async function getTriviaSession(): Promise<{
   questions: TriviaQuestionPublic[]
   stats: TriviaStats
@@ -105,17 +134,17 @@ export async function getTriviaSession(): Promise<{
   }
 
   const pending = allQuestions.filter((row) => !answeredIds.has(row.id))
-  const pool = pending.length >= TRIVIA_SESSION_SIZE ? pending : allQuestions
-  const picked = shuffle(pool).slice(0, TRIVIA_SESSION_SIZE)
 
-  const questions: TriviaQuestionPublic[] = picked.map((row) => ({
-    id: row.id,
-    question: row.question,
-    options: row.options as string[],
-    difficulty: row.difficulty as TriviaDifficulty,
-    worldCupYear: row.world_cup_year,
-    category: row.category,
-  }))
+  if (pending.length === 0) {
+    return {
+      questions: [],
+      stats,
+      error: 'Ya respondiste todas las preguntas del banco. Mirá el ranking o volvé cuando sumemos más.',
+    }
+  }
+
+  const picked = pickTriviaSessionQuestions(pending)
+  const questions = picked.map(toPublicQuestion)
 
   return { questions, stats }
 }
@@ -188,19 +217,6 @@ export async function submitTriviaAnswer(
     .eq('question_id', questionId)
     .maybeSingle()
 
-  if (existing) {
-    const { data: q } = await supabase.from('trivia_questions').select('correct_index').eq('id', questionId).single()
-    return {
-      correct: existing.correct,
-      correctIndex: q?.correct_index ?? 0,
-      pointsEarned: existing.points_earned ?? 0,
-      basePoints: 0,
-      timeBonus: 0,
-      responseTimeMs: 0,
-      alreadyAnswered: true,
-    }
-  }
-
   const { data: question, error: qErr } = await supabase
     .from('trivia_questions')
     .select('*')
@@ -219,8 +235,22 @@ export async function submitTriviaAnswer(
     }
   }
 
-  const correctIndex = question.correct_index as number
-  const correct = !timedOut && selectedIndex === correctIndex
+  const rawOptions = question.options as string[]
+  const displayCorrectIndex = resolveCorrectIndex(questionId, rawOptions, question.correct_index as number)
+
+  if (existing) {
+    return {
+      correct: existing.correct,
+      correctIndex: displayCorrectIndex,
+      pointsEarned: existing.points_earned ?? 0,
+      basePoints: 0,
+      timeBonus: 0,
+      responseTimeMs: 0,
+      alreadyAnswered: true,
+    }
+  }
+
+  const correct = !timedOut && selectedIndex === displayCorrectIndex
   const difficulty = question.difficulty as TriviaDifficulty
   const score = computeTriviaPoints(difficulty, correct, responseTimeMs)
 
@@ -239,7 +269,7 @@ export async function submitTriviaAnswer(
     console.error('submitTriviaAnswer insert:', insErr)
     return {
       correct: false,
-      correctIndex,
+      correctIndex: displayCorrectIndex,
       pointsEarned: 0,
       basePoints: 0,
       timeBonus: 0,
@@ -263,7 +293,7 @@ export async function submitTriviaAnswer(
 
   return {
     correct,
-    correctIndex,
+    correctIndex: displayCorrectIndex,
     pointsEarned: score.total,
     basePoints: score.basePoints,
     timeBonus: score.timeBonus,
