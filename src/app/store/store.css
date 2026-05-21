@@ -554,6 +554,218 @@
   }
 }
 
+/* Mundial hub — carrusel y modal */
+.mundial-carousel-wrap {
+  position: relative;
+  padding: 0 44px;
+}
+
+.mundial-carousel-track {
+  display: flex;
+  gap: 16px;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  padding: 4px 2px 12px;
+}
+
+.mundial-carousel-track::-webkit-scrollbar {
+  display: none;
+}
+
+.mundial-carousel-slide {
+  flex: 0 0 calc(100% - 8px);
+  scroll-snap-align: start;
+  min-width: 0;
+}
+
+@media (min-width: 640px) {
+  .mundial-carousel-slide {
+    flex: 0 0 calc(50% - 8px);
+  }
+}
+
+@media (min-width: 1024px) {
+  .mundial-carousel-slide {
+    flex: 0 0 calc(33.333% - 11px);
+  }
+}
+
+.mundial-carousel-btn {
+  position: absolute;
+  top: 50%;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  margin-top: -28px;
+  border: 2px solid #111;
+  background: #fff;
+  color: #111;
+  cursor: pointer;
+  transition: background 0.15s, opacity 0.15s;
+}
+
+.mundial-carousel-btn:hover:not(:disabled) {
+  background: #EB671B;
+  color: #fff;
+  border-color: #EB671B;
+}
+
+.mundial-carousel-btn:disabled {
+  opacity: 0.25;
+  cursor: not-allowed;
+}
+
+.mundial-carousel-btn--prev {
+  left: 0;
+}
+
+.mundial-carousel-btn--next {
+  right: 0;
+}
+
+.mundial-carousel-dots {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.mundial-carousel-dot {
+  width: 8px;
+  height: 8px;
+  padding: 0;
+  border: 2px solid #111;
+  background: transparent;
+  cursor: pointer;
+  transition: background 0.15s, transform 0.15s;
+}
+
+.mundial-carousel-dot.is-active {
+  background: #EB671B;
+  border-color: #EB671B;
+  transform: scale(1.15);
+}
+
+.product-card--clickable {
+  cursor: pointer;
+  text-align: left;
+}
+
+.product-card--clickable:focus-visible {
+  outline: 2px solid #EB671B;
+  outline-offset: 2px;
+}
+
+.mundial-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(4px);
+  animation: mundial-modal-fade 0.2s ease;
+}
+
+.mundial-modal-panel {
+  position: relative;
+  width: 100%;
+  max-width: 520px;
+  max-height: min(85vh, 680px);
+  overflow-y: auto;
+  border: 2px solid #111;
+  background: #fff;
+  padding: 28px 24px 24px;
+  animation: mundial-modal-slide 0.25s ease;
+}
+
+.mundial-modal-close {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border: 2px solid #111;
+  background: #fff;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.mundial-modal-close:hover {
+  background: #111;
+  color: #fff;
+}
+
+.mundial-modal-title {
+  font-family: "Archivo Black", sans-serif;
+  font-size: 1.25rem;
+  text-transform: uppercase;
+  line-height: 1.2;
+  padding-right: 40px;
+  margin-bottom: 16px;
+  color: #111;
+}
+
+.mundial-modal-body {
+  color: #444;
+}
+
+.mundial-modal-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.mundial-modal-list li {
+  padding-left: 0;
+  line-height: 1.5;
+}
+
+@keyframes mundial-modal-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes mundial-modal-slide {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (max-width: 640px) {
+  .mundial-carousel-wrap {
+    padding: 0 36px;
+  }
+
+  .mundial-carousel-btn {
+    width: 32px;
+    height: 32px;
+  }
+}
+
 .product-card {
   border: 2px solid #eee;
   padding: 10px;
