@@ -1,7 +1,7 @@
 'use client'
 
 import { Suspense, useEffect, useState } from 'react'
-import { login, signup } from './actions'
+import { login, resendConfirmationEmail, signup } from './actions'
 import { useSearchParams } from 'next/navigation'
 import Image from 'next/image'
 import { EmailConfirmNoticeModal } from '@/components/auth/email-confirm-notice-modal'
@@ -10,6 +10,8 @@ function LoginContent() {
   const searchParams = useSearchParams()
   const message = searchParams.get('message')
   const pendingConfirmation = searchParams.get('pendingConfirmation') === '1'
+  const emailNotConfirmed = searchParams.get('emailNotConfirmed') === '1'
+  const prefilledEmail = searchParams.get('email') ?? ''
   const registerMode = searchParams.get('mode') === 'register'
 
   const [isLogin, setIsLogin] = useState(!registerMode)
@@ -74,9 +76,39 @@ function LoginContent() {
           </div>
 
           {message && !pendingConfirmation && (
-            <div className="bg-red-500/10 border border-red-500/50 text-red-500 p-3 rounded-lg mb-6 text-sm text-center">
+            <div
+              className={`mb-6 rounded-lg border p-3 text-center text-sm ${
+                emailNotConfirmed
+                  ? 'border-amber-500/50 bg-amber-500/10 text-amber-100'
+                  : 'border-red-500/50 bg-red-500/10 text-red-500'
+              }`}
+            >
               {message}
             </div>
+          )}
+
+          {emailNotConfirmed && (
+            <form action={resendConfirmationEmail} className="mb-6 space-y-3 rounded-xl border border-sky-400/30 bg-sky-500/10 p-4">
+              <p className="text-sm leading-relaxed text-sky-100">
+                ¿No llegó el mail de confirmación? Podés pedir uno nuevo (esperá unos minutos entre intentos).
+              </p>
+              <input type="hidden" name="email" value={prefilledEmail} />
+              {!prefilledEmail ? (
+                <input
+                  name="email"
+                  type="email"
+                  required
+                  placeholder="tu@email.com"
+                  className="w-full rounded-xl border border-white/15 bg-white/[0.06] px-4 py-3 text-white placeholder:text-white/35"
+                />
+              ) : null}
+              <button
+                type="submit"
+                className="w-full rounded-lg border border-sky-400/40 bg-sky-500/20 py-2.5 text-sm font-semibold text-sky-100 transition-colors hover:bg-sky-500/30"
+              >
+                Reenviar mail de confirmación
+              </button>
+            </form>
           )}
 
           <form className="space-y-4">
@@ -105,7 +137,9 @@ function LoginContent() {
                 name="email"
                 type="email"
                 placeholder="tu@email.com"
+                defaultValue={prefilledEmail}
                 required
+                autoComplete="email"
                 className="w-full rounded-xl border border-white/15 bg-white/[0.06] px-4 py-3 text-white placeholder:text-white/35 shadow-inner shadow-black/20 backdrop-blur-sm transition-all focus:border-primary/55 focus:outline-none focus:ring-2 focus:ring-primary/35"
               />
             </div>

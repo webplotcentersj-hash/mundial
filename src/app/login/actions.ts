@@ -5,22 +5,48 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { ensureUserProfile } from '@/lib/ensureUserProfile'
 import { getAppBaseUrl } from '@/lib/mercadopago/config'
+import {
+  isEmailNotConfirmedError,
+  mapAuthErrorMessage,
+} from '@/lib/auth/messages'
+
+function readCredentials(formData: FormData) {
+  const email = String(formData.get('email') ?? '').trim().toLowerCase()
+  const password = String(formData.get('password') ?? '')
+  return { email, password }
+}
+
+function loginRedirect(message: string, extra?: Record<string, string>) {
+  const params = new URLSearchParams({ message })
+  if (extra) {
+    for (const [key, value] of Object.entries(extra)) {
+      if (value) params.set(key, value)
+    }
+  }
+  redirect(`/login?${params.toString()}`)
+}
 
 export async function login(formData: FormData) {
-  const supabase = await createClient()
+  const { email, password } = readCredentials(formData)
 
-  const data = {
-    email: formData.get('email') as string,
-    password: formData.get('password') as string,
+  if (!email || !password) {
+    loginRedirect('Completá email y contraseña para ingresar.')
   }
 
-  const { error } = await supabase.auth.signInWithPassword(data)
+  const supabase = await createClient()
+  const { error } = await supabase.auth.signInWithPassword({ email, password })
 
   if (error) {
-    redirect('/login?message=No se pudo autenticar usuario')
+    const friendly = mapAuthErrorMessage(error.message)
+    if (isEmailNotConfirmedError(error.message)) {
+      loginRedirect(friendly, { emailNotConfirmed: '1', email })
+    }
+    loginRedirect(friendly)
   }
 
-  const { data: { user } } = await supabase.auth.getUser()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
   if (user) {
     const pr = await ensureUserProfile(supabase, user)
     if (pr.error) console.error('ensureUserProfile after login:', pr.error)
@@ -31,15 +57,26 @@ export async function login(formData: FormData) {
 }
 
 export async function signup(formData: FormData) {
+  const { email, password } = readCredentials(formData)
+  const username = String(formData.get('username') ?? '').trim()
+
+  if (!email || !password) {
+    loginRedirect('Completá email y contraseña para registrarte.', { mode: 'register' })
+  }
+
+  if (!username) {
+    loginRedirect('Elegí un nombre de usuario.', { mode: 'register' })
+  }
+
   const supabase = await createClient()
 
   const payload = {
-    email: formData.get('email') as string,
-    password: formData.get('password') as string,
+    email,
+    password,
     options: {
       emailRedirectTo: `${getAppBaseUrl()}/auth/callback?next=/confirmacion`,
       data: {
-        username: formData.get('username') as string,
+        username,
       },
     },
   }
@@ -47,9 +84,7 @@ export async function signup(formData: FormData) {
   const { data, error } = await supabase.auth.signUp(payload)
 
   if (error) {
-    redirect(
-      `/login?message=${encodeURIComponent(error.message || 'No se pudo crear la cuenta')}`,
-    )
+    loginRedirect(mapAuthErrorMessage(error.message), { mode: 'register' })
   }
 
   // Si "Confirmar email" está activo en Supabase, no hay sesión hasta confirmar.
@@ -66,6 +101,32 @@ export async function signup(formData: FormData) {
 
   revalidatePath('/', 'layout')
   redirect('/dashboard')
+}
+
+export async function resendConfirmationEmail(formData: FormData) {
+  const email = String(formData.get('email') ?? '').trim().toLowerCase()
+
+  if (!email) {
+    loginRedirect('Ingresá tu email para reenviar la confirmación.', { emailNotConfirmed: '1' })
+  }
+
+  const supabase = await createClient()
+  const { error } = await supabase.auth.resend({
+    type: 'signup',
+    email,
+    options: {
+      emailRedirectTo: `${getAppBaseUrl()}/auth/callback?next=/confirmacion`,
+    },
+  })
+
+  if (error) {
+    loginRedirect(mapAuthErrorMessage(error.message), {
+      emailNotConfirmed: '1',
+      email,
+    })
+  }
+
+  redirect('/login?pendingConfirmation=1')
 }
 
 export async function signout() {

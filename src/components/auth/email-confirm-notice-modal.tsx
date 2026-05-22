@@ -59,7 +59,7 @@ export function EmailConfirmNoticeModal({ open, variant, onClose }: Props) {
                 : 'Al registrarte te vamos a mandar un mail de confirmación. Tenés que confirmar la cuenta antes de poder entrar a Plot Mundial.'}
             </p>
             <p className="mb-6 text-center text-xs leading-relaxed text-white/50">
-              Si no lo ves en unos minutos, revisá spam o promociones.
+              Si no lo ves en unos minutos, revisá spam o promociones. No te registres de nuevo con el mismo mail: eso bloquea el envío por un rato.
             </p>
 
             <button
