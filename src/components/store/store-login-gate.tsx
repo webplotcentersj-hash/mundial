@@ -1,11 +1,14 @@
 'use client'
 
 import Link from 'next/link'
+import { usePathname } from 'next/navigation'
 import { Store, Loader2 } from 'lucide-react'
 import { useStore } from '@/components/store/store-provider'
 
 export function StoreLoginGate({ children }: { children: React.ReactNode }) {
   const { userReady, loggedIn } = useStore()
+  const pathname = usePathname()
+  const next = pathname?.startsWith('/store') ? pathname : '/store/combo'
 
   if (!userReady) {
     return (
@@ -29,9 +32,17 @@ export function StoreLoginGate({ children }: { children: React.ReactNode }) {
           <p style={{ marginBottom: '1.5rem', color: '#444' }}>
             Necesitamos tu cuenta para asociar el pedido y poder contactarte cuando esté listo.
           </p>
-          <Link href="/login?next=/store/combo" className="btn-primary hover-lift">
-            INICIAR SESIÓN
-          </Link>
+          <div className="flex flex-col gap-3 sm:flex-row sm:justify-center">
+            <Link href={`/login?next=${encodeURIComponent(next)}`} className="btn-primary hover-lift">
+              INICIAR SESIÓN
+            </Link>
+            <Link
+              href={`/login?mode=register&next=${encodeURIComponent(next)}`}
+              className="btn-secondary hover-lift text-center"
+            >
+              CREAR CUENTA
+            </Link>
+          </div>
         </div>
       </div>
     )

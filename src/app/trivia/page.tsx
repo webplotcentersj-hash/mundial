@@ -229,9 +229,14 @@ export default function TriviaPage() {
           <motion.div className="store-message err mb-6" role="alert">
             {error}
             {error.includes('sesión') && (
-              <Link href="/login?next=/trivia" className="mt-2 block font-bold underline">
-                Iniciar sesión
-              </Link>
+              <span className="mt-2 block space-y-1">
+                <Link href="/login?next=/trivia" className="block font-bold underline">
+                  Iniciar sesión
+                </Link>
+                <Link href="/login?mode=register&next=/trivia" className="block font-bold underline">
+                  Crear cuenta
+                </Link>
+              </span>
             )}
           </motion.div>
         )}
