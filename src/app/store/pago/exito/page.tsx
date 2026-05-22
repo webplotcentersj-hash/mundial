@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { CheckCircle2 } from 'lucide-react'
 import { syncStoreCheckoutPayment } from '@/lib/mercadopago/sync-payment'
+import { StorePagoCartHandler } from '@/components/store/store-pago-cart-handler'
 
 type Props = {
   searchParams: Promise<{
@@ -21,7 +22,9 @@ export default async function StorePagoExitoPage({ searchParams }: Props) {
   }
 
   return (
-    <div className="mx-auto max-w-lg px-4 py-16 text-center">
+    <>
+      <StorePagoCartHandler mode="success" />
+      <div className="mx-auto max-w-lg px-4 py-16 text-center">
       <CheckCircle2 className="mx-auto mb-4 h-14 w-14 text-emerald-600" aria-hidden />
       <h1 className="mb-2 text-2xl font-bold">¡Pago recibido!</h1>
       <p className="mb-8 text-[#555]">
@@ -30,6 +33,7 @@ export default async function StorePagoExitoPage({ searchParams }: Props) {
       <Link href="/store" className="btn-primary hover-lift inline-block">
         Volver al Store
       </Link>
-    </div>
+      </div>
+    </>
   )
 }

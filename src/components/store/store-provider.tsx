@@ -27,73 +27,22 @@ import {
   buildStickerOrderNotes,
   isComboPosterId,
   isComboStickerId,
-  isSellableProductType,
-  validateStoreCartLine,
   type ComboPosterId,
   type ComboStickerId,
 } from '@/lib/store/catalog'
 import type { StoreCartLine } from '@/lib/store/cart-lines'
+import {
+  STORE_CART_SYNC_EVENT,
+  clearStoredCart,
+  loadPendingCheckout,
+  loadStoredCartLines,
+  loadStoredContact,
+  saveCartBackup,
+  savePendingCheckout,
+  saveStoredCartLines,
+  saveStoredContact,
+} from '@/lib/store/cart-storage'
 import { readFiguritaStoreImageFromSession, clearFiguritaStoreImageFromSession } from '@/lib/storePrints'
-
-const CART_STORAGE_KEY = 'plotmundial_store_cart_v4'
-
-function parseStoredCartLine(row: unknown): StoreCartLine | null {
-  if (!row || typeof row !== 'object') return null
-  const r = row as Record<string, unknown>
-  if (!r.id || typeof r.id !== 'string') return null
-  if (!isSellableProductType(String(r.product_type ?? ''))) return null
-  const qty = Math.min(99, Math.max(1, Math.floor(Number(r.quantity)) || 1))
-  const notes = typeof r.notes === 'string' ? r.notes : ''
-
-  if (r.product_type === 'combo') {
-    if (!r.combo_sticker_id || !isComboStickerId(String(r.combo_sticker_id))) return null
-    if (!r.combo_poster_id || !isComboPosterId(String(r.combo_poster_id))) return null
-    const img = typeof r.customer_image_url === 'string' ? r.customer_image_url : ''
-    const check = validateStoreCartLine({
-      product_type: 'combo',
-      quantity: qty,
-      combo_sticker_id: String(r.combo_sticker_id),
-      combo_poster_id: String(r.combo_poster_id),
-      customer_image_url: img,
-    })
-    if (!check.ok) return null
-    return {
-      id: r.id,
-      product_type: 'combo',
-      quantity: qty,
-      combo_sticker_id: r.combo_sticker_id as ComboStickerId,
-      combo_poster_id: r.combo_poster_id as ComboPosterId,
-      notes,
-      customer_image_url: img,
-    }
-  }
-
-  if (r.product_type === 'poster') {
-    if (!r.variant_id || !isComboPosterId(String(r.variant_id))) return null
-    return {
-      id: r.id,
-      product_type: 'poster',
-      quantity: qty,
-      variant_id: r.variant_id as ComboPosterId,
-      notes: notes || buildPosterOrderNotes(r.variant_id as ComboPosterId),
-      customer_image_url: null,
-    }
-  }
-
-  if (r.product_type === 'sticker') {
-    if (!r.variant_id || !isComboStickerId(String(r.variant_id))) return null
-    return {
-      id: r.id,
-      product_type: 'sticker',
-      quantity: qty,
-      variant_id: r.variant_id as ComboStickerId,
-      notes: notes || buildStickerOrderNotes(r.variant_id as ComboStickerId),
-      customer_image_url: null,
-    }
-  }
-
-  return null
-}
 
 export type StoreMessage = { type: 'ok' | 'err'; text: string } | null
 
@@ -106,6 +55,7 @@ type StoreContextValue = {
   setMessage: (m: StoreMessage) => void
   submitting: boolean
   mercadoPagoEnabled: boolean
+  pendingCheckoutId: string | null
   comboStickerId: ComboStickerId
   setComboStickerId: (id: ComboStickerId) => void
   comboPosterId: ComboPosterId
@@ -163,9 +113,15 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [cart, setCart] = useState<StoreCartLine[]>([])
   const [cartReady, setCartReady] = useState(false)
   const [mercadoPagoEnabled, setMercadoPagoEnabled] = useState(false)
+  const [pendingCheckoutId, setPendingCheckoutId] = useState<string | null>(null)
 
   const canAddCombo = Boolean(customerImageUrl?.trim())
   const cartItemCount = cart.reduce((s, line) => s + line.quantity, 0)
+
+  const reloadCartFromStorage = useCallback(() => {
+    setCart(loadStoredCartLines())
+    setPendingCheckoutId(loadPendingCheckout()?.checkoutId ?? null)
+  }, [])
 
   useEffect(() => {
     isStoreMercadoPagoEnabled().then(setMercadoPagoEnabled)
@@ -220,51 +176,45 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     if (!loggedIn) {
       setCartReady(false)
       setCart([])
+      setPendingCheckoutId(null)
       return
     }
-    if (typeof window === 'undefined') return
-    try {
-      const raw = sessionStorage.getItem(CART_STORAGE_KEY)
-      if (!raw) {
-        setCart([])
-        setCartReady(true)
-        return
-      }
-      const parsed = JSON.parse(raw) as unknown
-      if (!Array.isArray(parsed)) {
-        setCart([])
-        setCartReady(true)
-        return
-      }
-      const cleaned: StoreCartLine[] = []
-      for (const row of parsed) {
-        const line = parseStoredCartLine(row)
-        if (line) cleaned.push(line)
-      }
-      setCart(cleaned)
-    } catch {
-      setCart([])
-    } finally {
-      setCartReady(true)
-    }
-  }, [loggedIn])
+    reloadCartFromStorage()
+    setCartReady(true)
+  }, [loggedIn, reloadCartFromStorage])
+
+  useEffect(() => {
+    if (!loggedIn || !cartReady) return
+    const stored = loadStoredContact()
+    setContactName((prev) => (prev.trim() ? prev : stored.contactName))
+    setContactEmail((prev) => (prev.trim() ? prev : stored.contactEmail))
+    setContactPhone((prev) => (prev.trim() ? prev : stored.contactPhone))
+  }, [loggedIn, cartReady])
 
   useEffect(() => {
     if (!loggedIn || !cartReady || typeof window === 'undefined') return
-    try {
-      sessionStorage.setItem(CART_STORAGE_KEY, JSON.stringify(cart))
-    } catch {
-      /* ignore */
-    }
+    saveStoredCartLines(cart)
   }, [cart, loggedIn, cartReady])
 
-  function clearCartStorage() {
-    try {
-      sessionStorage.removeItem(CART_STORAGE_KEY)
-    } catch {
-      /* ignore */
+  useEffect(() => {
+    if (!loggedIn || typeof window === 'undefined') return
+    saveStoredContact({ contactName, contactEmail, contactPhone })
+  }, [contactName, contactEmail, contactPhone, loggedIn])
+
+  useEffect(() => {
+    const onSync = () => reloadCartFromStorage()
+    window.addEventListener(STORE_CART_SYNC_EVENT, onSync)
+    return () => window.removeEventListener(STORE_CART_SYNC_EVENT, onSync)
+  }, [reloadCartFromStorage])
+
+  useEffect(() => {
+    const onPageShow = (e: PageTransitionEvent) => {
+      if (!loggedIn) return
+      if (e.persisted) reloadCartFromStorage()
     }
-  }
+    window.addEventListener('pageshow', onPageShow)
+    return () => window.removeEventListener('pageshow', onPageShow)
+  }, [loggedIn, reloadCartFromStorage])
 
   function scrollToCart() {
     document.getElementById('store-cart')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
@@ -403,7 +353,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
   const clearCart = useCallback(() => {
     setCart([])
-    clearCartStorage()
+    clearStoredCart()
+    setPendingCheckoutId(null)
   }, [])
 
   const handleMercadoPagoPay = useCallback(
@@ -415,6 +366,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         return
       }
       setSubmitting(true)
+      saveCartBackup(cart)
+      saveStoredContact({ contactName, contactEmail, contactPhone })
       const res = await createMercadoPagoCheckoutFromCart({
         lines: cartPayload(),
         contact_name: contactName,
@@ -427,8 +380,11 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         return
       }
       if ('initPoint' in res && res.initPoint) {
-        setCart([])
-        clearCartStorage()
+        savePendingCheckout({
+          checkoutId: res.checkoutId,
+          savedAt: new Date().toISOString(),
+        })
+        setPendingCheckoutId(res.checkoutId)
         window.location.href = res.initPoint
       }
     },
@@ -461,7 +417,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         text: `Listo: se registraron ${n} pedido${n === 1 ? '' : 's'}. Te escribimos al mail que dejaste.`,
       })
       setCart([])
-      clearCartStorage()
+      clearStoredCart()
+      setPendingCheckoutId(null)
       await refreshOrders()
     },
     [cart, contactEmail, contactName, contactPhone, refreshOrders],
@@ -477,6 +434,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       setMessage,
       submitting,
       mercadoPagoEnabled,
+      pendingCheckoutId,
       comboStickerId,
       setComboStickerId,
       comboPosterId,
@@ -514,6 +472,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       message,
       submitting,
       mercadoPagoEnabled,
+      pendingCheckoutId,
       comboStickerId,
       comboPosterId,
       quantity,

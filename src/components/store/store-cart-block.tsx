@@ -1,5 +1,6 @@
 'use client'
 
+import { useEffect } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -53,6 +54,7 @@ export function StoreCartBlock() {
     setContactPhone,
     submitting,
     mercadoPagoEnabled,
+    pendingCheckoutId,
     handleCheckout,
     handleMercadoPagoPay,
     orders,
@@ -61,6 +63,13 @@ export function StoreCartBlock() {
 
   const cartUnits = cart.reduce((s, l) => s + l.quantity, 0)
   const cartTotal = getCartTotal(cart)
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    if (window.location.hash === '#store-cart') {
+      document.getElementById('store-cart')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }
+  }, [])
 
   return (
     <div className="space-y-10">
@@ -83,10 +92,18 @@ export function StoreCartBlock() {
         <div className="cart-container">
           <h2 className="cart-title">Carrito</h2>
 
+          {pendingCheckoutId && cart.length > 0 ? (
+            <p className="mb-4 rounded-xl border border-amber-300/80 bg-amber-50 px-4 py-3 text-sm text-amber-950">
+              Tenés un pago reciente en Mercado Pago. Si no se completó, podés volver a pagar desde acá con el
+              mismo carrito.
+            </p>
+          ) : null}
+
           {cart.length === 0 ? (
             <div className="cart-empty">
               <ShoppingCart className="mx-auto mb-3 h-10 w-10 opacity-30" aria-hidden />
               <p>Todavía no agregaste productos.</p>
+              <p className="mt-2 text-sm text-[#666]">Los productos se guardan en este dispositivo mientras estés logueado.</p>
               <Link href="/store/combo" className="btn-primary hover-lift mt-6 inline-block">
                 Ir al combo
               </Link>
