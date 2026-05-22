@@ -1,10 +1,12 @@
-import type { Metadata } from "next"
 import Link from "next/link"
+import { buildPageMetadata } from "@/lib/seo/site"
 
-export const metadata: Metadata = {
-  title: "Términos y condiciones | Plot Mundial",
-  description: "Términos de uso de Plot Mundial y servicios asociados.",
-}
+export const metadata = buildPageMetadata({
+  title: "Términos y condiciones",
+  description: "Términos de uso de Plot Mundial, prode, trivia y store asociados a Plot Center.",
+  path: "/terminos",
+  type: "article",
+})
 
 export default function TerminosPage() {
   return (

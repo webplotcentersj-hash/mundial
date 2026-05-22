@@ -1,6 +1,15 @@
 import type { ReactNode } from 'react'
 import { Archivo_Black, Space_Grotesk } from 'next/font/google'
+import { buildPageMetadata } from '@/lib/seo/site'
 import '../store/store.css'
+
+export const metadata = buildPageMetadata({
+  title: 'Fixture oficial FIFA 2026',
+  description:
+    'Calendario completo del Mundial 2026: 104 partidos, sedes, grupos y horarios. Cargá tus pronósticos partido a partido.',
+  path: '/fixture',
+  keywords: ['fixture mundial 2026', 'calendario copa del mundo', 'partidos FIFA', 'prode fixture'],
+})
 
 const storeSans = Space_Grotesk({
   subsets: ['latin'],

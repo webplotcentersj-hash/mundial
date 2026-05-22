@@ -1,10 +1,13 @@
-import type { Metadata } from 'next'
 import Link from 'next/link'
+import { buildPageMetadata } from '@/lib/seo/site'
 
-export const metadata: Metadata = {
-  title: 'Cuenta confirmada | Plot Mundial',
-  description: 'Tu cuenta en Plot Mundial fue confirmada correctamente.',
-}
+export const metadata = buildPageMetadata({
+  title: 'Cuenta confirmada',
+  description: 'Tu cuenta en Plot Mundial fue confirmada. Ya podés iniciar sesión y jugar al prode del Mundial 2026.',
+  path: '/confirmacion',
+  ogImage: '/MAIL DE CONFIRMACIÓN-01 (2).png',
+  noIndex: true,
+})
 
 const CONFIRM_BG = encodeURI('/MAIL DE CONFIRMACIÓN-01 (2).png')
 

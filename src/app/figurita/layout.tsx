@@ -1,6 +1,16 @@
 import type { ReactNode } from 'react'
 import { Archivo_Black, Space_Grotesk } from 'next/font/google'
+import { buildPageMetadata } from '@/lib/seo/site'
 import '../store/store.css'
+
+export const metadata = buildPageMetadata({
+  title: 'Mi Figurita',
+  description:
+    'Creá tu figurita personalizada con IA para el Mundial 2026 e incluila en el combo del Store Plot Mundial.',
+  path: '/figurita',
+  ogImage: '/figurita-hero.webp',
+  keywords: ['figurita personalizada', 'figuritas mundial', 'Mi Figurita Plot'],
+})
 
 const storeSans = Space_Grotesk({
   subsets: ['latin'],

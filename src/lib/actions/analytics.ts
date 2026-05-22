@@ -2,6 +2,11 @@
 
 import { verifyAdmin } from '@/lib/actions'
 import { labelAnalyticsPath, normalizeReferrerHost } from '@/lib/analytics/paths'
+import {
+  formatVisitLocation,
+  labelCountryForStats,
+  labelRegionForStats,
+} from '@/lib/analytics/geo'
 import { createAdminClient } from '@/lib/supabase/admin'
 
 export type AdminAnalyticsStats = {
@@ -17,11 +22,14 @@ export type AdminAnalyticsStats = {
   topPages: { path: string; label: string; views: number }[]
   topReferrers: { source: string; views: number }[]
   topUtmSources: { source: string; views: number }[]
+  topCountries: { source: string; views: number }[]
+  topRegions: { source: string; views: number; country: string }[]
   dailyViews: { date: string; views: number; sessions: number }[]
   recentVisits: {
     path: string
     label: string
     referrerHost: string | null
+    location: string
     isAuthenticated: boolean
     createdAt: string
   }[]
@@ -34,6 +42,11 @@ type Row = {
   session_id: string
   is_authenticated: boolean
   created_at: string
+  country_code: string | null
+  country_name: string | null
+  region_code: string | null
+  region_name: string | null
+  city: string | null
 }
 
 function sinceDays(days: number): string {
@@ -55,12 +68,12 @@ function countSessions(rows: Row[]): number {
 function groupCount<T extends string | null>(
   rows: Row[],
   pick: (r: Row) => T,
-  label?: (v: T) => string,
+  label?: (v: T, r: Row) => string,
 ): { source: string; views: number }[] {
   const map = new Map<string, number>()
   for (const r of rows) {
     const raw = pick(r)
-    const key = label ? label(raw) : (raw ?? '—')
+    const key = label ? label(raw, r) : (raw ?? '—')
     map.set(key, (map.get(key) ?? 0) + 1)
   }
   return [...map.entries()]
@@ -82,7 +95,9 @@ export async function getAdminAnalyticsStats(): Promise<AdminAnalyticsStats | nu
   const since30 = sinceDays(30)
   const { data, error } = await admin
     .from('site_page_views')
-    .select('path, referrer_host, utm_source, session_id, is_authenticated, created_at')
+    .select(
+      'path, referrer_host, utm_source, session_id, is_authenticated, created_at, country_code, country_name, region_code, region_name, city',
+    )
     .gte('created_at', since30)
     .order('created_at', { ascending: false })
     .limit(8000)
@@ -111,12 +126,31 @@ export async function getAdminAnalyticsStats(): Promise<AdminAnalyticsStats | nu
     .sort((a, b) => b.views - a.views)
     .slice(0, 12)
 
-  const topReferrers = groupCount(rows7d, (r) => r.referrer_host, normalizeReferrerHost).slice(0, 10)
+  const topReferrers = groupCount(rows7d, (r) => r.referrer_host, (v) =>
+    normalizeReferrerHost(v),
+  ).slice(0, 10)
 
   const topUtmSources = groupCount(
     rows7d.filter((r) => r.utm_source),
     (r) => r.utm_source,
   ).slice(0, 8)
+
+  const topCountries = groupCount(rows7d, (r) => r.country_code, (_v, r) =>
+    labelCountryForStats(r.country_code, r.country_name),
+  ).slice(0, 12)
+
+  const regionMap = new Map<string, { views: number; country: string }>()
+  for (const r of rows7d) {
+    const label = labelRegionForStats(r.country_code, r.country_name, r.region_name, r.city)
+    if (label === 'Sin provincia / región') continue
+    const country = labelCountryForStats(r.country_code, r.country_name)
+    const prev = regionMap.get(label) ?? { views: 0, country }
+    regionMap.set(label, { views: prev.views + 1, country })
+  }
+  const topRegions = [...regionMap.entries()]
+    .map(([source, v]) => ({ source, views: v.views, country: v.country }))
+    .sort((a, b) => b.views - a.views)
+    .slice(0, 12)
 
   const dailyMap = new Map<string, { views: number; sessions: Set<string> }>()
   for (let i = 13; i >= 0; i--) {
@@ -142,6 +176,7 @@ export async function getAdminAnalyticsStats(): Promise<AdminAnalyticsStats | nu
     path: r.path,
     label: labelAnalyticsPath(r.path),
     referrerHost: r.referrer_host,
+    location: formatVisitLocation(r),
     isAuthenticated: r.is_authenticated,
     createdAt: r.created_at,
   }))
@@ -159,6 +194,8 @@ export async function getAdminAnalyticsStats(): Promise<AdminAnalyticsStats | nu
     topPages,
     topReferrers,
     topUtmSources,
+    topCountries,
+    topRegions,
     dailyViews,
     recentVisits,
   }

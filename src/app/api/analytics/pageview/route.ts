@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { getGeoFromHeaders } from '@/lib/analytics/geo'
 
 const SKIP_PREFIXES = ['/admin', '/api/', '/_next']
 const MAX_PATH_LEN = 512
@@ -59,6 +60,7 @@ export async function POST(request: Request) {
 
   try {
     const admin = createAdminClient()
+    const geo = getGeoFromHeaders(request.headers)
     const { error } = await admin.from('site_page_views').insert({
       path,
       referrer,
@@ -70,6 +72,11 @@ export async function POST(request: Request) {
       user_id: userId,
       session_id: sessionId,
       is_authenticated: Boolean(userId),
+      country_code: geo.country_code,
+      country_name: geo.country_name,
+      region_code: geo.region_code,
+      region_name: geo.region_name,
+      city: geo.city,
     })
     if (error) {
       console.error('site_page_views insert:', error.message)

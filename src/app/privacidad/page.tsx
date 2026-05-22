@@ -1,10 +1,12 @@
-import type { Metadata } from "next"
 import Link from "next/link"
+import { buildPageMetadata } from "@/lib/seo/site"
 
-export const metadata: Metadata = {
-  title: "Política de privacidad | Plot Mundial",
-  description: "Cómo tratamos tus datos en Plot Mundial.",
-}
+export const metadata = buildPageMetadata({
+  title: "Política de privacidad",
+  description: "Cómo tratamos tus datos personales en Plot Mundial y servicios de Plot Center.",
+  path: "/privacidad",
+  type: "article",
+})
 
 export default function PrivacidadPage() {
   return (

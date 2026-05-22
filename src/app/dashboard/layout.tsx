@@ -1,6 +1,15 @@
 import type { ReactNode } from 'react'
 import { Archivo_Black, Space_Grotesk } from 'next/font/google'
+import { buildPageMetadata } from '@/lib/seo/site'
 import '../store/store.css'
+
+export const metadata = buildPageMetadata({
+  title: 'Mi Prode',
+  description:
+    'Cargá tus pronósticos del Mundial 2026, seguí tus puntos y competí en ligas privadas con amigos.',
+  path: '/dashboard',
+  keywords: ['mi prode', 'pronósticos', 'ligas privadas', 'puntos prode'],
+})
 
 const storeSans = Space_Grotesk({
   subsets: ['latin'],

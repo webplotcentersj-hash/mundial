@@ -1,6 +1,6 @@
 'use client'
 
-import { Loader2, BarChart3, Globe, MousePointerClick, Users, TrendingUp } from 'lucide-react'
+import { Loader2, BarChart3, Globe, MapPin, MousePointerClick, Users, TrendingUp } from 'lucide-react'
 import { motion } from 'framer-motion'
 import type { AdminAnalyticsStats } from '@/lib/actions/analytics'
 import { normalizeReferrerHost } from '@/lib/analytics/paths'
@@ -88,7 +88,7 @@ export function AdminAnalyticsPanel({ loading, stats, error }: Props) {
           <div>
             <h3 className="text-lg font-bold text-emerald-100">Tráfico del sitio</h3>
             <p className="mt-1 text-sm text-white/60">
-              Visitas registradas desde el deploy de analytics. Origen = referrer del navegador y parámetros UTM.
+              Visitas registradas desde el deploy de analytics. Origen = referrer, UTM y ubicación aproximada (país / provincia) vía Vercel.
             </p>
           </div>
         </div>
@@ -156,6 +156,49 @@ export function AdminAnalyticsPanel({ loading, stats, error }: Props) {
         </div>
       </div>
 
+      <div className="grid gap-6 lg:grid-cols-2">
+        <div className="glass-card rounded-2xl border border-white/10 bg-[#0a0f1c]/80 p-6">
+          <h4 className="mb-4 flex items-center gap-2 text-sm font-bold uppercase tracking-widest text-white/70">
+            <Globe className="h-4 w-4 text-cyan-400" /> Países (7d)
+          </h4>
+          {stats.topCountries.length === 0 ? (
+            <p className="text-sm text-white/50">Sin datos de país todavía.</p>
+          ) : (
+            <ul className="space-y-2">
+              {stats.topCountries.map((c) => (
+                <li key={c.source} className="flex items-center justify-between gap-3 rounded-xl bg-white/5 px-3 py-2.5">
+                  <span className="truncate text-white/85">{c.source}</span>
+                  <span className="shrink-0 font-black tabular-nums text-cyan-300">{c.views}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+
+        <div className="glass-card rounded-2xl border border-white/10 bg-[#0a0f1c]/80 p-6">
+          <h4 className="mb-4 flex items-center gap-2 text-sm font-bold uppercase tracking-widest text-white/70">
+            <MapPin className="h-4 w-4 text-rose-400" /> Provincias / regiones (7d)
+          </h4>
+          {stats.topRegions.length === 0 ? (
+            <p className="text-sm text-white/50">Sin datos de provincia todavía.</p>
+          ) : (
+            <ul className="space-y-2">
+              {stats.topRegions.map((r) => (
+                <li key={r.source} className="flex items-center justify-between gap-3 rounded-xl bg-white/5 px-3 py-2.5">
+                  <div className="min-w-0">
+                    <span className="truncate text-white/85">{r.source}</span>
+                    {r.country !== r.source ? (
+                      <span className="mt-0.5 block truncate text-xs text-white/40">{r.country}</span>
+                    ) : null}
+                  </div>
+                  <span className="shrink-0 font-black tabular-nums text-rose-300">{r.views}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      </div>
+
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="glass-card rounded-2xl border border-white/10 bg-[#0a0f1c]/80 p-6 lg:col-span-2">
           <h4 className="mb-4 flex items-center gap-2 text-sm font-bold uppercase tracking-widest text-white/70">
@@ -214,11 +257,12 @@ export function AdminAnalyticsPanel({ loading, stats, error }: Props) {
           <p className="text-sm text-white/50">Sin actividad reciente.</p>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[640px] text-left text-sm">
+            <table className="w-full min-w-[760px] text-left text-sm">
               <thead className="border-b border-white/10 text-xs uppercase tracking-widest text-white/40">
                 <tr>
                   <th className="pb-3 pr-4">Cuándo</th>
                   <th className="pb-3 pr-4">Página</th>
+                  <th className="pb-3 pr-4">Ubicación</th>
                   <th className="pb-3 pr-4">Origen</th>
                   <th className="pb-3">Usuario</th>
                 </tr>
@@ -230,6 +274,7 @@ export function AdminAnalyticsPanel({ loading, stats, error }: Props) {
                     <td className="py-2.5 pr-4">
                       <span className="font-medium text-white/90">{v.label}</span>
                     </td>
+                    <td className="py-2.5 pr-4 text-white/70">{v.location}</td>
                     <td className="py-2.5 pr-4">{normalizeReferrerHost(v.referrerHost)}</td>
                     <td className="py-2.5">{v.isAuthenticated ? 'Logueado' : 'Anónimo'}</td>
                   </tr>
