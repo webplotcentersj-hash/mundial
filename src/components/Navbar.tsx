@@ -55,6 +55,7 @@ export default function Navbar() {
     pathname.startsWith('/trivia')
   const [mobileOpen, setMobileOpen] = useState(false)
   const [user, setUser] = useState<SupabaseUser | null>(null)
+  const [profileName, setProfileName] = useState<string | null>(null)
   const [authReady, setAuthReady] = useState(false)
 
   useEffect(() => {
@@ -71,6 +72,28 @@ export default function Navbar() {
     })
     return () => subscription.unsubscribe()
   }, [])
+
+  useEffect(() => {
+    if (!user) {
+      setProfileName(null)
+      return
+    }
+
+    let cancelled = false
+    const supabase = createClient()
+    supabase
+      .from('profiles')
+      .select('username')
+      .eq('id', user.id)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (!cancelled) setProfileName(data?.username ?? null)
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [user])
 
   useEffect(() => {
     if (!mobileOpen) return
@@ -90,6 +113,7 @@ export default function Navbar() {
   }, [mobileOpen])
 
   const displayName =
+    profileName ||
     user?.user_metadata?.username ||
     user?.email?.split('@')[0] ||
     'Cuenta'
@@ -180,10 +204,10 @@ export default function Navbar() {
                     href="/dashboard"
                     className={cn(
                       plotStoreChrome
-                        ? cn(navItemPlotStore, 'hidden max-w-[140px] lg:inline-flex')
-                        : cn(navItemClass, 'hidden max-w-[140px] lg:inline-flex'),
+                        ? cn(navItemPlotStore, 'inline-flex max-w-[160px]')
+                        : cn(navItemClass, 'inline-flex max-w-[160px]'),
                     )}
-                    title={user.email ?? ''}
+                    title={user.email ?? displayName}
                   >
                     <UserRound className="h-4 w-4 shrink-0 opacity-90" aria-hidden />
                     <span className="truncate">{displayName}</span>

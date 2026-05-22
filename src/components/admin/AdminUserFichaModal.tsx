@@ -75,7 +75,8 @@ export function AdminUserFichaModal({ open, loading, detail, totalMatches, onClo
                     <h2 id="user-ficha-title" className="truncate text-2xl font-black text-white">
                       {detail.profile.username ?? 'Sin nombre'}
                     </h2>
-                    <p className="mt-1 font-mono text-xs text-white/40">{detail.profile.id}</p>
+                    <p className="mt-1 truncate text-sm text-sky-200/90">{detail.email ?? 'Sin email registrado'}</p>
+                    <p className="mt-0.5 font-mono text-xs text-white/40">{detail.profile.id}</p>
                     <span
                       className={`mt-2 inline-flex rounded-full border px-2.5 py-0.5 text-xs font-bold uppercase ${
                         detail.profile.role === 'admin'

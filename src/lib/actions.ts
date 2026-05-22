@@ -305,6 +305,7 @@ export type AdminProfileListItem = {
 }
 
 export type AdminUserDetail = {
+  email: string | null
   profile: AdminProfileListItem
   fixture_points: number
   trivia_answered: number
@@ -386,6 +387,18 @@ export async function getAdminUserDetail(userId: string): Promise<AdminUserDetai
     return null
   }
 
+  let email: string | null = null
+  try {
+    const { data: authData, error: authErr } = await adminDb.auth.admin.getUserById(userId)
+    if (authErr) {
+      console.error('Error fetching admin user email:', authErr.message)
+    } else {
+      email = authData.user?.email ?? null
+    }
+  } catch (e) {
+    console.error('getAdminUserDetail auth email:', e)
+  }
+
   const [{ data: predRows }, { data: triviaRows }, { data: orders }, { count: predTotal }] =
     await Promise.all([
       supabase
@@ -438,6 +451,7 @@ export async function getAdminUserDetail(userId: string): Promise<AdminUserDetai
   })
 
   return {
+    email,
     profile: {
       ...profile,
       predictions_count: predTotal ?? predRows?.length ?? 0,
