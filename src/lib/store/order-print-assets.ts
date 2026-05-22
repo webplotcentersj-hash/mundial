@@ -21,18 +21,18 @@ export type PrintOrderImageFields = {
 /** Rutas públicas para guardar en DB al crear el pedido. */
 export function getPrintImageFieldsForLine(line: StoreCartLineInput): PrintOrderImageFields {
   if (line.product_type === 'poster' && line.variant_id && isComboPosterId(line.variant_id)) {
-    const img = getPosterAsset(line.variant_id)?.image ?? null
+    const img = getPosterAsset(line.variant_id)?.imageFull ?? null
     return { variant_image_url: img, combo_sticker_image_url: null, combo_poster_image_url: null }
   }
   if (line.product_type === 'sticker' && line.variant_id && isComboStickerId(line.variant_id)) {
-    const img = getStickerAsset(line.variant_id)?.image ?? null
+    const img = getStickerAsset(line.variant_id)?.imageFull ?? null
     return { variant_image_url: img, combo_sticker_image_url: null, combo_poster_image_url: null }
   }
   if (line.product_type === 'combo' && line.combo_sticker_id && line.combo_poster_id) {
     return {
       variant_image_url: null,
-      combo_sticker_image_url: getStickerAsset(line.combo_sticker_id)?.image ?? null,
-      combo_poster_image_url: getPosterAsset(line.combo_poster_id)?.image ?? null,
+      combo_sticker_image_url: getStickerAsset(line.combo_sticker_id)?.imageFull ?? null,
+      combo_poster_image_url: getPosterAsset(line.combo_poster_id)?.imageFull ?? null,
     }
   }
   return { variant_image_url: null, combo_sticker_image_url: null, combo_poster_image_url: null }

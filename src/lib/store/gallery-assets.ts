@@ -1,15 +1,27 @@
-/** Assets del Store en /public/stiker y /public/Poster */
+/** Assets del Store — thumbs WebP para galería, full WebP para lightbox */
 
 export type GalleryAsset = {
   id: string
   label: string
+  /** Miniatura optimizada (~360px) */
   image: string
+  /** Vista ampliada (~1200px) */
+  imageFull: string
 }
 
 function sortByStoreNumber(a: string, b: string): number {
   const na = parseInt(a.replace(/\D/g, ''), 10) || 0
   const nb = parseInt(b.replace(/\D/g, ''), 10) || 0
   return na - nb
+}
+
+function galleryEntry(folder: 'Poster' | 'stiker', id: string, label: string): GalleryAsset {
+  return {
+    id,
+    label,
+    image: `/${folder}/thumbs/${id}.webp`,
+    imageFull: `/${folder}/full/${id}.webp`,
+  }
 }
 
 const STICKER_FILES = ['STORE-01', 'STORE-02', 'STORE-03', 'STORE-04', 'STORE-05'] as const
@@ -35,19 +47,11 @@ const POSTER_FILES = [
 
 export const STICKER_SHEET_GALLERY = [...STICKER_FILES]
   .sort(sortByStoreNumber)
-  .map((id) => ({
-    id,
-    label: `Plancha ${id.replace('STORE-', '')}`,
-    image: `/stiker/${id}.png`,
-  }))
+  .map((id) => galleryEntry('stiker', id, `Plancha ${id.replace('STORE-', '')}`))
 
 export const POSTER_GALLERY = [...POSTER_FILES]
   .sort(sortByStoreNumber)
-  .map((id) => ({
-    id,
-    label: `Poster ${id.replace('STORE-', '')}`,
-    image: `/Poster/${id}.png`,
-  }))
+  .map((id) => galleryEntry('Poster', id, `Poster ${id.replace('STORE-', '')}`))
 
 export type ComboStickerId = (typeof STICKER_FILES)[number]
 export type ComboPosterId = (typeof POSTER_FILES)[number]

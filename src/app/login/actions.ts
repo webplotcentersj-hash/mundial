@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { ensureUserProfile } from '@/lib/ensureUserProfile'
+import { getAppBaseUrl } from '@/lib/mercadopago/config'
 
 export async function login(formData: FormData) {
   const supabase = await createClient()
@@ -36,6 +37,7 @@ export async function signup(formData: FormData) {
     email: formData.get('email') as string,
     password: formData.get('password') as string,
     options: {
+      emailRedirectTo: `${getAppBaseUrl()}/auth/callback?next=/confirmacion`,
       data: {
         username: formData.get('username') as string,
       },

@@ -58,7 +58,7 @@ export const STORE_CATALOG: StoreCatalogItem[] = [
     label: 'Combo Plot Mundial',
     hint: 'Figurita personalizada + plancha de stickers en vinilo + poster',
     badge: 'sale',
-    image: POSTER_GALLERY[0]?.image ?? '/Poster/STORE-06.png',
+    image: POSTER_GALLERY[0]?.image ?? '/Poster/thumbs/STORE-06.webp',
     includes: ['Tu figurita (Mi Figurita)', '1 plancha de stickers a elección', '1 poster a elección'],
   },
 ]

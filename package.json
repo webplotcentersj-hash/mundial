@@ -8,6 +8,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+    "optimize:store-images": "node scripts/optimize-store-images.mjs",
     "start": "next start",
     "lint": "eslint",
     "check:mp": "node scripts/check-mp-config.mjs"
@@ -32,6 +33,7 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.2.4",
+    "sharp": "^0.34.5",
     "tailwindcss": "^4",
     "typescript": "^5"
   }

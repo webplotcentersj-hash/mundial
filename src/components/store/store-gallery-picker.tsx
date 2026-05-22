@@ -1,11 +1,11 @@
 'use client'
 
 import { useState } from 'react'
-import Image from 'next/image'
 import { Check, Maximize2, ShoppingCart } from 'lucide-react'
 import type { GalleryAsset } from '@/lib/store/gallery-assets'
 import { formatPriceARS } from '@/lib/store/catalog'
 import { StoreGalleryLightbox } from '@/components/store/store-gallery-lightbox'
+import { StoreImage } from '@/components/store/store-image'
 
 type Props = {
   label: string
@@ -57,8 +57,9 @@ export function StoreGalleryPicker({
       </div>
 
       <div className="store-gallery__grid" role={selectionMode ? 'listbox' : undefined} aria-label={label}>
-        {items.map((item) => {
+        {items.map((item, index) => {
           const isSelected = selectionMode && value === item.id
+          const eager = index < 4
           return (
             <article
               key={item.id}
@@ -71,13 +72,15 @@ export function StoreGalleryPicker({
                   onClick={() => openLightbox(item)}
                   aria-label={`Ver grande ${item.label}`}
                 >
-                  <Image
+                  <StoreImage
                     src={item.image}
                     alt={item.label}
                     width={280}
                     height={280}
                     className="store-gallery__img"
                     sizes="(max-width: 640px) 45vw, 180px"
+                    priority={eager}
+                    fetchPriority={eager ? 'high' : 'low'}
                   />
                   <span className="store-gallery__zoom" aria-hidden>
                     <Maximize2 className="h-4 w-4" />

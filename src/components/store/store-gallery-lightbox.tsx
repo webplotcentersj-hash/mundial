@@ -1,11 +1,11 @@
 'use client'
 
 import { useCallback, useEffect } from 'react'
-import Image from 'next/image'
 import { AnimatePresence, motion } from 'framer-motion'
 import { ChevronLeft, ChevronRight, ShoppingCart, X } from 'lucide-react'
 import type { GalleryAsset } from '@/lib/store/gallery-assets'
 import { formatPriceARS } from '@/lib/store/catalog'
+import { StoreImage } from '@/components/store/store-image'
 
 type Props = {
   items: readonly GalleryAsset[]
@@ -86,14 +86,13 @@ export function StoreGalleryLightbox({
 
           <div className="store-lightbox__panel" onClick={(e) => e.stopPropagation()}>
             <motion.div className="store-lightbox__image-wrap" key={item.id}>
-              <Image
-                src={item.image}
+              <StoreImage
+                src={item.imageFull ?? item.image}
                 alt={item.label}
                 width={1200}
                 height={1200}
                 className="store-lightbox__image"
-                sizes="(max-width: 900px) 90vw"
-                priority
+                sizes="(max-width: 900px) 90vw, 720px"
               />
             </motion.div>
             <div className="store-lightbox__meta">

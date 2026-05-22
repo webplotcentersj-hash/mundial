@@ -1,7 +1,6 @@
 'use client'
 
 import Link from 'next/link'
-import Image from 'next/image'
 import { Plus, Sparkles } from 'lucide-react'
 import { useStore } from '@/components/store/store-provider'
 import {
@@ -16,6 +15,8 @@ import {
 import { POSTER_GALLERY, STICKER_SHEET_GALLERY } from '@/lib/store/gallery-assets'
 import type { ComboPosterId, ComboStickerId } from '@/lib/store/gallery-assets'
 import { StoreGalleryPicker } from '@/components/store/store-gallery-picker'
+import { StoreImage } from '@/components/store/store-image'
+import { StoreLazySection } from '@/components/store/store-lazy-section'
 import { clearFiguritaStoreImageFromSession } from '@/lib/storePrints'
 
 export function StoreComboBuilder() {
@@ -63,11 +64,14 @@ export function StoreComboBuilder() {
               <Sparkles className="mr-1 inline h-4 w-4" aria-hidden />
               Tu figurita
             </span>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
+            <StoreImage
               src={customerImageUrl}
               alt="Tu figurita"
+              width={160}
+              height={224}
               className="mx-auto block h-56 w-40 object-cover object-top"
+              sizes="160px"
+              priority
             />
             <button
               type="button"
@@ -86,30 +90,38 @@ export function StoreComboBuilder() {
           <div className="combo-preview-strip" aria-label="Vista previa del combo">
             <div className="combo-preview-strip__item">
               <span className="combo-preview-strip__label">Figurita</span>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={customerImageUrl} alt="" className="combo-preview-strip__img" />
+              <StoreImage
+                src={customerImageUrl}
+                alt=""
+                width={120}
+                height={120}
+                className="combo-preview-strip__img object-top"
+                sizes="120px"
+              />
             </div>
             <div className="combo-preview-strip__item">
               <span className="combo-preview-strip__label">Stickers</span>
               {getStickerOption(comboStickerId) ? (
-                <Image
+                <StoreImage
                   src={getStickerOption(comboStickerId)!.image}
                   alt=""
                   width={120}
                   height={120}
                   className="combo-preview-strip__img"
+                  sizes="120px"
                 />
               ) : null}
             </div>
             <div className="combo-preview-strip__item">
               <span className="combo-preview-strip__label">Poster</span>
               {getPosterOption(comboPosterId) ? (
-                <Image
+                <StoreImage
                   src={getPosterOption(comboPosterId)!.image}
                   alt=""
                   width={120}
                   height={120}
                   className="combo-preview-strip__img"
+                  sizes="120px"
                 />
               ) : null}
             </div>
@@ -124,13 +136,15 @@ export function StoreComboBuilder() {
           onChange={(id) => setComboStickerId(id as ComboStickerId)}
         />
 
-        <StoreGalleryPicker
-          label="Elegí poster"
-          items={POSTER_GALLERY}
-          unitPrice={STORE_POSTER_PRICE_ARS}
-          value={comboPosterId}
-          onChange={(id) => setComboPosterId(id as ComboPosterId)}
-        />
+        <StoreLazySection>
+          <StoreGalleryPicker
+            label="Elegí poster"
+            items={POSTER_GALLERY}
+            unitPrice={STORE_POSTER_PRICE_ARS}
+            value={comboPosterId}
+            onChange={(id) => setComboPosterId(id as ComboPosterId)}
+          />
+        </StoreLazySection>
 
         <div className="store-combo-actions">
           <div className="quantity-selection">

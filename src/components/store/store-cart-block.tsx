@@ -2,7 +2,6 @@
 
 import { useEffect } from 'react'
 import Link from 'next/link'
-import Image from 'next/image'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   Loader2,
@@ -10,6 +9,7 @@ import {
   ShoppingCart,
 } from 'lucide-react'
 import { useStore } from '@/components/store/store-provider'
+import { StoreImage } from '@/components/store/store-image'
 import {
   formatPriceARS,
   getCartLineLabel,
@@ -122,22 +122,14 @@ export function StoreCartBlock() {
                 {cart.map((line) => (
                   <div key={line.id} className="cart-item">
                     {getCartLinePreviewImage(line) ? (
-                      line.product_type === 'combo' ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img
-                          src={getCartLinePreviewImage(line)!}
-                          alt=""
-                          className="cart-item-image object-top"
-                        />
-                      ) : (
-                        <Image
-                          src={getCartLinePreviewImage(line)!}
-                          alt=""
-                          width={96}
-                          height={96}
-                          className="cart-item-image object-cover"
-                        />
-                      )
+                      <StoreImage
+                        src={getCartLinePreviewImage(line)!}
+                        alt=""
+                        width={96}
+                        height={96}
+                        className={`cart-item-image ${line.product_type === 'combo' ? 'object-top' : 'object-cover'}`}
+                        sizes="(max-width: 768px) 80px, 120px"
+                      />
                     ) : (
                       <div
                         className="cart-item-image flex items-center justify-center text-xs font-bold uppercase"
