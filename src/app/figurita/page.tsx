@@ -3,11 +3,11 @@
 import { useState, useRef, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { toPng } from 'html-to-image'
-import { Download, Upload, ImageIcon, RefreshCw, Sparkles, Store } from 'lucide-react'
+import { Download, Upload, ImageIcon, RefreshCw, Sparkles, Store, Share2 } from 'lucide-react'
 import { mockTeams } from '@/lib/mockData'
 import Image from 'next/image'
 import { getPlayerApodo } from '@/lib/figuritaPlayerApodo'
-import { generateFiguritaPortrait } from '@/app/figurita/actions'
+import { generateFiguritaApodo, generateFiguritaPortrait } from '@/app/figurita/actions'
 import { createClient } from '@/lib/supabase/client'
 import { STORE_PRINTS_BUCKET, writeFiguritaStoreImageToSession } from '@/lib/storePrints'
 import { cn } from '@/lib/utils'
@@ -27,7 +27,9 @@ export default function FiguritaPage() {
   const [position, setPosition] = useState<string>('Mediocampista')
   const [selectedTeamCode, setSelectedTeamCode] = useState<string>('ar')
   const [isGenerating, setIsGenerating] = useState(false)
+  const [isSharing, setIsSharing] = useState(false)
   const [aiPortrait, setAiPortrait] = useState<string | null>(null)
+  const [aiApodo, setAiApodo] = useState<string | null>(null)
   const [aiLoading, setAiLoading] = useState(false)
   const [aiError, setAiError] = useState<string | null>(null)
   const [isSendingStore, setIsSendingStore] = useState(false)
@@ -38,12 +40,17 @@ export default function FiguritaPage() {
   const selectedTeam = countries.find((t) => t.code === selectedTeamCode) || countries[0]
 
   const displayPhoto = mode === 'classic' ? photo : (aiPortrait ?? photo)
+  const displayApodo =
+    mode === 'ia' && aiApodo
+      ? aiApodo
+      : getPlayerApodo((name || '').trim() || 'Tu Nombre')
 
   const setFiguritaMode = (next: FiguritaMode) => {
     setMode(next)
     setAiError(null)
     if (next === 'classic') {
       setAiPortrait(null)
+      setAiApodo(null)
     }
   }
 
@@ -83,18 +90,34 @@ export default function FiguritaPage() {
     setAiError(null)
     try {
       const resized = await resizePhotoForAi(photo)
-      const res = await generateFiguritaPortrait({
-        photoDataUrl: resized,
-        countryName: selectedTeam.name,
-        countryCode: selectedTeam.code,
-        playerName: (name || 'Jugador').trim(),
-        position: position.trim(),
-      })
-      if (!res.ok) {
-        setAiError(res.error)
+      const playerName = (name || 'Jugador').trim()
+      const playerPosition = position.trim()
+      const [portraitRes, apodoRes] = await Promise.all([
+        generateFiguritaPortrait({
+          photoDataUrl: resized,
+          countryName: selectedTeam.name,
+          countryCode: selectedTeam.code,
+          playerName,
+          position: playerPosition,
+        }),
+        generateFiguritaApodo({
+          photoDataUrl: resized,
+          countryName: selectedTeam.name,
+          countryCode: selectedTeam.code,
+          playerName,
+          position: playerPosition,
+        }),
+      ])
+      if (!portraitRes.ok) {
+        setAiError(portraitRes.error)
         return
       }
-      setAiPortrait(res.imageDataUrl)
+      setAiPortrait(portraitRes.imageDataUrl)
+      if (apodoRes.ok) {
+        setAiApodo(apodoRes.apodo)
+      } else {
+        setAiApodo(null)
+      }
     } catch (e) {
       console.error('generateFiguritaPortrait', e)
       setAiError('No se pudo generar el retrato. Revisá la consola o probá otra foto.')
@@ -110,26 +133,43 @@ export default function FiguritaPage() {
       reader.onload = (event) => {
         setPhoto(event.target?.result as string)
         setAiPortrait(null)
+        setAiApodo(null)
       }
       reader.readAsDataURL(file)
     }
   }
 
+  const captureFiguritaPng = useCallback(async () => {
+    if (figuritaRef.current === null) {
+      throw new Error('Sin vista previa')
+    }
+    await new Promise((resolve) => setTimeout(resolve, 100))
+    return toPng(figuritaRef.current, {
+      quality: 0.95,
+      pixelRatio: 3,
+      cacheBust: true,
+    })
+  }, [])
+
+  const buildSharePayload = useCallback(() => {
+    const playerName = (name || '').trim() || 'Tu Nombre'
+    const shareUrl =
+      typeof window !== 'undefined' ? `${window.location.origin}/figurita` : 'https://plotmundial.com.ar/figurita'
+    const shareText = `¡Mirá mi figurita del Mundial 2026! ${playerName} · ${displayApodo} · ${selectedTeam.name} — armala en Plot Mundial`
+    const fileSlug = playerName.replace(/\s+/g, '-').toLowerCase()
+    return { shareUrl, shareText, fileSlug }
+  }, [name, displayApodo, selectedTeam.name])
+
   const handleDownload = useCallback(async () => {
-    if (figuritaRef.current === null) return
+    if (!displayPhoto) return
 
     try {
       setIsGenerating(true)
-      await new Promise((resolve) => setTimeout(resolve, 100))
-
-      const dataUrl = await toPng(figuritaRef.current, {
-        quality: 0.95,
-        pixelRatio: 3,
-        cacheBust: true,
-      })
+      const dataUrl = await captureFiguritaPng()
+      const { fileSlug } = buildSharePayload()
 
       const link = document.createElement('a')
-      link.download = `figurita-${name.replace(/\s+/g, '-').toLowerCase()}.png`
+      link.download = `figurita-${fileSlug}.png`
       link.href = dataUrl
       link.click()
     } catch (err) {
@@ -138,7 +178,63 @@ export default function FiguritaPage() {
     } finally {
       setIsGenerating(false)
     }
-  }, [name])
+  }, [displayPhoto, captureFiguritaPng, buildSharePayload])
+
+  const openSocialShare = useCallback(
+    (network: 'whatsapp' | 'twitter' | 'facebook') => {
+      const { shareUrl, shareText } = buildSharePayload()
+      const encodedText = encodeURIComponent(shareText)
+      const encodedUrl = encodeURIComponent(shareUrl)
+      const urls = {
+        whatsapp: `https://wa.me/?text=${encodedText}%20${encodedUrl}`,
+        twitter: `https://twitter.com/intent/tweet?text=${encodedText}&url=${encodedUrl}`,
+        facebook: `https://www.facebook.com/sharer/sharer.php?u=${encodedUrl}&quote=${encodedText}`,
+      }
+      window.open(urls[network], '_blank', 'noopener,noreferrer,width=640,height=720')
+    },
+    [buildSharePayload],
+  )
+
+  const handleShare = useCallback(async () => {
+    if (!displayPhoto) return
+
+    try {
+      setIsSharing(true)
+      const dataUrl = await captureFiguritaPng()
+      const blob = await (await fetch(dataUrl)).blob()
+      const { shareUrl, shareText, fileSlug } = buildSharePayload()
+      const file = new File([blob], `figurita-${fileSlug}.png`, { type: 'image/png' })
+
+      if (typeof navigator !== 'undefined' && navigator.share) {
+        const payload: ShareData = { title: 'Mi figurita Plot Mundial', text: shareText, url: shareUrl }
+        if (navigator.canShare?.({ ...payload, files: [file] })) {
+          await navigator.share({ ...payload, files: [file] })
+          return
+        }
+        if (navigator.canShare?.(payload)) {
+          await navigator.share(payload)
+          return
+        }
+      }
+
+      if (typeof navigator !== 'undefined' && navigator.clipboard?.write && typeof ClipboardItem !== 'undefined') {
+        await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })])
+        alert('Imagen copiada. Pegala en Instagram, WhatsApp o TikTok.')
+        return
+      }
+
+      const useSocial = window.confirm(
+        'Tu navegador no comparte archivos directo. ¿Querés abrir WhatsApp para mandar el link? (También podés descargar la figurita y subirla a tus redes.)',
+      )
+      if (useSocial) openSocialShare('whatsapp')
+    } catch (err) {
+      if (err instanceof Error && err.name === 'AbortError') return
+      console.error('handleShare', err)
+      alert('No se pudo compartir. Probá descargar la figurita y subirla manualmente.')
+    } finally {
+      setIsSharing(false)
+    }
+  }, [displayPhoto, captureFiguritaPng, buildSharePayload, openSocialShare])
 
   const handleSendToStore = useCallback(async () => {
     if (figuritaRef.current === null || !displayPhoto) {
@@ -156,11 +252,7 @@ export default function FiguritaPage() {
         router.push('/login?next=/figurita')
         return
       }
-      const dataUrl = await toPng(figuritaRef.current, {
-        quality: 1,
-        pixelRatio: 3,
-        cacheBust: true,
-      })
+      const dataUrl = await captureFiguritaPng()
       const blob = await (await fetch(dataUrl)).blob()
       const path = `${user.id}/figurita-${crypto.randomUUID()}.png`
       const { error: upErr } = await supabase.storage.from(STORE_PRINTS_BUCKET).upload(path, blob, {
@@ -187,7 +279,7 @@ export default function FiguritaPage() {
     } finally {
       setIsSendingStore(false)
     }
-  }, [displayPhoto, router])
+  }, [displayPhoto, router, captureFiguritaPng])
 
   return (
     <div className="min-h-[calc(100vh-4rem)] w-full max-w-[100vw] overflow-x-hidden px-4 py-8 text-[#111] md:px-8 md:py-10">
@@ -248,8 +340,8 @@ export default function FiguritaPage() {
                 </p>
               ) : (
                 <p className="text-xs leading-snug text-[#555]">
-                  Crear con IA genera un retrato con tu cara, una camiseta genérica a colores de la selección (sin escudos
-                  oficiales) y un estadio nocturno estilo Mundial 2026.
+                  Crear con IA genera un retrato con tu cara, camiseta a colores de la selección y un apodo tuyo que
+                  mezcla tu nombre con el país que elijas. Después podés descargarla o compartirla en redes.
                 </p>
               )}
               <div
@@ -325,6 +417,7 @@ export default function FiguritaPage() {
                   onChange={(e) => {
                     setSelectedTeamCode(e.target.value)
                     setAiPortrait(null)
+                    setAiApodo(null)
                     setAiError(null)
                   }}
                   className="store-field"
@@ -361,26 +454,68 @@ export default function FiguritaPage() {
             </div>
 
             <div className="space-y-3 border-t-2 border-[#111] pt-4">
-              <button
-                type="button"
-                onClick={handleDownload}
-                disabled={isGenerating || !displayPhoto}
-                className="btn-primary hover-lift flex w-full items-center justify-center gap-2 py-4 text-center disabled:cursor-not-allowed disabled:opacity-50 [font-family:var(--font-store-display),sans-serif]"
-              >
-                {isGenerating ? (
-                  <RefreshCw className="h-5 w-5 animate-spin" />
-                ) : (
-                  <Download className="h-5 w-5" />
-                )}
-                {isGenerating ? 'Armando PNG…' : 'Descargar figurita'}
-              </button>
-              {!displayPhoto && (
-                <p className="text-center text-xs font-semibold text-[#c00]">Subí una foto para poder descargar.</p>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <button
+                  type="button"
+                  onClick={handleDownload}
+                  disabled={isGenerating || isSharing || !displayPhoto}
+                  className="btn-primary hover-lift flex w-full items-center justify-center gap-2 py-4 text-center disabled:cursor-not-allowed disabled:opacity-50 [font-family:var(--font-store-display),sans-serif]"
+                >
+                  {isGenerating ? (
+                    <RefreshCw className="h-5 w-5 animate-spin" />
+                  ) : (
+                    <Download className="h-5 w-5" />
+                  )}
+                  {isGenerating ? 'Armando PNG…' : 'Descargar'}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleShare}
+                  disabled={isGenerating || isSharing || !displayPhoto}
+                  className="btn-secondary hover-lift flex w-full items-center justify-center gap-2 py-4 text-center disabled:cursor-not-allowed disabled:opacity-50 [font-family:var(--font-store-display),sans-serif]"
+                >
+                  {isSharing ? (
+                    <RefreshCw className="h-5 w-5 animate-spin" />
+                  ) : (
+                    <Share2 className="h-5 w-5" />
+                  )}
+                  {isSharing ? 'Compartiendo…' : 'Compartir'}
+                </button>
+              </div>
+              {displayPhoto ? (
+                <div className="flex flex-wrap items-center justify-center gap-2">
+                  <span className="w-full text-center text-[11px] font-semibold uppercase tracking-wider text-[#666]">
+                    O compartí el link
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => openSocialShare('whatsapp')}
+                    className="rounded-full border-2 border-[#111] bg-[#25D366] px-4 py-1.5 text-xs font-black uppercase tracking-wide text-white transition-opacity hover:opacity-90"
+                  >
+                    WhatsApp
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => openSocialShare('twitter')}
+                    className="rounded-full border-2 border-[#111] bg-[#111] px-4 py-1.5 text-xs font-black uppercase tracking-wide text-white transition-opacity hover:opacity-90"
+                  >
+                    X
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => openSocialShare('facebook')}
+                    className="rounded-full border-2 border-[#111] bg-[#1877F2] px-4 py-1.5 text-xs font-black uppercase tracking-wide text-white transition-opacity hover:opacity-90"
+                  >
+                    Facebook
+                  </button>
+                </div>
+              ) : (
+                <p className="text-center text-xs font-semibold text-[#c00]">Subí una foto para poder descargar o compartir.</p>
               )}
               <button
                 type="button"
                 onClick={handleSendToStore}
-                disabled={isSendingStore || isGenerating || !displayPhoto}
+                disabled={isSendingStore || isGenerating || isSharing || !displayPhoto}
                 className="btn-secondary hover-lift flex w-full items-center justify-center gap-2 py-3 text-center disabled:cursor-not-allowed disabled:opacity-50 [font-family:var(--font-store-display),sans-serif]"
               >
                 {isSendingStore ? (
@@ -482,9 +617,9 @@ export default function FiguritaPage() {
                   <span className="min-w-0 truncate uppercase tracking-wider">{selectedTeam.name}</span>
                   <div
                     className="max-w-[58%] min-w-0 truncate text-right text-[11px] font-black uppercase tracking-tight text-[#ccff00]/95"
-                    title={getPlayerApodo((name || '').trim() || 'Tu Nombre')}
+                    title={displayApodo}
                   >
-                    {getPlayerApodo((name || '').trim() || 'Tu Nombre')}
+                    {displayApodo}
                   </div>
                 </div>
               </div>
@@ -504,7 +639,10 @@ export default function FiguritaPage() {
             {mode === 'ia' && aiPortrait && (
               <button
                 type="button"
-                onClick={() => setAiPortrait(null)}
+                onClick={() => {
+                  setAiPortrait(null)
+                  setAiApodo(null)
+                }}
                 className="mt-3 text-xs font-bold text-[#111] underline decoration-[#111]/35 underline-offset-4 transition-colors hover:text-[#5d3fd3] hover:decoration-[#5d3fd3]/50"
               >
                 Volver a la foto subida

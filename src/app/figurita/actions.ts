@@ -244,6 +244,154 @@ export type GenerateFiguritaPortraitResult =
   | { ok: true; imageDataUrl: string }
   | { ok: false; error: string }
 
+export type GenerateFiguritaApodoResult =
+  | { ok: true; apodo: string }
+  | { ok: false; error: string }
+
+function normalizeApodo(raw: string): string | null {
+  let s = raw
+    .trim()
+    .toUpperCase()
+    .normalize('NFD')
+    .replace(/\p{M}/gu, '')
+    .replace(/[^A-Z0-9\s'-]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+  if (s.length < 3 || s.length > 22) return null
+  return s
+}
+
+/**
+ * Apodo personal estilo figurita (Gemini): mezcla nombre/foto de la persona con la selección.
+ */
+export async function generateFiguritaApodo(params: {
+  photoDataUrl?: string
+  countryName: string
+  countryCode: string
+  playerName: string
+  position: string
+}): Promise<GenerateFiguritaApodoResult> {
+  const apiKey = resolveGenaiApiKey()
+  if (!apiKey) {
+    return {
+      ok: false,
+      error:
+        'Falta clave de API. En .env.local o Vercel definí GEMINI_API_KEY (sin NEXT_PUBLIC). Reiniciá el servidor tras guardar.',
+    }
+  }
+
+  const envModel = process.env.GEMINI_MODEL?.trim()
+  const stripped = envModel ? stripModelId(envModel) : null
+  const modelChain = stripped
+    ? [stripped, 'gemini-2.5-flash', 'gemini-2.0-flash']
+    : ['gemini-3-flash-preview', 'gemini-2.5-flash', 'gemini-2.0-flash']
+
+  const safeName = params.playerName.replace(/"/g, "'").slice(0, 40)
+  const safePos = params.position.replace(/"/g, "'").slice(0, 32)
+
+  const photoParsed = params.photoDataUrl ? parseDataUrl(params.photoDataUrl) : null
+
+  const prompt = `Sos redactor de figuritas coleccionables del Mundial 2026.
+Inventá UN apodo de estadio en español para ESTA PERSONA que juega en la selección de "${params.countryName}".
+
+Datos:
+- Nombre en la figurita: "${safeName}"
+- Posición: "${safePos}"
+- Selección: "${params.countryName}" (${params.countryCode})
+${photoParsed ? '- Hay una foto adjunta: usala solo para un matiz sutil (expresión, vibe), sin describir rasgos físicos en el apodo.' : ''}
+
+Reglas IMPORTANTES:
+- El apodo debe mezclar AMBOS: la persona ("${safeName}") Y "${params.countryName}" (símbolos, animales, colores o modismos futboleros de ese país).
+- Debe sentirse el apodo de ESTE jugador con ESA camiseta, no un apodo genérico solo del país ni solo del nombre.
+- Partí del nombre (apellido, diminutivo, iniciales) y sumale un guiño claro a "${params.countryName}".
+- La posición "${safePos}" puede influir (arquero, delantero, DT, etc.).
+- Formato cromo Panini: "EL" o "LA" + apodo corto (ej. "EL GALLO RODRI" para Argentina, "EL CANARIO JUAN" para Uruguay, "EL TIGRE LOPEZ" para México).
+- Máximo 22 caracteres. Solo letras, espacios y apóstrofo. Todo en MAYÚSCULAS.
+- No copies apodos de jugadores profesionales famosos reales.
+
+Respondé UN solo objeto JSON (sin markdown). Clave exacta: "apodo" (string).`
+
+  const textContents = photoParsed
+    ? [
+        {
+          role: 'user' as const,
+          parts: [
+            { inlineData: { mimeType: photoParsed.mimeType, data: photoParsed.base64 } },
+            { text: prompt },
+          ],
+        },
+      ]
+    : prompt
+
+  try {
+    const ai = new GoogleGenAI({ apiKey })
+    let response: GenerateContentResponse | undefined
+    let lastError: unknown
+
+    for (let mi = 0; mi < modelChain.length; mi++) {
+      const model = modelChain[mi]!
+      try {
+        try {
+          response = await ai.models.generateContent({
+            model,
+            contents: textContents,
+            config: {
+              responseMimeType: 'application/json',
+              temperature: 0.9,
+            },
+          })
+        } catch {
+          response = await ai.models.generateContent({
+            model,
+            contents: textContents,
+            config: { temperature: 0.9 },
+          })
+        }
+        break
+      } catch (e) {
+        lastError = e
+        if (isInvalidApiKeyError(e)) {
+          return { ok: false, error: formatGenaiError(e) }
+        }
+        if (mi < modelChain.length - 1 && isLikelyWrongModelError(e)) {
+          continue
+        }
+        return { ok: false, error: formatGenaiError(e) }
+      }
+    }
+
+    if (!response) {
+      return { ok: false, error: formatGenaiError(lastError) }
+    }
+
+    const text = response.text?.trim()
+    if (!text) {
+      return { ok: false, error: 'El modelo no devolvió un apodo.' }
+    }
+
+    let parsed: Record<string, unknown>
+    try {
+      parsed = JSON.parse(text) as Record<string, unknown>
+    } catch {
+      try {
+        parsed = parseJsonObject(text) as Record<string, unknown>
+      } catch {
+        return { ok: false, error: 'El modelo no devolvió JSON válido para el apodo.' }
+      }
+    }
+
+    const apodo = normalizeApodo(String(parsed.apodo ?? ''))
+    if (!apodo) {
+      return { ok: false, error: 'El apodo generado no pasó validación.' }
+    }
+
+    return { ok: true, apodo }
+  } catch (e) {
+    console.error('generateFiguritaApodo', e)
+    return { ok: false, error: formatGenaiError(e) }
+  }
+}
+
 function parseDataUrl(dataUrl: string): { mimeType: string; base64: string } | null {
   const t = dataUrl.trim()
   const m = /^data:([^;,]+);base64,([\s\S]+)$/.exec(t)
