@@ -3,6 +3,7 @@
 import { usePathname } from 'next/navigation'
 import Navbar from '@/components/Navbar'
 import SiteFooter from '@/components/SiteFooter'
+import { AnalyticsProvider } from '@/components/analytics/analytics-provider'
 
 /** Rutas a pantalla completa sin navbar ni footer. */
 const BARE_ROUTES = new Set(['/confirmacion'])
@@ -17,6 +18,7 @@ export function SiteShell({ children }: { children: React.ReactNode }) {
 
   return (
     <>
+      <AnalyticsProvider />
       <Navbar />
       <main className="relative z-10 flex-grow pt-16">{children}</main>
       <SiteFooter />

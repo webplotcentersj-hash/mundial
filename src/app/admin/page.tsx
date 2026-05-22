@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Settings, Save, ShieldAlert, Users, Trophy, Download, Eye, Loader2, Store, RotateCcw, X } from 'lucide-react'
+import { Settings, Save, ShieldAlert, Users, Trophy, Download, Eye, Loader2, Store, RotateCcw, X, BarChart3 } from 'lucide-react'
 import Image from 'next/image'
 import { motion, AnimatePresence } from 'framer-motion'
 import { createClient } from '@/lib/supabase/client'
@@ -22,6 +22,8 @@ import {
 } from '@/lib/actions'
 import { AdminUserFichaModal } from '@/components/admin/AdminUserFichaModal'
 import { AdminStoreOrdersPanel } from '@/components/admin/AdminStoreOrdersPanel'
+import { AdminAnalyticsPanel } from '@/components/admin/AdminAnalyticsPanel'
+import { getAdminAnalyticsStats, type AdminAnalyticsStats } from '@/lib/actions/analytics'
 import './admin-store.css'
 
 function formatAdminDate(iso: string | null | undefined) {
@@ -43,10 +45,13 @@ export default function AdminPage() {
   const [resettingId, setResettingId] = useState<string | null>(null)
   const [syncRankingBusy, setSyncRankingBusy] = useState(false)
   const [results, setResults] = useState<Record<string, { home: string, away: string }>>({})
-  const [activeTab, setActiveTab] = useState<'results' | 'users' | 'podium' | 'print-orders'>('results')
+  const [activeTab, setActiveTab] = useState<'results' | 'users' | 'podium' | 'print-orders' | 'analytics'>('results')
 
   const [storeDashboard, setStoreDashboard] = useState<AdminStoreDashboard | null>(null)
   const [printOrdersLoading, setPrintOrdersLoading] = useState(false)
+  const [analyticsStats, setAnalyticsStats] = useState<AdminAnalyticsStats | null>(null)
+  const [analyticsLoading, setAnalyticsLoading] = useState(false)
+  const [analyticsError, setAnalyticsError] = useState<string | null>(null)
   const [printSavingId, setPrintSavingId] = useState<string | null>(null)
   const [adminNotesDraft, setAdminNotesDraft] = useState<Record<string, string>>({})
 
@@ -93,6 +98,30 @@ export default function AdminPage() {
       }
     }
     loadPrint()
+    return () => {
+      cancelled = true
+    }
+  }, [activeTab])
+
+  useEffect(() => {
+    if (activeTab !== 'analytics') return
+    let cancelled = false
+    async function loadAnalytics() {
+      setAnalyticsLoading(true)
+      setAnalyticsError(null)
+      try {
+        const stats = await getAdminAnalyticsStats()
+        if (!cancelled) setAnalyticsStats(stats)
+      } catch (e: unknown) {
+        if (!cancelled) {
+          setAnalyticsError(e instanceof Error ? e.message : 'Error al cargar analytics')
+          setAnalyticsStats(null)
+        }
+      } finally {
+        if (!cancelled) setAnalyticsLoading(false)
+      }
+    }
+    loadAnalytics()
     return () => {
       cancelled = true
     }
@@ -329,6 +358,12 @@ export default function AdminPage() {
               className={`px-6 py-3 rounded-xl font-bold flex items-center gap-2 transition-all ${activeTab === 'print-orders' ? 'bg-violet-600 text-white shadow-[0_0_20px_rgba(139,92,246,0.35)] border border-violet-400/50' : 'bg-white/5 text-white/50 hover:bg-white/10 border border-white/5'}`}
             >
               <Store className="w-5 h-5" /> Store
+            </button>
+            <button 
+              onClick={() => setActiveTab('analytics')}
+              className={`px-6 py-3 rounded-xl font-bold flex items-center gap-2 transition-all ${activeTab === 'analytics' ? 'bg-emerald-600 text-white shadow-[0_0_20px_rgba(16,185,129,0.35)] border border-emerald-400/50' : 'bg-white/5 text-white/50 hover:bg-white/10 border border-white/5'}`}
+            >
+              <BarChart3 className="w-5 h-5" /> Visitas
             </button>
           </div>
           
@@ -631,6 +666,21 @@ export default function AdminPage() {
                 onStatusChange={handlePrintStatusChange}
                 onSaveAdminNotes={handleSavePrintAdminNotes}
                 onAdminFileUpload={handleAdminStoreFileUpload}
+              />
+            </motion.div>
+          )}
+
+          {activeTab === 'analytics' && (
+            <motion.div
+              key="analytics"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+            >
+              <AdminAnalyticsPanel
+                loading={analyticsLoading}
+                stats={analyticsStats}
+                error={analyticsError}
               />
             </motion.div>
           )}
