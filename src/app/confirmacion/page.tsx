@@ -10,7 +10,7 @@ const CONFIRM_BG = encodeURI('/MAIL DE CONFIRMACIÓN-01 (2).png')
 
 export default function ConfirmacionPage() {
   return (
-    <div className="fixed inset-0 z-[60] flex flex-col items-center justify-end overflow-hidden bg-[#0a0f1c] px-4 pb-10 pt-20 sm:pb-14">
+    <div className="relative flex min-h-screen flex-col items-center justify-end overflow-hidden bg-[#0a0f1c] px-4 pb-10 sm:pb-14">
       <div
         aria-hidden
         className="absolute inset-0 bg-cover bg-center bg-no-repeat"
