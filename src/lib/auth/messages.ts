@@ -5,28 +5,20 @@ export function mapAuthErrorMessage(raw: string | undefined | null): string {
 
   if (!msg) return 'No se pudo completar la operación. Probá de nuevo.'
 
-  if (lower.includes('rate limit') && lower.includes('email')) {
-    return 'Enviamos demasiados mails de confirmación en poco tiempo. Esperá unos minutos y revisá tu bandeja (y spam) antes de volver a intentar.'
-  }
-
-  if (lower.includes('email not confirmed') || lower.includes('email_not_confirmed')) {
-    return 'Tu cuenta existe pero el email todavía no está confirmado. Abrí el enlace del mail que te enviamos o pedí uno nuevo abajo.'
-  }
-
   if (
     lower.includes('invalid login credentials') ||
     lower.includes('invalid credentials') ||
     lower.includes('invalid email or password')
   ) {
-    return 'Email o contraseña incorrectos. Si te registraste recién, confirmá el mail antes de ingresar.'
+    return 'Email o contraseña incorrectos.'
   }
 
   if (lower.includes('user already registered') || lower.includes('already been registered')) {
-    return 'Ese email ya tiene cuenta. Iniciá sesión o confirmá el mail si recién te registraste.'
+    return 'Ese email ya tiene cuenta. Probá iniciar sesión.'
   }
 
-  if (lower.includes('password') && lower.includes('least')) {
-    return 'La contraseña es muy corta. Usá al menos 6 caracteres.'
+  if (lower.includes('password')) {
+    return 'Revisá la contraseña e intentá de nuevo.'
   }
 
   if (lower.includes('valid email') || lower.includes('invalid email')) {
@@ -43,9 +35,4 @@ export function mapAuthErrorMessage(raw: string | undefined | null): string {
 export function isEmailNotConfirmedError(raw: string | undefined | null): boolean {
   const lower = (raw ?? '').toLowerCase()
   return lower.includes('email not confirmed') || lower.includes('email_not_confirmed')
-}
-
-export function isEmailRateLimitError(raw: string | undefined | null): boolean {
-  const lower = (raw ?? '').toLowerCase()
-  return lower.includes('rate limit') && lower.includes('email')
 }

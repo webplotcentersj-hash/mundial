@@ -3,12 +3,10 @@
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { ensureUserProfile } from '@/lib/ensureUserProfile'
-import { getAppBaseUrl } from '@/lib/mercadopago/config'
-import {
-  isEmailNotConfirmedError,
-  mapAuthErrorMessage,
-} from '@/lib/auth/messages'
+import { confirmUserEmailByAddress } from '@/lib/auth/confirm-user'
+import { isEmailNotConfirmedError, mapAuthErrorMessage } from '@/lib/auth/messages'
 
 function readCredentials(formData: FormData) {
   const email = String(formData.get('email') ?? '').trim().toLowerCase()
@@ -26,6 +24,28 @@ function loginRedirect(message: string, extra?: Record<string, string>) {
   redirect(`/login?${params.toString()}`)
 }
 
+async function finishAuthSession(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  email: string,
+  password: string,
+) {
+  const { error } = await supabase.auth.signInWithPassword({ email, password })
+  if (error) {
+    loginRedirect(mapAuthErrorMessage(error.message))
+  }
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (user) {
+    const pr = await ensureUserProfile(supabase, user)
+    if (pr.error) console.error('ensureUserProfile:', pr.error)
+  }
+
+  revalidatePath('/', 'layout')
+  redirect('/dashboard')
+}
+
 export async function login(formData: FormData) {
   const { email, password } = readCredentials(formData)
 
@@ -36,12 +56,15 @@ export async function login(formData: FormData) {
   const supabase = await createClient()
   const { error } = await supabase.auth.signInWithPassword({ email, password })
 
-  if (error) {
-    const friendly = mapAuthErrorMessage(error.message)
-    if (isEmailNotConfirmedError(error.message)) {
-      loginRedirect(friendly, { emailNotConfirmed: '1', email })
+  if (error && isEmailNotConfirmedError(error.message)) {
+    const confirmed = await confirmUserEmailByAddress(email)
+    if (confirmed) {
+      await finishAuthSession(supabase, email, password)
     }
-    loginRedirect(friendly)
+  }
+
+  if (error) {
+    loginRedirect(mapAuthErrorMessage(error.message))
   }
 
   const {
@@ -70,63 +93,29 @@ export async function signup(formData: FormData) {
 
   const supabase = await createClient()
 
-  const payload = {
-    email,
-    password,
-    options: {
-      emailRedirectTo: `${getAppBaseUrl()}/auth/callback?next=/confirmacion`,
-      data: {
-        username,
-      },
-    },
-  }
-
-  const { data, error } = await supabase.auth.signUp(payload)
-
-  if (error) {
-    loginRedirect(mapAuthErrorMessage(error.message), { mode: 'register' })
-  }
-
-  // Si "Confirmar email" está activo en Supabase, no hay sesión hasta confirmar.
-  if (!data.session) {
-    revalidatePath('/', 'layout')
-    redirect('/login?pendingConfirmation=1')
-  }
-
-  const user = data.user
-  if (user) {
-    const pr = await ensureUserProfile(supabase, user)
-    if (pr.error) console.error('ensureUserProfile after signup:', pr.error)
-  }
-
-  revalidatePath('/', 'layout')
-  redirect('/dashboard')
-}
-
-export async function resendConfirmationEmail(formData: FormData) {
-  const email = String(formData.get('email') ?? '').trim().toLowerCase()
-
-  if (!email) {
-    loginRedirect('Ingresá tu email para reenviar la confirmación.', { emailNotConfirmed: '1' })
-  }
-
-  const supabase = await createClient()
-  const { error } = await supabase.auth.resend({
-    type: 'signup',
-    email,
-    options: {
-      emailRedirectTo: `${getAppBaseUrl()}/auth/callback?next=/confirmacion`,
-    },
-  })
-
-  if (error) {
-    loginRedirect(mapAuthErrorMessage(error.message), {
-      emailNotConfirmed: '1',
+  try {
+    const admin = createAdminClient()
+    const { error: createErr } = await admin.auth.admin.createUser({
       email,
+      password,
+      email_confirm: true,
+      user_metadata: { username },
     })
+
+    if (createErr) {
+      const lower = createErr.message.toLowerCase()
+      if (lower.includes('already') || lower.includes('registered')) {
+        await confirmUserEmailByAddress(email)
+        await finishAuthSession(supabase, email, password)
+      }
+      loginRedirect(mapAuthErrorMessage(createErr.message), { mode: 'register' })
+    }
+  } catch (e) {
+    console.error('signup createUser:', e)
+    loginRedirect('No se pudo crear la cuenta. Probá de nuevo.', { mode: 'register' })
   }
 
-  redirect('/login?pendingConfirmation=1')
+  await finishAuthSession(supabase, email, password)
 }
 
 export async function signout() {
