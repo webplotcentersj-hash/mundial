@@ -33,6 +33,7 @@ import {
 } from '@/lib/actions'
 import { createClient } from '@/lib/supabase/client'
 import { cn } from '@/lib/utils'
+import { formatMundialDate, formatMundialTime } from '@/lib/world-cup-2026'
 
 export default function DashboardPage() {
   const [activeTab, setActiveTab] = useState<'matches' | 'results' | 'leagues' | 'medals'>('matches')
@@ -553,7 +554,7 @@ export default function DashboardPage() {
                           <span className="truncate">{match.venue}</span>
                           {match.date && (
                             <span className="ml-auto shrink-0 tabular-nums text-[#999]">
-                              {new Date(match.date).toLocaleDateString('es-AR', { day: 'numeric', month: 'short' })}
+                              {formatMundialDate(match.date)} · {formatMundialTime(match.date)} hs
                             </span>
                           )}
                         </div>

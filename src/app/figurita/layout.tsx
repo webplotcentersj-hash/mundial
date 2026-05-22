@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 import { Archivo_Black, Space_Grotesk } from 'next/font/google'
 import { buildPageMetadata } from '@/lib/seo/site'
+import { FiguritaToastProvider } from '@/components/figurita/figurita-toast'
 import '../store/store.css'
 
 export const metadata = buildPageMetadata({
@@ -28,7 +29,7 @@ export const maxDuration = 120
 export default function FiguritaLayout({ children }: { children: ReactNode }) {
   return (
     <div className={`plot-figurita-store plot-store ${storeSans.variable} ${storeDisplay.variable}`}>
-      {children}
+      <FiguritaToastProvider>{children}</FiguritaToastProvider>
     </div>
   )
 }

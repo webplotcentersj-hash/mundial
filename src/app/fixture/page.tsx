@@ -6,7 +6,8 @@ import { MapPin, X, Loader2 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import Image from 'next/image'
 import { getMatches } from '@/lib/actions'
-import { parseToLocalDateKey, toLocalDateKey } from '@/lib/localDateKey'
+import { toLocalDateKey } from '@/lib/localDateKey'
+import { formatMundialDate, formatMundialTime, toMundialDateKey } from '@/lib/world-cup-2026'
 import { cn } from '@/lib/utils'
 
 const generateCalendarDays = (year: number, month: number) => {
@@ -58,7 +59,7 @@ export default function FixtureCalendarPage() {
   const matchesByDate = useMemo(() => {
     return matches.reduce(
       (acc, match) => {
-        const dateStr = parseToLocalDateKey(match.date)
+        const dateStr = toMundialDateKey(match.date)
         if (!acc[dateStr]) acc[dateStr] = []
         acc[dateStr].push(match)
         return acc
@@ -163,7 +164,7 @@ export default function FixtureCalendarPage() {
             Fixture mundial
           </h1>
           <p className="mt-2 max-w-xl text-base font-medium text-[#444]">
-            Calendario de partidos. Tocá un día con partidos para ver horarios y sedes.
+            Calendario de partidos. Horarios en hora de Argentina (ART). Tocá un día con partidos para ver detalle.
           </p>
         </div>
 
@@ -205,11 +206,7 @@ export default function FixtureCalendarPage() {
                     Partidos
                   </h3>
                   <p className="mt-1 text-sm font-bold uppercase tracking-wider text-[#5d3fd3]">
-                    {new Date(selectedDate + 'T12:00:00').toLocaleDateString('es-ES', {
-                      weekday: 'long',
-                      day: 'numeric',
-                      month: 'long',
-                    })}
+                    {formatMundialDate(selectedDate + 'T12:00:00-03:00')}
                   </p>
                 </div>
                 <button
@@ -228,12 +225,7 @@ export default function FixtureCalendarPage() {
               <div className="relative z-10 flex-1 space-y-4 overflow-y-auto bg-[#f8f8f8] p-5 sm:p-6">
                 {selectedMatches.map((match: any) => {
                   const groupColorClass = groupColors[match.homeTeam.group] || 'from-gray-500 to-gray-700'
-                  const kickoff = new Date(match.date)
-                  const timeStr = kickoff.toLocaleTimeString('es-ES', {
-                    hour: '2-digit',
-                    minute: '2-digit',
-                    hour12: false,
-                  })
+                  const timeStr = formatMundialTime(match.date)
                   return (
                     <div
                       key={match.id}
@@ -253,7 +245,7 @@ export default function FixtureCalendarPage() {
                         >
                           {match.homeTeam.group === 'KO' ? match.stage : `Grupo ${match.homeTeam.group}`}
                         </span>
-                        <span className="font-mono text-xs font-bold text-[#444]">{timeStr} hs</span>
+                        <span className="font-mono text-xs font-bold text-[#444]">{timeStr} hs (ARG)</span>
                       </div>
 
                       <div className="flex items-center justify-between gap-4 px-2">

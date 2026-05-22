@@ -8,6 +8,7 @@ import { mockTeams } from '@/lib/mockData'
 import Image from 'next/image'
 import { getPlayerApodo } from '@/lib/figuritaPlayerApodo'
 import { generateFiguritaApodo, generateFiguritaPortrait } from '@/app/figurita/actions'
+import { useFiguritaToast } from '@/components/figurita/figurita-toast'
 import { createClient } from '@/lib/supabase/client'
 import { STORE_PRINTS_BUCKET, writeFiguritaStoreImageToSession } from '@/lib/storePrints'
 import { cn } from '@/lib/utils'
@@ -21,6 +22,7 @@ type FiguritaMode = 'classic' | 'ia'
 
 export default function FiguritaPage() {
   const router = useRouter()
+  const { showToast } = useFiguritaToast()
   const [mode, setMode] = useState<FiguritaMode>('classic')
   const [photo, setPhoto] = useState<string | null>(null)
   const [name, setName] = useState<string>('Tu Nombre')
@@ -115,8 +117,16 @@ export default function FiguritaPage() {
       setAiPortrait(portraitRes.imageDataUrl)
       if (apodoRes.ok) {
         setAiApodo(apodoRes.apodo)
+        showToast({
+          title: '¡GOL! Figurita creada',
+          description: `Tu look con IA está listo con el apodo «${apodoRes.apodo}». Descargala, compartila o mandala al Store.`,
+        })
       } else {
         setAiApodo(null)
+        showToast({
+          title: '¡GOL! Retrato con IA listo',
+          description: 'Tu figurita fue creada. El apodo quedó automático; podés descargar o compartir.',
+        })
       }
     } catch (e) {
       console.error('generateFiguritaPortrait', e)
@@ -632,8 +642,11 @@ export default function FiguritaPage() {
                 <span className="inline-block h-2 w-2 shrink-0 animate-pulse rounded-full bg-[#111]" />
                 Vista previa en tiempo real
               </span>
-              {mode === 'ia' && (aiPortrait || aiLoading) && (
-                <span className="font-semibold text-[#5d3fd3]">· Look IA</span>
+              {mode === 'ia' && aiPortrait && !aiLoading && (
+                <span className="font-semibold text-[#5d3fd3]">· Figurita con IA creada</span>
+              )}
+              {mode === 'ia' && aiLoading && (
+                <span className="font-semibold text-[#5d3fd3]">· Creando con IA…</span>
               )}
             </p>
             {mode === 'ia' && aiPortrait && (
