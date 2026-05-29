@@ -576,7 +576,7 @@ export function MundialHubSection({
     <section className="trending-section mundial-hub-section">
       <div className="container">
         {/* Banner de Video Mundial */}
-        <div className="relative w-full mb-6 overflow-hidden border-2 border-[#111] bg-black shadow-[4px_4px_0px_#111] aspect-[16/9] md:aspect-[21/7] lg:aspect-[21/6]">
+        <div className="relative w-full mb-6 overflow-hidden border-2 border-[#111] bg-black shadow-[4px_4px_0px_#111] aspect-[1920/418]">
           <video
             src="/BANNER%20WEB%20(1).mp4"
             className="w-full h-full object-cover"
