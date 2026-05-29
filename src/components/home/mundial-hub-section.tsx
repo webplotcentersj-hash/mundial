@@ -575,6 +575,19 @@ export function MundialHubSection({
   return (
     <section className="trending-section mundial-hub-section">
       <div className="container">
+        {/* Banner de Video Mundial */}
+        <div className="relative w-full mb-6 overflow-hidden border-2 border-[#111] bg-black shadow-[4px_4px_0px_#111] aspect-[16/9] md:aspect-[21/7] lg:aspect-[21/6]">
+          <video
+            src="/BANNER%20WEB%20(1).mp4"
+            className="w-full h-full object-cover"
+            autoPlay
+            loop
+            muted
+            playsInline
+            preload="auto"
+          />
+        </div>
+
         <div className="trending-header flex-wrap gap-3">
           <div>
             <h3>Mundial FIFA 2026</h3>
