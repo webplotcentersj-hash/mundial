@@ -9,7 +9,7 @@ import { getMatches } from '@/lib/actions'
 import { toLocalDateKey } from '@/lib/localDateKey'
 import { formatMundialDate, formatMundialTime, toMundialDateKey } from '@/lib/world-cup-2026'
 import { cn } from '@/lib/utils'
-
+import { formatMatchStage } from '@/lib/matchTeams'
 const generateCalendarDays = (year: number, month: number) => {
   const date = new Date(year, month, 1)
   const days = []
@@ -43,12 +43,6 @@ export default function FixtureCalendarPage() {
         ...m,
         homeScore: m.home_score,
         awayScore: m.away_score,
-        homeTeam: m.homeTeam
-          ? { ...m.homeTeam, group: m.homeTeam.group_id }
-          : { name: 'Por definir', code: 'tbd', group: 'KO' },
-        awayTeam: m.awayTeam
-          ? { ...m.awayTeam, group: m.awayTeam.group_id }
-          : { name: 'Por definir', code: 'tbd', group: 'KO' },
       }))
       setMatches(mapped)
       setLoading(false)
@@ -243,7 +237,7 @@ export default function FixtureCalendarPage() {
                             `bg-gradient-to-r ${groupColorClass}`,
                           )}
                         >
-                          {match.homeTeam.group === 'KO' ? match.stage : `Grupo ${match.homeTeam.group}`}
+                          {match.homeTeam.group === 'KO' ? formatMatchStage(match.stage) : `Grupo ${match.homeTeam.group}`}
                         </span>
                         <span className="font-mono text-xs font-bold text-[#444]">{timeStr} hs (ARG)</span>
                       </div>

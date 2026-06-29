@@ -5,6 +5,8 @@ import { createAdminClient } from './supabase/admin'
 import { ensureUserProfile } from './ensureUserProfile'
 import { revalidatePath } from 'next/cache'
 import {
+  formatMundialDate,
+  formatMundialTime,
   getDaysUntilKickoff,
   getMundialPhase,
   WC2026_ARGENTINA_DEBUT,
@@ -25,6 +27,7 @@ import {
 import { getPrintImageFieldsForLine } from '@/lib/store/order-print-assets'
 import { ensureTriviaQuestionsSeeded } from '@/lib/trivia/seed'
 import { applyFixturePointDelta } from '@/lib/profile-points'
+import { formatMatchStage, mapMatchTeams } from '@/lib/matchTeams'
 
 export type { PrintProductType } from '@/lib/store/catalog'
 
@@ -51,7 +54,7 @@ export async function getMatches() {
     console.error('Error fetching matches:', error)
     return []
   }
-  return matches
+  return (matches ?? []).map((m) => mapMatchTeams(m))
 }
 
 export async function getRanking() {
@@ -813,7 +816,54 @@ export async function updateMatchScore(matchId: string, homeScore: number, awayS
 
   revalidatePath('/admin')
   revalidatePath('/fixture')
+  revalidatePath('/dashboard')
   revalidatePath('/ranking')
+  return { success: true }
+}
+
+/** Admin: asigna equipos reales a un partido eliminatorio (home_team_id / away_team_id). */
+export async function updateMatchTeams(
+  matchId: string,
+  homeTeamId: string | null,
+  awayTeamId: string | null,
+) {
+  const isAdmin = await verifyAdmin()
+  if (!isAdmin) {
+    throw new Error('No autorizado')
+  }
+
+  const supabase = await createClient()
+  const teamIds = [homeTeamId, awayTeamId].filter((id): id is string => Boolean(id))
+
+  if (teamIds.length > 0) {
+    const { data: teams, error: teamsErr } = await supabase.from('teams').select('id').in('id', teamIds)
+    if (teamsErr) {
+      console.error('Error validating teams:', teamsErr)
+      throw new Error('No se pudieron validar los equipos')
+    }
+    if ((teams?.length ?? 0) !== teamIds.length) {
+      throw new Error('Uno o más equipos no existen')
+    }
+  }
+
+  const { error: matchError } = await supabase
+    .from('matches')
+    .update({
+      home_team_id: homeTeamId || null,
+      away_team_id: awayTeamId || null,
+    })
+    .eq('id', matchId)
+
+  if (matchError) {
+    console.error('Error updating match teams:', matchError)
+    throw new Error('No se pudieron asignar los equipos')
+  }
+
+  revalidatePath('/admin')
+  revalidatePath('/fixture')
+  revalidatePath('/dashboard')
+  revalidatePath('/ranking')
+  revalidatePath('/bracket')
   return { success: true }
 }
 
@@ -1127,6 +1177,7 @@ export async function awardMedal(medalId: string) {
 export async function getLiveTickerNews() {
   const supabase = await createClient()
   const news: string[] = []
+  const phase = getMundialPhase()
 
   let finalUserCount = 0
 
@@ -1140,10 +1191,58 @@ export async function getLiveTickerNews() {
     }
     finalUserCount = typeof count === 'number' ? count : 0
     if (finalUserCount > 0) {
-      news.push(`🌍 ${finalUserCount} jugadores ya están compitiendo por la gloria`)
+      news.push(`🌍 ${finalUserCount.toLocaleString('es-AR')} jugadores ya están compitiendo por la gloria`)
     }
 
-    // 2. Últimas medallas (max 2)
+    // 2. Resultados recientes y próximo partido (fixture real)
+    const { data: recentMatches } = await supabase
+      .from('matches')
+      .select(
+        'id, date, venue, stage, status, home_score, away_score, home_team_id, away_team_id, homeTeam:teams!home_team_id(name, code), awayTeam:teams!away_team_id(name, code)',
+      )
+      .order('date', { ascending: false })
+      .limit(40)
+
+    const previews = (recentMatches ?? [])
+      .map(mapDbMatchToPreview)
+      .filter((m): m is NonNullable<ReturnType<typeof mapDbMatchToPreview>> => m !== null)
+
+    const finishedRecent = previews
+      .filter((m) => m.status === 'finished' && m.homeScore != null && m.awayScore != null)
+      .slice(0, 3)
+
+    for (const m of finishedRecent) {
+      const stage = m.stage ? ` · ${m.stage}` : ''
+      news.push(
+        `⚽ ${m.homeName} ${m.homeScore}-${m.awayScore} ${m.awayName}${stage}`,
+      )
+    }
+
+    const nextPending = [...previews]
+      .reverse()
+      .find((m) => m.status !== 'finished' && Date.parse(m.date) >= Date.now())
+
+    if (nextPending) {
+      news.push(
+        `📅 Próximo: ${nextPending.homeName} vs ${nextPending.awayName} · ${formatMundialDate(nextPending.date)} ${formatMundialTime(nextPending.date)} hs (ARG)`,
+      )
+    }
+
+    const argNext = [...previews]
+      .reverse()
+      .find(
+        (m) =>
+          m.status !== 'finished' &&
+          (m.homeCode === 'ar' || m.awayCode === 'ar') &&
+          Date.parse(m.date) >= Date.now(),
+      )
+    if (argNext) {
+      news.push(
+        `🇦🇷 Argentina: ${argNext.homeName} vs ${argNext.awayName} · ${formatMundialDate(argNext.date)} ${formatMundialTime(argNext.date)} hs`,
+      )
+    }
+
+    // 3. Últimas medallas (max 2)
     const { data: medals } = await supabase
       .from('user_medals')
       .select('medal_id, profiles(username)')
@@ -1156,7 +1255,7 @@ export async function getLiveTickerNews() {
       news.push(`🔥 ${uname} acaba de desbloquear la medalla ${medalName}`)
     })
 
-    // 3. Últimas ligas (max 2)
+    // 4. Últimas ligas (max 2)
     const { data: leagues } = await supabase
       .from('leagues')
       .select('name')
@@ -1180,10 +1279,12 @@ export async function getLiveTickerNews() {
   
   const daysLeft = getDaysUntilKickoff()
   if (news.length < 5) {
-    if (getMundialPhase() === 'pre') {
-      news.push(`⚽ Faltan ${daysLeft} días para el inaugural: México vs Sudáfrica`)
+    if (phase === 'pre') {
+      news.push(`⚽ Faltan ${daysLeft} días para el inaugural: México vs Sudáfrica · ${formatMundialDate(WC2026_KICKOFF_ISO)} ${formatMundialTime(WC2026_KICKOFF_ISO)} hs (ARG)`)
+    } else if (phase === 'live') {
+      news.push('⚽ Mundial 2026 en curso — seguí el fixture y tu prode en Plot Mundial')
     } else {
-      news.push('⚽ Mundial 2026 en curso — seguí el fixture en Plot Mundial')
+      news.push('🏆 Mundial 2026 finalizado — revisá el ranking y tus medallas')
     }
     news.push(`🏟️ ${WC2026_FACTS.teams} selecciones · ${WC2026_FACTS.matches} partidos · 3 países sede`)
   }
@@ -1196,90 +1297,126 @@ export type HomeMundialSnapshot = {
   leagueCount: number
   predictionCount: number
   nextMatch: MundialMatchPreview | null
+  liveMatch: MundialMatchPreview | null
+  lastResult: MundialMatchPreview | null
   argentinaMatch: MundialMatchPreview | null
   kickoffIso: string
   finalIso: string
   phase: MundialPhase
   daysUntilKickoff: number
+  finishedCount: number
+  pendingCount: number
+  totalMatches: number
   facts: typeof WC2026_FACTS
 }
 
-function normalizeTeam(
-  team: { name?: string; code?: string } | { name?: string; code?: string }[] | null | undefined,
-): { name?: string; code?: string } | null {
-  if (!team) return null
-  if (Array.isArray(team)) return team[0] ?? null
-  return team
-}
+const MATCH_LIVE_WINDOW_MS = 105 * 60 * 1000
 
 function mapDbMatchToPreview(m: {
+  id?: string
   date: string
   venue?: string | null
   stage?: string | null
+  status?: string | null
+  home_score?: number | null
+  away_score?: number | null
+  home_team_id?: string | null
+  away_team_id?: string | null
   homeTeam?: { name?: string; code?: string } | { name?: string; code?: string }[] | null
   awayTeam?: { name?: string; code?: string } | { name?: string; code?: string }[] | null
-}): MundialMatchPreview | null {
-  const home = normalizeTeam(m.homeTeam)
-  const away = normalizeTeam(m.awayTeam)
-  const homeName = home?.name
-  const awayName = away?.name
-  const homeCode = home?.code
-  const awayCode = away?.code
-  if (!homeName || !awayName || !homeCode || !awayCode) return null
-  if (homeCode === 'tbd' || awayCode === 'tbd') return null
+}): (MundialMatchPreview & { status?: string; homeScore?: number | null; awayScore?: number | null }) | null {
+  const mapped = mapMatchTeams({
+    ...m,
+    id: m.id ?? 'unknown',
+    homeTeam: m.homeTeam as { name: string; code: string } | null | undefined,
+    awayTeam: m.awayTeam as { name: string; code: string } | null | undefined,
+  })
+  const home = mapped.homeTeam
+  const away = mapped.awayTeam
+  if (!home?.name || !away?.name) return null
   return {
-    homeName,
-    awayName,
-    homeCode,
-    awayCode,
+    homeName: home.name,
+    awayName: away.name,
+    homeCode: home.code,
+    awayCode: away.code,
     date: m.date,
     venue: m.venue ?? null,
-    stage: m.stage ?? null,
+    stage: m.stage ? formatMatchStage(m.stage) : null,
+    status: m.status ?? undefined,
+    homeScore: m.home_score ?? null,
+    awayScore: m.away_score ?? null,
   }
 }
 
 /** Datos en vivo del Mundial + actividad Plot para el home. */
 export async function getHomeMundialSnapshot(): Promise<HomeMundialSnapshot> {
   const supabase = await createClient()
-  const nowIso = new Date().toISOString()
+  const now = Date.now()
+  const phase = getMundialPhase(now)
 
   const [
     { count: playerCount },
     { count: leagueCount },
     { count: predictionCount },
-    { data: upcomingMatches },
+    { count: finishedCount },
+    { count: pendingCount },
+    { data: allMatches },
   ] = await Promise.all([
     supabase.from('profiles').select('*', { count: 'exact', head: true }),
     supabase.from('leagues').select('*', { count: 'exact', head: true }),
     supabase.from('predictions').select('*', { count: 'exact', head: true }),
+    supabase.from('matches').select('*', { count: 'exact', head: true }).eq('status', 'finished'),
+    supabase.from('matches').select('*', { count: 'exact', head: true }).eq('status', 'pending'),
     supabase
       .from('matches')
-      .select('date, venue, stage, homeTeam:teams!home_team_id(name, code), awayTeam:teams!away_team_id(name, code)')
-      .gte('date', nowIso)
-      .order('date', { ascending: true })
-      .limit(80),
+      .select(
+        'id, date, venue, stage, status, home_score, away_score, home_team_id, away_team_id, homeTeam:teams!home_team_id(name, code), awayTeam:teams!away_team_id(name, code)',
+      )
+      .order('date', { ascending: true }),
   ])
 
-  const mapped = (upcomingMatches ?? [])
+  const previews = (allMatches ?? [])
     .map(mapDbMatchToPreview)
-    .filter((m): m is MundialMatchPreview => m !== null)
+    .filter((m): m is NonNullable<ReturnType<typeof mapDbMatchToPreview>> => m !== null)
 
-  const nextMatch = mapped[0] ?? WC2026_OPENING_MATCH
-  const argentinaFromDb = mapped.find(
-    (m) => m.homeCode === 'ar' || m.awayCode === 'ar',
-  )
-  const argentinaMatch = argentinaFromDb ?? WC2026_ARGENTINA_DEBUT
+  const pending = previews.filter((m) => m.status !== 'finished')
+  const finished = previews.filter((m) => m.status === 'finished')
+
+  const liveMatch =
+    pending.find((m) => {
+      const kick = Date.parse(m.date)
+      return kick <= now && now - kick < MATCH_LIVE_WINDOW_MS
+    }) ?? null
+
+  const nextMatch =
+    pending.find((m) => Date.parse(m.date) >= now || m === liveMatch) ??
+    pending[0] ??
+    (phase === 'pre' ? WC2026_OPENING_MATCH : null)
+
+  const lastResult = finished[finished.length - 1] ?? null
+
+  const argentinaPending = pending.filter((m) => m.homeCode === 'ar' || m.awayCode === 'ar')
+  const argentinaMatch =
+    argentinaPending.find((m) => Date.parse(m.date) >= now) ??
+    argentinaPending[0] ??
+    previews.find((m) => m.homeCode === 'ar' || m.awayCode === 'ar') ??
+    WC2026_ARGENTINA_DEBUT
 
   return {
     playerCount: playerCount ?? 0,
     leagueCount: leagueCount ?? 0,
     predictionCount: predictionCount ?? 0,
     nextMatch,
+    liveMatch,
+    lastResult,
     argentinaMatch,
     kickoffIso: WC2026_KICKOFF_ISO,
     finalIso: WC2026_FINAL_ISO,
-    phase: getMundialPhase(),
-    daysUntilKickoff: getDaysUntilKickoff(),
+    phase,
+    daysUntilKickoff: getDaysUntilKickoff(now),
+    finishedCount: finishedCount ?? finished.length,
+    pendingCount: pendingCount ?? pending.length,
+    totalMatches: WC2026_FACTS.matches,
     facts: WC2026_FACTS,
   }
 }

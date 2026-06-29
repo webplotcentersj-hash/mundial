@@ -1,5 +1,7 @@
 import type { TriviaDifficulty, TriviaQuestionSeed } from './constants'
 import { TRIVIA_QUESTIONS_EXTRA } from './questions-bank-extra'
+import { TRIVIA_QUESTIONS_2026 } from './questions-bank-2026'
+import { TRIVIA_QUESTIONS_GOALS } from './questions-bank-goals'
 
 export type { TriviaQuestionSeed } from './constants'
 
@@ -364,7 +366,7 @@ export function buildTriviaQuestionsBank(): TriviaQuestionSeed[] {
     q('y-80', '¿Qué selección ganó el primer Mundial en 1930?', 'Uruguay', ['Argentina', 'Estados Unidos', 'Yugoslavia'], 'easy', 'campeones', 1930),
   ]
 
-  items.push(...extraBatch, ...yBatch, ...TRIVIA_QUESTIONS_EXTRA)
+  items.push(...extraBatch, ...yBatch, ...TRIVIA_QUESTIONS_EXTRA, ...TRIVIA_QUESTIONS_2026, ...TRIVIA_QUESTIONS_GOALS)
 
   // Dedupe by id
   const seen = new Set<string>()

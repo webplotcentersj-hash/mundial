@@ -30,7 +30,7 @@ export default function Home() {
       }
     }
     loadNews()
-    const interval = setInterval(loadNews, 60000)
+    const interval = setInterval(loadNews, 30_000)
     return () => clearInterval(interval)
   }, [])
 

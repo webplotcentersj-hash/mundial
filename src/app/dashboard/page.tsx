@@ -34,6 +34,7 @@ import {
 import { createClient } from '@/lib/supabase/client'
 import { cn } from '@/lib/utils'
 import { formatMundialDate, formatMundialTime } from '@/lib/world-cup-2026'
+import { formatMatchStage } from '@/lib/matchTeams'
 
 export default function DashboardPage() {
   const [activeTab, setActiveTab] = useState<'matches' | 'results' | 'leagues' | 'medals'>('matches')
@@ -85,12 +86,6 @@ export default function DashboardPage() {
         ...m,
         homeScore: m.home_score,
         awayScore: m.away_score,
-        homeTeam: m.homeTeam
-          ? { ...m.homeTeam, group: m.homeTeam.group_id }
-          : { name: 'Por definir', code: 'tbd', group: 'KO' },
-        awayTeam: m.awayTeam
-          ? { ...m.awayTeam, group: m.awayTeam.group_id }
-          : { name: 'Por definir', code: 'tbd', group: 'KO' },
       }))
       setMatches(mappedMatches)
       const userPreds = await getUserPredictions()
@@ -405,7 +400,7 @@ export default function DashboardPage() {
                     >
                       <div className="mb-4 flex items-center justify-between gap-2">
                         <span className="rounded border border-[#111] bg-[#111] px-2 py-1 text-[10px] font-black uppercase tracking-widest text-[#ccff00]">
-                          {match.stage}
+                          {formatMatchStage(match.stage)}
                         </span>
                         <div className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-wide text-[#666]">
                           <MapPin className="h-3 w-3 shrink-0 text-[#EB671B]" aria-hidden />
@@ -536,7 +531,7 @@ export default function DashboardPage() {
                       >
                         <div className="mb-4 flex flex-wrap items-start justify-between gap-2">
                           <span className="rounded border border-[#111] bg-[#111] px-2 py-1 text-[10px] font-black uppercase tracking-widest text-[#ccff00]">
-                            {match.stage}
+                            {formatMatchStage(match.stage)}
                           </span>
                           <span
                             className={cn(

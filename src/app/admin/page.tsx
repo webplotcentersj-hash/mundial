@@ -1,13 +1,14 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { Settings, Save, ShieldAlert, Users, Trophy, Download, Eye, Loader2, Store, RotateCcw, X, BarChart3 } from 'lucide-react'
+import { useState, useEffect, useMemo } from 'react'
+import { Settings, Save, ShieldAlert, Users, Trophy, Download, Eye, Loader2, Store, RotateCcw, X, BarChart3, ChevronDown } from 'lucide-react'
 import Image from 'next/image'
 import { motion, AnimatePresence } from 'framer-motion'
 import { createClient } from '@/lib/supabase/client'
 import { STORE_PRINTS_BUCKET } from '@/lib/storePrints'
 import {
   getMatches,
+  getTeams,
   getAdminProfiles,
   getAdminUserDetail,
   type AdminUserDetail,
@@ -15,6 +16,7 @@ import {
   getAdminStoreDashboard,
   updatePrintOrderAdmin,
   updateMatchScore,
+  updateMatchTeams,
   resetMatchResult,
   adminSyncRankingTotalsFromPredictions,
   type AdminStoreDashboard,
@@ -24,6 +26,15 @@ import { AdminUserFichaModal } from '@/components/admin/AdminUserFichaModal'
 import { AdminStoreOrdersPanel } from '@/components/admin/AdminStoreOrdersPanel'
 import { AdminAnalyticsPanel } from '@/components/admin/AdminAnalyticsPanel'
 import { getAdminAnalyticsStats, type AdminAnalyticsStats } from '@/lib/actions/analytics'
+import {
+  formatMatchStage,
+  isKnockoutMatch,
+  KNOCKOUT_STAGE_FILTERS,
+  mapMatchTeams,
+  matchMatchesStageFilter,
+  slotLabelForMatchSide,
+  type KnockoutStageFilter,
+} from '@/lib/matchTeams'
 import './admin-store.css'
 
 function formatAdminDate(iso: string | null | undefined) {
@@ -37,15 +48,20 @@ function formatAdminDate(iso: string | null | undefined) {
 
 export default function AdminPage() {
   const [matches, setMatches] = useState<any[]>([])
+  const [teams, setTeams] = useState<any[]>([])
   const [users, setUsers] = useState<AdminProfileListItem[]>([])
   const [userFicha, setUserFicha] = useState<AdminUserDetail | null>(null)
   const [userFichaLoading, setUserFichaLoading] = useState(false)
   const [loading, setLoading] = useState(true)
   const [isSaving, setIsSaving] = useState<string | null>(null)
+  const [teamSavingId, setTeamSavingId] = useState<string | null>(null)
   const [resettingId, setResettingId] = useState<string | null>(null)
   const [syncRankingBusy, setSyncRankingBusy] = useState(false)
   const [results, setResults] = useState<Record<string, { home: string, away: string }>>({})
+  const [teamDraft, setTeamDraft] = useState<Record<string, { home: string; away: string }>>({})
   const [activeTab, setActiveTab] = useState<'results' | 'users' | 'podium' | 'print-orders' | 'analytics'>('results')
+  const [knockoutFilter, setKnockoutFilter] = useState<KnockoutStageFilter>('all-ko')
+  const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({})
 
   const [storeDashboard, setStoreDashboard] = useState<AdminStoreDashboard | null>(null)
   const [printOrdersLoading, setPrintOrdersLoading] = useState(false)
@@ -57,19 +73,29 @@ export default function AdminPage() {
 
   useEffect(() => {
     async function loadData() {
-      const fetchedMatches = await getMatches()
-      const fetchedUsers = await getAdminProfiles()
-      
+      const [fetchedMatches, fetchedTeams, fetchedUsers] = await Promise.all([
+        getMatches(),
+        getTeams(),
+        getAdminProfiles(),
+      ])
+
       const mappedMatches = (fetchedMatches || []).map((m: any) => ({
         ...m,
         homeScore: m.home_score,
         awayScore: m.away_score,
-        homeTeam: m.homeTeam ? { ...m.homeTeam, group: m.homeTeam.group_id } : { name: 'Por definir', code: 'tbd', group: 'KO' },
-        awayTeam: m.awayTeam ? { ...m.awayTeam, group: m.awayTeam.group_id } : { name: 'Por definir', code: 'tbd', group: 'KO' },
       }))
 
       setMatches(mappedMatches)
+      setTeams(fetchedTeams || [])
       setUsers(fetchedUsers || [])
+      setTeamDraft(
+        Object.fromEntries(
+          mappedMatches.map((m: any) => [
+            m.id,
+            { home: m.home_team_id ?? '', away: m.away_team_id ?? '' },
+          ]),
+        ),
+      )
       setLoading(false)
     }
     loadData()
@@ -208,6 +234,53 @@ export default function AdminPage() {
     }))
   }
 
+  const handleTeamDraftChange = (matchId: string, side: 'home' | 'away', value: string) => {
+    setTeamDraft((prev) => ({
+      ...prev,
+      [matchId]: {
+        home: side === 'home' ? value : (prev[matchId]?.home ?? ''),
+        away: side === 'away' ? value : (prev[matchId]?.away ?? ''),
+      },
+    }))
+  }
+
+  const saveTeams = async (matchId: string) => {
+    const draft = teamDraft[matchId]
+    if (!draft?.home || !draft?.away) {
+      alert('Seleccioná local y visitante antes de guardar.')
+      return
+    }
+    if (draft.home === draft.away) {
+      alert('Local y visitante no pueden ser el mismo equipo.')
+      return
+    }
+
+    setTeamSavingId(matchId)
+    try {
+      await updateMatchTeams(matchId, draft.home, draft.away)
+      const homeTeam = teams.find((t) => t.id === draft.home)
+      const awayTeam = teams.find((t) => t.id === draft.away)
+      setMatches((prev) =>
+        prev.map((m) =>
+          m.id === matchId
+            ? mapMatchTeams({
+                ...m,
+                home_team_id: draft.home,
+                away_team_id: draft.away,
+                homeTeam: homeTeam ?? null,
+                awayTeam: awayTeam ?? null,
+              })
+            : m,
+        ),
+      )
+      alert('Equipos asignados correctamente')
+    } catch (e: any) {
+      alert(e.message || 'Error al asignar equipos')
+    } finally {
+      setTeamSavingId(null)
+    }
+  }
+
   const saveResult = async (matchId: string) => {
     const res = results[matchId]
     if (res && res.home !== '' && res.away !== '') {
@@ -310,6 +383,202 @@ export default function AdminPage() {
 
   const closeUserFicha = () => setUserFicha(null)
 
+  const filteredMatches = useMemo(
+    () => matches.filter((m) => matchMatchesStageFilter(m, knockoutFilter)),
+    [matches, knockoutFilter],
+  )
+
+  const groupedMatches = useMemo(() => {
+    const map = new Map<string, any[]>()
+    for (const m of filteredMatches) {
+      const key = formatMatchStage(m.stage) || 'Sin fase'
+      const list = map.get(key) ?? []
+      list.push(m)
+      map.set(key, list)
+    }
+    return [...map.entries()].sort(
+      (a, b) => Date.parse(a[1][0]?.date ?? '0') - Date.parse(b[1][0]?.date ?? '0'),
+    )
+  }, [filteredMatches])
+
+  useEffect(() => {
+    setCollapsedGroups((prev) => {
+      const next = { ...prev }
+      for (const [key, groupMatches] of groupedMatches) {
+        if (next[key] === undefined) {
+          next[key] = groupMatches.every((m) => m.status === 'finished')
+        }
+      }
+      return next
+    })
+  }, [groupedMatches, knockoutFilter])
+
+  const toggleGroup = (key: string) => {
+    setCollapsedGroups((prev) => ({ ...prev, [key]: !prev[key] }))
+  }
+
+  const collapseAllGroups = () => {
+    setCollapsedGroups(Object.fromEntries(groupedMatches.map(([key]) => [key, true])))
+  }
+
+  const expandAllGroups = () => {
+    setCollapsedGroups(Object.fromEntries(groupedMatches.map(([key]) => [key, false])))
+  }
+
+  const renderMatchCard = (match: any) => (
+    <div key={match.id} className="relative glass-card p-6 rounded-2xl border border-white/10 hover:border-white/20 transition-all group overflow-hidden bg-[#0a0f1c]/80 backdrop-blur-xl">
+      {match.status === 'finished' && <div className="absolute inset-0 bg-green-500/5 pointer-events-none" />}
+
+      <div className="flex items-center justify-between mb-6">
+        <span className="text-[10px] font-bold px-2 py-1 rounded bg-white/5 text-white/50 uppercase tracking-widest border border-white/10">
+          {formatMatchStage(match.stage)}
+        </span>
+        <span
+          className={`text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-widest border ${
+            match.status === 'finished'
+              ? 'bg-green-500/10 text-green-400 border-green-500/30 shadow-[0_0_10px_rgba(34,197,94,0.2)]'
+              : 'bg-amber-500/10 text-amber-400 border-amber-500/30'
+          }`}
+        >
+          {match.status === 'finished' ? 'Finalizado' : 'Pendiente'}
+        </span>
+      </div>
+
+      <div className="flex items-center justify-between mb-4 bg-black/40 p-3 rounded-xl border border-white/5 gap-3">
+        <div className="flex min-w-0 flex-1 flex-col gap-2">
+          {isKnockoutMatch(match) ? (
+            <>
+              <select
+                value={teamDraft[match.id]?.home ?? match.home_team_id ?? ''}
+                onChange={(e) => handleTeamDraftChange(match.id, 'home', e.target.value)}
+                className="w-full rounded-lg border border-white/10 bg-[#060913] px-3 py-2 text-sm font-bold text-white focus:outline-none focus:ring-2 focus:ring-red-500/50"
+              >
+                <option value="">{slotLabelForMatchSide(match.id, 'home') ?? 'Elegir local'}</option>
+                {teams.map((t) => (
+                  <option key={t.id} value={t.id}>
+                    {t.name} (Grupo {t.group_id})
+                  </option>
+                ))}
+              </select>
+              {match.homeTeam.code === 'tbd' && slotLabelForMatchSide(match.id, 'home') && (
+                <span className="text-[10px] uppercase tracking-wider text-white/40">
+                  Cruce: {slotLabelForMatchSide(match.id, 'home')}
+                </span>
+              )}
+            </>
+          ) : (
+            <div className="flex items-center gap-3">
+              <div className="relative flex h-6 w-8 shrink-0 items-center justify-center overflow-hidden rounded border border-white/10 bg-white/5">
+                <Image unoptimized src={`https://flagcdn.com/${match.homeTeam.code}.svg`} alt={match.homeTeam.name} fill className="object-cover" />
+              </div>
+              <span className="text-sm font-bold text-white">{match.homeTeam.name}</span>
+            </div>
+          )}
+        </div>
+        <input
+          type="number"
+          min="0"
+          placeholder={match.homeScore?.toString() ?? '-'}
+          className="w-14 h-12 shrink-0 bg-[#060913] border border-white/10 rounded-lg text-center font-mono font-bold text-xl text-white placeholder:text-white/20 focus:outline-none focus:ring-2 focus:ring-red-500/50 transition-all"
+          value={results[match.id]?.home ?? match.homeScore ?? ''}
+          onChange={(e) => handleResultChange(match.id, 'home', e.target.value)}
+        />
+      </div>
+
+      <div className="flex items-center justify-between mb-4 bg-black/40 p-3 rounded-xl border border-white/5 gap-3">
+        <div className="flex min-w-0 flex-1 flex-col gap-2">
+          {isKnockoutMatch(match) ? (
+            <>
+              <select
+                value={teamDraft[match.id]?.away ?? match.away_team_id ?? ''}
+                onChange={(e) => handleTeamDraftChange(match.id, 'away', e.target.value)}
+                className="w-full rounded-lg border border-white/10 bg-[#060913] px-3 py-2 text-sm font-bold text-white focus:outline-none focus:ring-2 focus:ring-red-500/50"
+              >
+                <option value="">{slotLabelForMatchSide(match.id, 'away') ?? 'Elegir visitante'}</option>
+                {teams.map((t) => (
+                  <option key={t.id} value={t.id}>
+                    {t.name} (Grupo {t.group_id})
+                  </option>
+                ))}
+              </select>
+              {match.awayTeam.code === 'tbd' && slotLabelForMatchSide(match.id, 'away') && (
+                <span className="text-[10px] uppercase tracking-wider text-white/40">
+                  Cruce: {slotLabelForMatchSide(match.id, 'away')}
+                </span>
+              )}
+            </>
+          ) : (
+            <div className="flex items-center gap-3">
+              <div className="relative flex h-6 w-8 shrink-0 items-center justify-center overflow-hidden rounded border border-white/10 bg-white/5">
+                <Image unoptimized src={`https://flagcdn.com/${match.awayTeam.code}.svg`} alt={match.awayTeam.name} fill className="object-cover" />
+              </div>
+              <span className="text-sm font-bold text-white">{match.awayTeam.name}</span>
+            </div>
+          )}
+        </div>
+        <input
+          type="number"
+          min="0"
+          placeholder={match.awayScore?.toString() ?? '-'}
+          className="w-14 h-12 shrink-0 bg-[#060913] border border-white/10 rounded-lg text-center font-mono font-bold text-xl text-white placeholder:text-white/20 focus:outline-none focus:ring-2 focus:ring-red-500/50 transition-all"
+          value={results[match.id]?.away ?? match.awayScore ?? ''}
+          onChange={(e) => handleResultChange(match.id, 'away', e.target.value)}
+        />
+      </div>
+
+      {isKnockoutMatch(match) && (
+        <button
+          type="button"
+          onClick={() => saveTeams(match.id)}
+          disabled={
+            teamSavingId === match.id ||
+            isSaving === match.id ||
+            resettingId === match.id ||
+            !teamDraft[match.id]?.home ||
+            !teamDraft[match.id]?.away
+          }
+          className="mb-6 w-full rounded-xl border border-cyan-500/40 bg-cyan-500/10 py-2.5 text-sm font-bold text-cyan-100 transition-all hover:bg-cyan-500/20 disabled:cursor-not-allowed disabled:opacity-40 flex items-center justify-center gap-2"
+        >
+          {teamSavingId === match.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Users className="w-4 h-4" />}
+          {teamSavingId === match.id ? 'Guardando equipos…' : 'Definir equipos'}
+        </button>
+      )}
+
+      {!isKnockoutMatch(match) && <div className="mb-2" />}
+
+      <button
+        onClick={() => saveResult(match.id)}
+        disabled={
+          isSaving === match.id ||
+          resettingId === match.id ||
+          (match.status === 'finished' && (!results[match.id]?.home || !results[match.id]?.away))
+        }
+        className={`w-full font-bold py-3 rounded-xl transition-all flex items-center justify-center gap-2 text-sm border 
+          ${
+            match.status === 'finished'
+              ? 'bg-white/5 hover:bg-white/10 text-white/70 border-white/10'
+              : 'bg-red-600/80 hover:bg-red-600 text-white border-red-500/50 shadow-[0_0_15px_rgba(220,38,38,0.3)] disabled:opacity-30 disabled:shadow-none'
+          }
+        `}
+      >
+        {isSaving === match.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+        {isSaving === match.id ? 'Guardando...' : match.status === 'finished' ? 'Actualizar Resultado' : 'Cargar Resultado Real'}
+      </button>
+
+      {match.status === 'finished' && (
+        <button
+          type="button"
+          onClick={() => handleResetMatch(match.id)}
+          disabled={isSaving === match.id || resettingId === match.id}
+          className="mt-3 w-full font-bold py-3 rounded-xl transition-all flex items-center justify-center gap-2 text-sm border border-amber-500/40 bg-amber-500/10 text-amber-200 hover:bg-amber-500/20 disabled:opacity-40 disabled:cursor-not-allowed"
+        >
+          {resettingId === match.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <RotateCcw className="w-4 h-4" />}
+          {resettingId === match.id ? 'Reseteando…' : 'Resetear resultado'}
+        </button>
+      )}
+    </div>
+  )
+
   return (
     <div className="min-h-screen bg-transparent relative font-outfit p-4 lg:p-8 pt-24 -mt-16 w-full">
       <div className="fixed inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 mix-blend-overlay pointer-events-none" />
@@ -385,7 +654,23 @@ export default function AdminPage() {
           {/* TAB 1: RESULTADOS */}
           {activeTab === 'results' && (
             <motion.div key="results" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} className="space-y-6">
-              <motion.div className="mb-6 flex flex-wrap items-center justify-end gap-3">
+              <motion.div className="mb-6 flex flex-wrap items-center justify-between gap-3">
+                <div className="flex flex-wrap gap-2">
+                  {KNOCKOUT_STAGE_FILTERS.map((f) => (
+                    <button
+                      key={f.id}
+                      type="button"
+                      onClick={() => setKnockoutFilter(f.id)}
+                      className={`rounded-xl border px-3 py-2 text-xs font-bold uppercase tracking-wider transition-all ${
+                        knockoutFilter === f.id
+                          ? 'border-red-500/60 bg-red-500/20 text-white shadow-[0_0_12px_rgba(220,38,38,0.25)]'
+                          : 'border-white/10 bg-white/5 text-white/60 hover:border-white/20 hover:text-white'
+                      }`}
+                    >
+                      {f.label}
+                    </button>
+                  ))}
+                </div>
                 <button
                   type="button"
                   onClick={handleSyncRankingTotals}
@@ -397,82 +682,79 @@ export default function AdminPage() {
                   </button>
               </motion.div>
 
-              <motion.div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-                {matches.map(match => (
-                  <div key={match.id} className="relative glass-card p-6 rounded-2xl border border-white/10 hover:border-white/20 transition-all group overflow-hidden bg-[#0a0f1c]/80 backdrop-blur-xl">
-                    {match.status === 'finished' && <div className="absolute inset-0 bg-green-500/5 pointer-events-none" />}
-                    
-                    <div className="flex items-center justify-between mb-6">
-                      <span className="text-[10px] font-bold px-2 py-1 rounded bg-white/5 text-white/50 uppercase tracking-widest border border-white/10">{match.stage}</span>
-                      <span className={`text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-widest border ${match.status === 'finished' ? 'bg-green-500/10 text-green-400 border-green-500/30 shadow-[0_0_10px_rgba(34,197,94,0.2)]' : 'bg-amber-500/10 text-amber-400 border-amber-500/30'}`}>
-                        {match.status === 'finished' ? 'Finalizado' : 'Pendiente'}
-                      </span>
-                    </div>
-                    
-                    {/* Home Team Input */}
-                    <div className="flex items-center justify-between mb-4 bg-black/40 p-3 rounded-xl border border-white/5">
-                      <div className="flex items-center gap-3">
-                        <div className="w-8 h-6 rounded overflow-hidden relative border border-white/10 bg-white/5 flex items-center justify-center">
-                          {match.homeTeam.code === 'tbd' ? <span className="text-white/30 text-[10px] font-bold">?</span> : <Image unoptimized src={`https://flagcdn.com/${match.homeTeam.code}.svg`} alt={match.homeTeam.name} fill className="object-cover" />}
-                        </div>
-                        <span className="font-bold text-white text-sm">{match.homeTeam.name}</span>
-                      </div>
-                      <input 
-                        type="number" 
-                        min="0"
-                        placeholder={match.homeScore?.toString() ?? "-"}
-                        className="w-14 h-12 bg-[#060913] border border-white/10 rounded-lg text-center font-mono font-bold text-xl text-white placeholder:text-white/20 focus:outline-none focus:ring-2 focus:ring-red-500/50 transition-all"
-                        value={results[match.id]?.home ?? match.homeScore ?? ''}
-                        onChange={(e) => handleResultChange(match.id, 'home', e.target.value)}
-                      />
-                    </div>
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <p className="text-sm text-white/50">
+                  {filteredMatches.length} partido{filteredMatches.length === 1 ? '' : 's'} ·{' '}
+                  {KNOCKOUT_STAGE_FILTERS.find((f) => f.id === knockoutFilter)?.label}
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={expandAllGroups}
+                    className="rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-bold uppercase tracking-wider text-white/70 hover:bg-white/10"
+                  >
+                    Expandir todo
+                  </button>
+                  <button
+                    type="button"
+                    onClick={collapseAllGroups}
+                    className="rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-bold uppercase tracking-wider text-white/70 hover:bg-white/10"
+                  >
+                    Colapsar todo
+                  </button>
+                </div>
+              </div>
 
-                    {/* Away Team Input */}
-                    <div className="flex items-center justify-between mb-6 bg-black/40 p-3 rounded-xl border border-white/5">
-                      <div className="flex items-center gap-3">
-                        <div className="w-8 h-6 rounded overflow-hidden relative border border-white/10 bg-white/5 flex items-center justify-center">
-                          {match.awayTeam.code === 'tbd' ? <span className="text-white/30 text-[10px] font-bold">?</span> : <Image unoptimized src={`https://flagcdn.com/${match.awayTeam.code}.svg`} alt={match.awayTeam.name} fill className="object-cover" />}
-                        </div>
-                        <span className="font-bold text-white text-sm">{match.awayTeam.name}</span>
-                      </div>
-                      <input 
-                        type="number" 
-                        min="0"
-                        placeholder={match.awayScore?.toString() ?? "-"}
-                        className="w-14 h-12 bg-[#060913] border border-white/10 rounded-lg text-center font-mono font-bold text-xl text-white placeholder:text-white/20 focus:outline-none focus:ring-2 focus:ring-red-500/50 transition-all"
-                        value={results[match.id]?.away ?? match.awayScore ?? ''}
-                        onChange={(e) => handleResultChange(match.id, 'away', e.target.value)}
-                      />
-                    </div>
+              <div className="space-y-4">
+                {groupedMatches.map(([stageLabel, stageMatches]) => {
+                  const collapsed = collapsedGroups[stageLabel] ?? false
+                  const finishedCount = stageMatches.filter((m) => m.status === 'finished').length
+                  const pendingCount = stageMatches.length - finishedCount
 
-                    <button 
-                      onClick={() => saveResult(match.id)}
-                      disabled={isSaving === match.id || resettingId === match.id || (match.status === 'finished' && (!results[match.id]?.home || !results[match.id]?.away))}
-                      className={`w-full font-bold py-3 rounded-xl transition-all flex items-center justify-center gap-2 text-sm border 
-                        ${match.status === 'finished' 
-                          ? 'bg-white/5 hover:bg-white/10 text-white/70 border-white/10' 
-                          : 'bg-red-600/80 hover:bg-red-600 text-white border-red-500/50 shadow-[0_0_15px_rgba(220,38,38,0.3)] disabled:opacity-30 disabled:shadow-none'
-                        }
-                      `}
+                  return (
+                    <div
+                      key={stageLabel}
+                      className="overflow-hidden rounded-2xl border border-white/10 bg-[#0a0f1c]/40 backdrop-blur-sm"
                     >
-                      {isSaving === match.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-                      {isSaving === match.id ? 'Guardando...' : match.status === 'finished' ? 'Actualizar Resultado' : 'Cargar Resultado Real'}
-                    </button>
-
-                    {match.status === 'finished' && (
                       <button
                         type="button"
-                        onClick={() => handleResetMatch(match.id)}
-                        disabled={isSaving === match.id || resettingId === match.id}
-                        className="mt-3 w-full font-bold py-3 rounded-xl transition-all flex items-center justify-center gap-2 text-sm border border-amber-500/40 bg-amber-500/10 text-amber-200 hover:bg-amber-500/20 disabled:opacity-40 disabled:cursor-not-allowed"
+                        onClick={() => toggleGroup(stageLabel)}
+                        className="flex w-full items-center justify-between gap-4 px-5 py-4 text-left transition-colors hover:bg-white/5"
+                        aria-expanded={!collapsed}
                       >
-                        {resettingId === match.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <RotateCcw className="w-4 h-4" />}
-                        {resettingId === match.id ? 'Reseteando…' : 'Resetear resultado'}
+                        <div className="flex min-w-0 flex-wrap items-center gap-3">
+                          <ChevronDown
+                            className={`h-5 w-5 shrink-0 text-white/60 transition-transform duration-200 ${collapsed ? '-rotate-90' : ''}`}
+                            aria-hidden
+                          />
+                          <span className="text-sm font-black uppercase tracking-widest text-white">{stageLabel}</span>
+                          <span className="text-xs font-bold text-white/40">
+                            {stageMatches.length} partido{stageMatches.length === 1 ? '' : 's'}
+                          </span>
+                        </div>
+                        <div className="flex shrink-0 flex-wrap items-center gap-2">
+                          {finishedCount > 0 && (
+                            <span className="rounded-full border border-green-500/30 bg-green-500/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-green-400">
+                              {finishedCount} finalizado{finishedCount === 1 ? '' : 's'}
+                            </span>
+                          )}
+                          {pendingCount > 0 && (
+                            <span className="rounded-full border border-amber-500/30 bg-amber-500/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-amber-400">
+                              {pendingCount} pendiente{pendingCount === 1 ? '' : 's'}
+                            </span>
+                          )}
+                        </div>
                       </button>
-                    )}
-                  </div>
-                ))}
-              </motion.div>
+
+                      {!collapsed && (
+                        <div className="grid grid-cols-1 gap-6 border-t border-white/10 p-5 md:grid-cols-2 xl:grid-cols-3">
+                          {stageMatches.map((match) => renderMatchCard(match))}
+                        </div>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
             </motion.div>
           )}
 

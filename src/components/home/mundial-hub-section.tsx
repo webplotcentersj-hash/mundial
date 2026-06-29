@@ -20,10 +20,19 @@ import {
   flagCodeForCdn,
   formatMundialDate,
   formatMundialTime,
+  WC2026_ARGENTINA_DEBUT,
   WC2026_FINAL_ISO,
   WC2026_FACTS,
+  WC2026_KICKOFF_ISO,
+  WC2026_OPENING_MATCH,
   type MundialMatchPreview,
 } from '@/lib/world-cup-2026'
+
+type HubMatch = MundialMatchPreview & {
+  status?: string
+  homeScore?: number | null
+  awayScore?: number | null
+}
 
 type Countdown = {
   days: number
@@ -63,29 +72,43 @@ function pad(n: number) {
   return String(n).padStart(2, '0')
 }
 
-function MatchFlags({ match, size = 48 }: { match: MundialMatchPreview; size?: number }) {
+function MatchFlags({ match, size = 48 }: { match: HubMatch; size?: number }) {
   const h = Math.round(size * 0.75)
+  const renderFlag = (code: string, name: string) => {
+    if (code === 'tbd') {
+      return (
+        <div
+          style={{ width: size, height: h }}
+          className="flex items-center justify-center rounded border border-[#111]/15 bg-[#f5f5f5] text-sm font-black text-[#999]"
+          aria-hidden
+        >
+          ?
+        </div>
+      )
+    }
+    return (
+      <Image
+        unoptimized
+        src={`https://flagcdn.com/w80/${flagCodeForCdn(code)}.png`}
+        alt={name}
+        width={size}
+        height={h}
+        className="rounded border border-[#111]/10 object-cover shadow-sm"
+      />
+    )
+  }
   return (
     <div className="flex items-center justify-center gap-3">
-      <Image
-        unoptimized
-        src={`https://flagcdn.com/w80/${flagCodeForCdn(match.homeCode)}.png`}
-        alt={match.homeName}
-        width={size}
-        height={h}
-        className="rounded border border-[#111]/10 object-cover shadow-sm"
-      />
+      {renderFlag(match.homeCode, match.homeName)}
       <span className="text-xs font-bold uppercase tracking-widest text-[#888]">vs</span>
-      <Image
-        unoptimized
-        src={`https://flagcdn.com/w80/${flagCodeForCdn(match.awayCode)}.png`}
-        alt={match.awayName}
-        width={size}
-        height={h}
-        className="rounded border border-[#111]/10 object-cover shadow-sm"
-      />
+      {renderFlag(match.awayCode, match.awayName)}
     </div>
   )
+}
+
+function matchScoreLine(match: HubMatch) {
+  if (match.homeScore == null || match.awayScore == null) return null
+  return `${match.homeScore}-${match.awayScore}`
 }
 
 function HubDetailModal({
@@ -253,74 +276,116 @@ function buildHubCards(
   countdown: Countdown,
 ): HubCard[] {
   const facts = snapshot?.facts ?? WC2026_FACTS
-  const nextMatch = snapshot?.nextMatch
-  const argMatch = snapshot?.argentinaMatch
+  const phase = snapshot?.phase ?? 'pre'
+  const liveMatch = snapshot?.liveMatch as HubMatch | null | undefined
+  const lastResult = snapshot?.lastResult as HubMatch | null | undefined
+  const nextMatch = (snapshot?.nextMatch ?? (phase === 'pre' ? WC2026_OPENING_MATCH : null)) as HubMatch | null
+  const argMatch = (snapshot?.argentinaMatch ?? WC2026_ARGENTINA_DEBUT) as HubMatch
   const playerCount = snapshot?.playerCount ?? 0
   const predictionCount = snapshot?.predictionCount ?? 0
   const leagueCount = snapshot?.leagueCount ?? 0
   const daysLeft = snapshot?.daysUntilKickoff ?? countdown.days
+  const finishedCount = snapshot?.finishedCount ?? 0
+  const totalMatches = snapshot?.totalMatches ?? facts.matches
+  const featuredMatch = liveMatch ?? nextMatch
 
   const cards: HubCard[] = []
 
   cards.push({
     id: 'next-match',
-    title: 'Próximo partido',
+    title: liveMatch ? 'Partido en juego' : phase === 'finished' ? 'Último partido' : 'Próximo partido',
     visual: (
       <div className="flex flex-col items-center justify-center gap-3 w-full h-full bg-gradient-to-br from-green-50 to-white rounded-sm py-2">
         <Calendar className="w-10 h-10 text-emerald-700" aria-hidden />
-        {nextMatch ? (
+        {featuredMatch ? (
           <>
-            <MatchFlags match={nextMatch} />
+            <MatchFlags match={featuredMatch} />
             <p className="text-center text-sm font-bold text-[#111] leading-snug">
-              {nextMatch.homeName} vs {nextMatch.awayName}
+              {featuredMatch.homeName} vs {featuredMatch.awayName}
             </p>
+            {matchScoreLine(featuredMatch) ? (
+              <p className="text-lg font-black tabular-nums text-emerald-700">{matchScoreLine(featuredMatch)}</p>
+            ) : null}
+          </>
+        ) : lastResult ? (
+          <>
+            <MatchFlags match={lastResult} />
+            <p className="text-lg font-black tabular-nums text-[#111]">{matchScoreLine(lastResult)}</p>
           </>
         ) : (
-          <p className="text-sm font-bold text-[#111]">Cargando fixture…</p>
+          <p className="text-sm font-bold text-[#111]">Consultando fixture…</p>
         )}
       </div>
     ),
-    summary: nextMatch ? (
+    summary: featuredMatch ? (
       <>
-        <strong>{formatMundialDate(nextMatch.date)}</strong> · {formatMundialTime(nextMatch.date)} hs (ARG)
-        {nextMatch.stage ? ` · ${nextMatch.stage}` : ''}
+        <strong>{formatMundialDate(featuredMatch.date)}</strong> · {formatMundialTime(featuredMatch.date)} hs (ARG)
+        {featuredMatch.stage ? ` · ${featuredMatch.stage}` : ''}
+        {liveMatch ? ' · en juego' : ''}
+      </>
+    ) : lastResult ? (
+      <>
+        Último resultado: <strong>{matchScoreLine(lastResult)}</strong>
+        {lastResult.stage ? ` · ${lastResult.stage}` : ''}
       </>
     ) : (
       'Consultando calendario…'
     ),
-    detailTitle: nextMatch
-      ? `${nextMatch.homeName} vs ${nextMatch.awayName}`
-      : 'Próximo partido del Mundial',
-    detail: nextMatch ? (
+    detailTitle: featuredMatch
+      ? `${featuredMatch.homeName} vs ${featuredMatch.awayName}`
+      : lastResult
+        ? `${lastResult.homeName} ${matchScoreLine(lastResult)} ${lastResult.awayName}`
+        : 'Fixture del Mundial',
+    detail: featuredMatch || lastResult ? (
       <div className="space-y-4 text-sm text-[#444] leading-relaxed font-[family-name:var(--font-store-sans)]">
         <div className="flex justify-center py-2">
-          <MatchFlags match={nextMatch} size={64} />
+          <MatchFlags match={(featuredMatch ?? lastResult)!} size={64} />
         </div>
+        {(featuredMatch ?? lastResult) && matchScoreLine(featuredMatch ?? lastResult!) ? (
+          <p className="text-center text-2xl font-black tabular-nums text-[#111]">
+            {matchScoreLine(featuredMatch ?? lastResult!)}
+          </p>
+        ) : null}
         <ul className="mundial-modal-list">
-          <li>
-            <Calendar className="inline w-4 h-4 mr-1.5 -mt-0.5" aria-hidden />
-            <strong>Fecha:</strong> {formatMundialDate(nextMatch.date)} · {formatMundialTime(nextMatch.date)} hs (Argentina)
-          </li>
-          {nextMatch.stage ? (
+          {(featuredMatch ?? lastResult) ? (
+            <>
+              <li>
+                <Calendar className="inline w-4 h-4 mr-1.5 -mt-0.5" aria-hidden />
+                <strong>Fecha:</strong>{' '}
+                {formatMundialDate((featuredMatch ?? lastResult)!.date)} ·{' '}
+                {formatMundialTime((featuredMatch ?? lastResult)!.date)} hs (Argentina)
+              </li>
+              {(featuredMatch ?? lastResult)!.stage ? (
+                <li>
+                  <Trophy className="inline w-4 h-4 mr-1.5 -mt-0.5" aria-hidden />
+                  <strong>Fase:</strong> {(featuredMatch ?? lastResult)!.stage}
+                </li>
+              ) : null}
+              {(featuredMatch ?? lastResult)!.venue ? (
+                <li>
+                  <MapPin className="inline w-4 h-4 mr-1.5 -mt-0.5" aria-hidden />
+                  <strong>Sede:</strong> {(featuredMatch ?? lastResult)!.venue}
+                </li>
+              ) : null}
+            </>
+          ) : null}
+          {phase === 'pre' ? (
+            <li>
+              <Timer className="inline w-4 h-4 mr-1.5 -mt-0.5" aria-hidden />
+              <strong>Cuenta regresiva al inaugural:</strong> {daysLeft} días, {pad(countdown.hours)}:
+              {pad(countdown.minutes)}:{pad(countdown.seconds)}
+            </li>
+          ) : (
             <li>
               <Trophy className="inline w-4 h-4 mr-1.5 -mt-0.5" aria-hidden />
-              <strong>Fase:</strong> {nextMatch.stage}
+              <strong>Progreso:</strong> {finishedCount} de {totalMatches} partidos jugados
             </li>
-          ) : null}
-          {nextMatch.venue ? (
-            <li>
-              <MapPin className="inline w-4 h-4 mr-1.5 -mt-0.5" aria-hidden />
-              <strong>Sede:</strong> {nextMatch.venue}
-            </li>
-          ) : null}
-          <li>
-            <Timer className="inline w-4 h-4 mr-1.5 -mt-0.5" aria-hidden />
-            <strong>Cuenta regresiva general:</strong> {daysLeft} días, {pad(countdown.hours)}:{pad(countdown.minutes)}:{pad(countdown.seconds)} al inaugural
-          </li>
+          )}
         </ul>
         <p>
-          Es el partido más cercano en el fixture de Plot Mundial. Podés cargar tu pronóstico desde el dashboard
-          antes del pitazo inicial.
+          {liveMatch
+            ? 'Partido en curso según el fixture oficial de Plot Mundial. Los resultados finales se cargan desde admin.'
+            : 'Es el partido más cercano en el fixture. Podés cargar tu pronóstico desde el dashboard antes del pitazo inicial.'}
         </p>
         <Link href="/fixture" className="btn-primary hover-lift inline-block text-sm !py-2 !px-4">
           Ver calendario completo
@@ -331,24 +396,24 @@ function buildHubCards(
     ),
   })
 
+  const argIsUpcoming = phase !== 'finished' && Date.parse(argMatch.date) >= Date.now()
   cards.push({
     id: 'argentina',
     title: 'Argentina en el Mundial',
     visual: (
       <div className="flex flex-col items-center justify-center gap-2 w-full h-full bg-gradient-to-br from-sky-50 to-white rounded-sm py-2">
         <Globe2 className="w-10 h-10 text-sky-700" aria-hidden />
-        {argMatch ? <MatchFlags match={argMatch} /> : null}
+        <MatchFlags match={argMatch} />
       </div>
     ),
-    summary: argMatch ? (
+    summary: (
       <>
-        Campeón defensor · debut{' '}
+        {argIsUpcoming ? 'Próximo partido' : 'Campeón defensor'} ·{' '}
         <strong>
           {formatMundialDate(argMatch.date)} · {formatMundialTime(argMatch.date)} hs
         </strong>
+        {argMatch.stage ? ` · ${argMatch.stage}` : ''}
       </>
-    ) : (
-      'Grupo J — buscando fixture…'
     ),
     detailTitle: 'Argentina — campeón defensor',
     detail: argMatch ? (
@@ -480,7 +545,8 @@ function buildHubCards(
     ),
     summary: (
       <>
-        <strong>3 pts</strong> marcador exacto · <strong>1 pt</strong> ganador o empate
+        <strong>{predictionCount.toLocaleString('es-AR')}</strong> pronósticos ·{' '}
+        <strong>{finishedCount}/{totalMatches}</strong> partidos oficiales
       </>
     ),
     detailTitle: 'Comunidad Plot Mundial — en vivo',
@@ -500,10 +566,13 @@ function buildHubCards(
             <div className="text-[10px] uppercase text-[#888] mt-1">Ligas</div>
           </div>
         </div>
-        <p>Estos números se actualizan cada 60 segundos desde la base de datos de Plot Mundial.</p>
+        <p>Estos números se actualizan desde la base de datos de Plot Mundial cada 30–60 segundos.</p>
         <ul className="mundial-modal-list">
           <li>
             <strong>Puntos:</strong> 3 por resultado exacto, 1 por acertar ganador o empate
+          </li>
+          <li>
+            <strong>Fixture:</strong> {finishedCount} finalizados · {totalMatches - finishedCount} pendientes
           </li>
           <li>
             <strong>Ranking global:</strong> competí contra todos los usuarios registrados
@@ -537,7 +606,7 @@ export function MundialHubSection({
 }) {
   const [snapshot, setSnapshot] = useState<HomeMundialSnapshot | null>(null)
   const [countdown, setCountdown] = useState<Countdown>(() =>
-    computeCountdown('2026-06-11T15:00:00Z'),
+    computeCountdown(WC2026_KICKOFF_ISO),
   )
   const [updatedAt, setUpdatedAt] = useState<Date | null>(null)
   const [activeCardId, setActiveCardId] = useState<HubCardId | null>(null)
@@ -545,9 +614,11 @@ export function MundialHubSection({
   onSnapshotChangeRef.current = onSnapshotChange
 
   useEffect(() => {
+    let cancelled = false
     async function load() {
       try {
         const data = await getHomeMundialSnapshot()
+        if (cancelled) return
         setSnapshot(data)
         onSnapshotChangeRef.current?.(data)
         setUpdatedAt(new Date())
@@ -556,12 +627,15 @@ export function MundialHubSection({
       }
     }
     load()
-    const id = setInterval(load, 60_000)
-    return () => clearInterval(id)
+    const id = setInterval(load, 30_000)
+    return () => {
+      cancelled = true
+      clearInterval(id)
+    }
   }, [])
 
   useEffect(() => {
-    const target = snapshot?.kickoffIso ?? '2026-06-11T15:00:00Z'
+    const target = snapshot?.kickoffIso ?? WC2026_KICKOFF_ISO
     const tick = () => setCountdown(computeCountdown(target))
     tick()
     const id = setInterval(tick, 1000)
@@ -569,8 +643,22 @@ export function MundialHubSection({
   }, [snapshot?.kickoffIso])
 
   const phase = snapshot?.phase ?? 'pre'
+  const liveMatch = snapshot?.liveMatch as HubMatch | null | undefined
+  const nextMatch = snapshot?.nextMatch
+  const lastResult = snapshot?.lastResult as HubMatch | null | undefined
+  const finishedCount = snapshot?.finishedCount ?? 0
+  const totalMatches = snapshot?.totalMatches ?? WC2026_FACTS.matches
   const cards = useMemo(() => buildHubCards(snapshot, countdown), [snapshot, countdown])
   const activeCard = cards.find((c) => c.id === activeCardId) ?? null
+
+  const updatedLabel = updatedAt
+    ? `Actualizado ${updatedAt.toLocaleString('es-AR', {
+        day: 'numeric',
+        month: 'short',
+        hour: '2-digit',
+        minute: '2-digit',
+      })} hs`
+    : 'Conectando…'
 
   return (
     <section className="trending-section mundial-hub-section">
@@ -600,9 +688,7 @@ export function MundialHubSection({
               <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-500 opacity-75" />
               <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-600" />
             </span>
-            {updatedAt
-              ? `Actualizado ${updatedAt.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })}`
-              : 'Conectando…'}
+            {updatedLabel}
           </div>
         </div>
 
@@ -614,7 +700,9 @@ export function MundialHubSection({
                   Cuenta regresiva al inaugural
                 </p>
                 <p className="text-sm text-[#555] font-[family-name:var(--font-store-sans)]">
-                  México vs Sudáfrica · 11 jun · Estadio Ciudad de México
+                  {WC2026_OPENING_MATCH.homeName} vs {WC2026_OPENING_MATCH.awayName} ·{' '}
+                  {formatMundialDate(WC2026_KICKOFF_ISO)} · {formatMundialTime(WC2026_KICKOFF_ISO)} hs (ARG) ·{' '}
+                  {WC2026_OPENING_MATCH.venue}
                 </p>
               </div>
               <div className="mundial-countdown-digits" aria-live="polite">
@@ -644,8 +732,62 @@ export function MundialHubSection({
 
         {phase === 'live' && (
           <div className="mundial-countdown-banner mb-6 border-emerald-600/30 bg-emerald-50">
-            <p className="text-sm font-bold uppercase tracking-widest text-emerald-800">
-              ⚽ Mundial en curso — seguí resultados, fixture y tu prode en tiempo real
+            <div className="flex flex-wrap items-start justify-between gap-4">
+              <div className="space-y-2">
+                <p className="text-sm font-bold uppercase tracking-widest text-emerald-800">
+                  {liveMatch
+                    ? `⚽ En juego · ${liveMatch.homeName} vs ${liveMatch.awayName}`
+                    : '⚽ Mundial en curso — seguí resultados, fixture y tu prode en tiempo real'}
+                </p>
+                {nextMatch && !liveMatch ? (
+                  <p className="text-sm text-emerald-900/90 font-[family-name:var(--font-store-sans)]">
+                    Próximo: <strong>{nextMatch.homeName} vs {nextMatch.awayName}</strong>
+                    {nextMatch.stage ? ` · ${nextMatch.stage}` : ''} ·{' '}
+                    {formatMundialDate(nextMatch.date)} {formatMundialTime(nextMatch.date)} hs (ARG)
+                  </p>
+                ) : null}
+                {lastResult ? (
+                  <p className="text-sm text-emerald-900/80 font-[family-name:var(--font-store-sans)]">
+                    Último resultado:{' '}
+                    <strong>
+                      {lastResult.homeName}{' '}
+                      {lastResult.homeScore != null && lastResult.awayScore != null
+                        ? `${lastResult.homeScore}-${lastResult.awayScore}`
+                        : '—'}{' '}
+                      {lastResult.awayName}
+                    </strong>
+                    {lastResult.stage ? ` · ${lastResult.stage}` : ''}
+                  </p>
+                ) : null}
+              </div>
+              <div className="text-right">
+                <p className="text-2xl font-black tabular-nums text-emerald-900">
+                  {finishedCount}/{totalMatches}
+                </p>
+                <p className="text-[10px] font-bold uppercase tracking-wider text-emerald-800/80">partidos jugados</p>
+              </div>
+            </div>
+            <div className="mt-4 flex flex-wrap gap-2">
+              <Link href="/fixture" className="btn-secondary hover-lift text-xs !py-2 !px-3">
+                Fixture
+              </Link>
+              <Link href="/dashboard" className="btn-secondary hover-lift text-xs !py-2 !px-3">
+                Mi prode
+              </Link>
+              <Link href="/ranking" className="btn-primary hover-lift text-xs !py-2 !px-3">
+                Ranking
+              </Link>
+            </div>
+          </div>
+        )}
+
+        {phase === 'finished' && (
+          <div className="mundial-countdown-banner mb-6 border-[#111]/20 bg-[#fafafa]">
+            <p className="text-sm font-bold uppercase tracking-widest text-[#111]">
+              🏆 Mundial 2026 finalizado · {finishedCount} partidos en el fixture oficial
+            </p>
+            <p className="mt-2 text-sm text-[#555] font-[family-name:var(--font-store-sans)]">
+              Revisá el ranking final, tus medallas y la llave completa en Plot Mundial.
             </p>
           </div>
         )}
@@ -657,11 +799,13 @@ export function MundialHubSection({
             <Timer className="w-3.5 h-3.5" aria-hidden />
             {phase === 'pre'
               ? `Faltan ${snapshot?.daysUntilKickoff ?? countdown.days} días para el pitazo inicial`
-              : 'Mundial 2026 activo'}
+              : phase === 'live'
+                ? `${finishedCount} de ${totalMatches} partidos jugados · datos en vivo`
+                : 'Copa finalizada · ranking y medallas disponibles'}
           </span>
           <span className="inline-flex items-center gap-1.5">
             <Clock className="w-3.5 h-3.5" aria-hidden />
-            Datos del fixture desde Plot · actualización cada 60 s
+            Fixture Plot · refresh {phase === 'live' ? '30 s' : '60 s'}
           </span>
         </div>
       </div>
