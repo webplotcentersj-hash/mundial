@@ -6,6 +6,12 @@ export type KnockoutSlotSide = {
   group: 'KO'
 }
 
+export type KnockoutFeederRef = {
+  matchId: string
+  side: 'home' | 'away'
+  kind: 'winner' | 'loser'
+}
+
 const slots: Record<string, { home: string; away: string }> = {
   m73: { home: '2º Grupo A', away: '2º Grupo B' },
   m74: { home: '1º Grupo E', away: '3º A/B/C/D/F' },
@@ -39,6 +45,32 @@ const slots: Record<string, { home: string; away: string }> = {
   m102: { home: 'Ganador 99', away: 'Ganador 100' },
   m103: { home: 'Perdedor 101', away: 'Perdedor 102' },
   m104: { home: 'Ganador 101', away: 'Ganador 102' },
+}
+
+function parseFeederLabel(label: string): { sourceMatchId: string; kind: 'winner' | 'loser' } | null {
+  const win = /^Ganador (\d+)$/.exec(label)
+  if (win) return { sourceMatchId: `m${win[1]}`, kind: 'winner' }
+  const lose = /^Perdedor (\d+)$/.exec(label)
+  if (lose) return { sourceMatchId: `m${lose[1]}`, kind: 'loser' }
+  return null
+}
+
+const KNOCKOUT_FEEDERS: Map<string, KnockoutFeederRef[]> = (() => {
+  const map = new Map<string, KnockoutFeederRef[]>()
+  for (const [matchId, slot] of Object.entries(slots)) {
+    for (const side of ['home', 'away'] as const) {
+      const parsed = parseFeederLabel(slot[side])
+      if (!parsed) continue
+      const list = map.get(parsed.sourceMatchId) ?? []
+      list.push({ matchId, side, kind: parsed.kind })
+      map.set(parsed.sourceMatchId, list)
+    }
+  }
+  return map
+})()
+
+export function getKnockoutFeedersForSource(sourceMatchId: string): KnockoutFeederRef[] {
+  return KNOCKOUT_FEEDERS.get(sourceMatchId) ?? []
 }
 
 function slotTeam(label: string): KnockoutSlotSide {

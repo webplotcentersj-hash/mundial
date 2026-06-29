@@ -28,6 +28,7 @@ import { getPrintImageFieldsForLine } from '@/lib/store/order-print-assets'
 import { ensureTriviaQuestionsSeeded } from '@/lib/trivia/seed'
 import { applyFixturePointDelta } from '@/lib/profile-points'
 import { formatMatchStage, mapMatchTeams } from '@/lib/matchTeams'
+import { clearKnockoutDownstream, propagateKnockoutBracket } from '@/lib/knockoutAdvance'
 
 export type { PrintProductType } from '@/lib/store/catalog'
 
@@ -750,6 +751,16 @@ export async function updateMatchScore(matchId: string, homeScore: number, awayS
   const hs = toScoreInt(homeScore)
   const as = toScoreInt(awayScore)
 
+  const { data: matchRow, error: readErr } = await supabase
+    .from('matches')
+    .select('home_team_id, away_team_id')
+    .eq('id', matchId)
+    .maybeSingle()
+
+  if (readErr || !matchRow) {
+    throw new Error('Partido no encontrado')
+  }
+
   // 1. Actualizar el partido
   const { error: matchError } = await supabase
     .from('matches')
@@ -814,10 +825,20 @@ export async function updateMatchScore(matchId: string, homeScore: number, awayS
     }
   }
 
+  await propagateKnockoutBracket(
+    supabase,
+    matchId,
+    matchRow.home_team_id,
+    matchRow.away_team_id,
+    hs,
+    as,
+  )
+
   revalidatePath('/admin')
   revalidatePath('/fixture')
   revalidatePath('/dashboard')
   revalidatePath('/ranking')
+  revalidatePath('/bracket')
   return { success: true }
 }
 
@@ -867,22 +888,16 @@ export async function updateMatchTeams(
   return { success: true }
 }
 
-/** Admin: vuelve el partido a pendiente, borra marcador oficial y revierte puntos de pronósticos de ese partido. */
-export async function resetMatchResult(matchId: string) {
-  const isAdmin = await verifyAdmin()
-  if (!isAdmin) {
-    throw new Error('No autorizado')
-  }
+type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>
 
-  const supabase = await createClient()
-
+async function resetMatchResultInternal(supabase: SupabaseServerClient, matchId: string) {
   const { data: match, error: matchReadErr } = await supabase.from('matches').select('id, status').eq('id', matchId).maybeSingle()
 
   if (matchReadErr || !match) {
     throw new Error('Partido no encontrado')
   }
   if (match.status !== 'finished') {
-    throw new Error('Solo se pueden resetear partidos finalizados')
+    return
   }
 
   const { data: predictions, error: predErr } = await supabase.from('predictions').select('id, user_id, points_earned').eq('match_id', matchId)
@@ -927,10 +942,36 @@ export async function resetMatchResult(matchId: string) {
     throw new Error('No se pudo volver el partido a pendiente')
   }
 
+  await clearKnockoutDownstream(supabase, matchId, async (downstreamId) => {
+    await resetMatchResultInternal(supabase, downstreamId)
+  })
+}
+
+/** Admin: vuelve el partido a pendiente, borra marcador oficial y revierte puntos de pronósticos de ese partido. */
+export async function resetMatchResult(matchId: string) {
+  const isAdmin = await verifyAdmin()
+  if (!isAdmin) {
+    throw new Error('No autorizado')
+  }
+
+  const supabase = await createClient()
+
+  const { data: match, error: matchReadErr } = await supabase.from('matches').select('id, status').eq('id', matchId).maybeSingle()
+
+  if (matchReadErr || !match) {
+    throw new Error('Partido no encontrado')
+  }
+  if (match.status !== 'finished') {
+    throw new Error('Solo se pueden resetear partidos finalizados')
+  }
+
+  await resetMatchResultInternal(supabase, matchId)
+
   revalidatePath('/admin')
   revalidatePath('/fixture')
   revalidatePath('/ranking')
   revalidatePath('/dashboard')
+  revalidatePath('/bracket')
   return { success: true }
 }
 
